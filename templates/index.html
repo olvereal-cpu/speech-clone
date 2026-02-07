@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 py-12">
+    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 text-sm italic">
+        Рекламный блок (AdSense)
+    </div>
+
+    <section class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-8 border border-gray-50">
+        <h2 class="text-lg font-semibold mb-4 text-gray-500 uppercase tracking-wider">Введите текст для озвучки</h2>
+        <textarea id="text" class="w-full h-56 p-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all text-lg resize-none" placeholder="До 2000 символов..."></textarea>
+        
+        <div class="mt-8 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="w-full md:w-64">
+                <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Язык озвучки</label>
+                <select id="lang" class="w-full p-3 bg-white border border-gray-200 rounded-xl shadow-sm appearance-none cursor-pointer focus:border-blue-500">
+                    <option value="ru">Русский (RU)</option>
+                    <option value="en">English (US)</option>
+                    <option value="de">Deutsch (DE)</option>
+                </select>
+            </div>
+            <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-12 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+                Озвучить сейчас
+            </button>
+        </div>
+
+        <div id="result" class="mt-10 pt-10 border-t border-gray-50 hidden text-center">
+            <audio id="player" controls class="w-full mb-4"></audio>
+            <a id="download" href="#" download class="text-blue-600 font-bold hover:underline">Скачать результат в MP3</a>
+        </div>
+    </section>
+
+    <section class="mt-20">
+        <h3 class="text-3xl font-bold text-center mb-10">Часто задаваемые вопросы (FAQ)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h4 class="font-bold mb-2">Это бесплатно?</h4>
+                <p class="text-gray-500 text-sm">Да, вы можете использовать наш сервис абсолютно бесплатно без ограничений по количеству запросов.</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h4 class="font-bold mb-2">Какое ограничение?</h4>
+                <p class="text-gray-500 text-sm">Вы можете озвучить до 2000 символов за один раз для сохранения высокой скорости обработки.</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="mt-20 p-8 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 text-sm italic">
+        Рекламный блок (AdSense Bottom)
+    </div>
+</main>
+
+<script>
+async function generateAudio() {
+    const btn = document.getElementById('mainBtn');
+    const text = document.getElementById('text').value;
+    const lang = document.getElementById('lang').value;
+    
+    if(!text) return alert("Пожалуйста, введите текст");
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="animate-pulse">Обработка...</span>`;
+
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text, lang})
+        });
+        const data = await response.json();
+        
+        if(data.audio_url) {
+            const player = document.getElementById('player');
+            player.src = data.audio_url;
+            document.getElementById('download').href = data.audio_url;
+            document.getElementById('result').classList.remove('hidden');
+            player.play();
+        }
+    } catch (e) {
+        alert("Ошибка сервера. Попробуйте позже.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Озвучить сейчас";
+    }
+}
+</script>
+{% endblock %}

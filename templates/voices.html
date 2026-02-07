@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="max-w-4xl mx-auto p-8 bg-white mt-10 rounded-xl shadow-sm">
+    <h1 class="text-3xl font-bold mb-6 text-gray-900">Доступные голоса и технологии</h1>
+    
+    <div class="prose lg:prose-xl text-gray-600">
+        <p>Наш сервис SpeechClone AI использует алгоритмы <strong>Google Text-to-Speech (gTTS)</strong>. Эта технология основана на глубоком обучении нейронных сетей, что позволяет преобразовывать текст в естественную человеческую речь с высокой точностью.</p>
+        
+        <h2 class="text-2xl font-semibold mt-8 text-gray-800">Список поддерживаемых языков</h2>
+        <p>Мы поддерживаем более 100 языковых пакетов, включая:</p>
+        <ul class="grid grid-cols-2 gap-4 mt-4">
+            <li><strong>Русский (RU):</strong> Натуральный женский голос с правильными ударениями.</li>
+            <li><strong>English (US/UK):</strong> Идеально для озвучки YouTube-каналов.</li>
+            <li><strong>Deutsch & Français:</strong> Высокая четкость для обучения языкам.</li>
+            <li><strong>Español & Italiano:</strong> Темпераментная и быстрая речь.</li>
+        </ul>
+
+        <h2 class="text-2xl font-semibold mt-8 text-gray-800">Как работают нейронные голоса?</h2>
+        <p>В отличие от старых систем синтеза, нейронные модели анализируют весь контекст предложения, а не отдельные слова. Это помогает избежать "роботизированного" звучания и правильно расставлять интонационные акценты в вопросительных и восклицательных предложениях.</p>
+    </div>
+</main>
+{% endblock %}
