@@ -3,8 +3,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-import edge_tts
 import os
+import edge_tts
 import uuid
 import asyncio
 
@@ -100,4 +100,5 @@ async def generate(request: TTSRequest):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="TTS Engine Error")
+
 
