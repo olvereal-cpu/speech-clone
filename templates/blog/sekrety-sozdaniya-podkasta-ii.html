@@ -1,1 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="max-w-4xl mx-auto px-4 py-16">
+    <div class="mb-10 text-center">
+        <span class="text-[10px] font-black uppercase tracking-widest text-purple-600 block mb-4">Мастер-класс</span>
+        <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-8 leading-tight tracking-tighter">Секреты создания идеального подкаста</h1>
+    </div>
 
+    <div class="rounded-[3rem] overflow-hidden mb-12 shadow-2xl aspect-[21/9]">
+        <img src="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=1200" class="w-full h-full object-cover">
+    </div>
+
+    <div class="max-w-2xl mx-auto space-y-8 text-lg text-gray-600">
+        <p class="italic text-2xl text-gray-400 font-light border-l-4 border-purple-600 pl-6">"Эра дорогих микрофонов подходит к концу. Сегодня студийное качество — это фильтр нейросети."</p>
+        
+        <p>Мы научили алгоритмы SpeechClone имитировать акустику профессиональной комнаты, даже если вы записали исходник на дешевую гарнитуру в шумном кафе. Но звук — это лишь половина дела.</p>
+
+        <div class="bg-purple-50 border-2 border-dashed border-purple-200 rounded-[2rem] p-8 text-center my-10">
+            <p class="text-sm font-bold text-purple-900 mb-2">Нужна реклама вашего оборудования?</p>
+            <p class="text-xs text-purple-400 uppercase tracking-widest mb-4 italic">Рекламный слот свободен</p>
+            <a href="mailto:ads@speechclone.online" class="text-xs font-black text-purple-600 border-b-2 border-purple-600">Написать нам</a>
+        </div>
+
+        <p>Для идеального подкаста важна динамика. Используйте разные голоса для "гостей" и "экспертов", меняйте темп речи в зависимости от важности момента — нейросети позволяют делать это одним ползунком.</p>
+    </div>
+</article>
+{% endblock %}
