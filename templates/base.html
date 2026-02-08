@@ -1,52 +1,60 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeechClone AI - Профессиональная озвучка текста</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        
-        /* Анимация для кольца на странице загрузки */
-        #progress-bar {
-            transition: stroke-dashoffset 1s linear;
-            transform: rotate(-90deg);
-            transform-origin: 50% 50%;
-        }
 
-        /* Плавные переходы для кнопок */
-        .transition-all { transition: all 0.3s ease; }
-    </style>
+<html lang="ru"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>SpeechClone AI - Профессиональная озвучка текста</title>
+
+<link rel="canonical" href="[https://speechclone.online/](https://speechclone.online/)" />
+
+<script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+<link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap)" rel="stylesheet">
+
+<style>
+    body { font-family: 'Inter', sans-serif; }
     
-    </head>
-<body class="bg-[#F9FAFB] text-gray-900">
-    <nav class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-5xl mx-auto px-4 h-16 flex justify-between items-center">
-            <a href="/" class="text-2xl font-bold text-blue-600 tracking-tight">SpeechClone AI</a>
-            <div class="hidden md:flex space-x-8 font-medium text-gray-600">
-                <a href="/" class="hover:text-blue-600 transition-all">Главная</a>
-                <a href="/blog" class="hover:text-blue-600 transition-all">Блог</a>
-                <a href="/voices" class="hover:text-blue-600 transition-all">Голоса</a>
-                <a href="/guide" class="hover:text-blue-600 transition-all">Инструкция</a>
-            </div>
+    /* Твоя анимация для кольца на странице загрузки */
+    #progress-bar {
+        transition: stroke-dashoffset 1s linear;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+    }
+
+    /* Плавные переходы для кнопок */
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+</head>
+<body class="bg-[#F9FAFB] text-gray-900 antialiased"> <nav class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm"> <div class="max-w-5xl mx-auto px-4 h-16 flex justify-between items-center"> <a href="/" class="text-2xl font-black text-blue-600 tracking-tighter">SpeechClone AI</a>
+
+        <div class="hidden md:flex space-x-8 font-bold text-gray-500 uppercase text-[11px] tracking-widest">
+            <a href="/" class="hover:text-blue-600 transition-all">Главная</a>
+            <a href="/voices" class="hover:text-blue-600 transition-all">Голоса</a>
+            <a href="/blog" class="hover:text-blue-600 transition-all">Блог</a>
+            <a href="/about" class="hover:text-blue-600 transition-all text-blue-600">О нас</a>
+            <a href="/guide" class="hover:text-blue-600 transition-all">Инструкция</a>
         </div>
-    </nav>
-
-    <div class="min-h-screen">
-        {% block content %}{% endblock %}
     </div>
+</nav>
 
-    <footer class="bg-gray-900 text-gray-400 py-12 mt-20">
-        <div class="max-w-5xl mx-auto px-4 text-center">
-            <div class="flex justify-center space-x-6 mb-6 text-sm">
-                <a href="/privacy" class="hover:text-white transition-all">Политика конфиденциальности</a>
-                <a href="/blog" class="hover:text-white transition-all">Статьи</a>
-                <a href="/guide" class="hover:text-white transition-all">Помощь</a>
-            </div>
-            <p class="text-xs tracking-widest uppercase text-gray-600">© 2026 SpeechClone AI. Все права защищены.</p>
+<div class="min-h-screen">
+    {% block content %}{% endblock %}
+</div>
+
+<footer class="bg-gray-900 text-gray-400 py-16 mt-20">
+    <div class="max-w-5xl mx-auto px-4 text-center">
+        <div class="flex flex-wrap justify-center gap-6 md:gap-10 mb-8 text-[11px] font-bold uppercase tracking-[0.2em]">
+            <a href="/privacy" class="hover:text-white transition-all">Конфиденциальность</a>
+            <a href="/about" class="hover:text-white transition-all">О проекте</a>
+            <a href="/blog" class="hover:text-white transition-all">Статьи</a>
+            <a href="/guide" class="hover:text-white transition-all">Помощь</a>
+        </div>
+        
+        <p class="text-[10px] tracking-[0.3em] uppercase text-gray-600 border-t border-gray-800 pt-8">
+            © 2026 SpeechClone Online. Все права защищены.
+        </p>
+    </div>
+</footer>
+</body> </html>
         </div>
     </footer>
 </body>
 </html>
+
