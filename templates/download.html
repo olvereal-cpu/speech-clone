@@ -1,38 +1,33 @@
 {% extends "base.html" %}
 {% block content %}
-<main class="max-w-4xl mx-auto px-4 py-16">
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-[10px] uppercase tracking-widest">
-        Advertisement
-    </div>
-
-    <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50 text-center flex flex-col items-center">
+<main class="max-w-4xl mx-auto px-4 py-16 text-center flex flex-col items-center">
+    
+    <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50 w-full flex flex-col items-center">
         
-        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-8">Your file is ready!</h1>
+        <h1 id="main-title" class="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-12 block">
+            Your file is ready!
+        </h1>
 
-        <div class="relative flex items-center justify-center mb-8" style="width: 200px; height: 200px;">
-            <svg class="w-full h-full">
-                <circle cx="100" cy="100" r="90" stroke="currentColor" stroke-width="12" fill="transparent" class="text-gray-100" />
-                <circle id="progress-bar" cx="100" cy="100" r="90" stroke="currentColor" stroke-width="12" fill="transparent" 
+        <div id="timer-container" class="relative flex items-center justify-center mb-10" style="width: 200px; height: 200px;">
+            <svg class="w-full h-full" viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="90" stroke="#f3f4f6" stroke-width="12" fill="transparent" />
+                <circle id="progress-bar" cx="100" cy="100" r="90" stroke="#2563eb" stroke-width="12" fill="transparent" 
                         stroke-dasharray="565.48" stroke-dashoffset="565.48"
-                        class="text-blue-600" />
+                        style="transition: stroke-dashoffset 1s linear; transform: rotate(-90deg); transform-origin: 50% 50%;" />
             </svg>
             <span id="countdown" class="absolute text-5xl font-black text-blue-600">30</span>
         </div>
 
-        <p class="text-gray-400 font-medium mb-10">Please wait <span id="secs">30</span> seconds to finish processing...</p>
+        <p id="wait-text" class="text-gray-400 font-bold uppercase text-[11px] tracking-widest mb-4">
+            Please wait <span id="secs">30</span> seconds...
+        </p>
 
-        <div id="download-block" class="hidden w-full flex flex-col items-center">
+        <div id="download-block" class="hidden flex flex-col items-center w-full">
             <a href="{{ file_url }}" download class="w-full md:w-auto px-16 py-5 bg-green-500 text-white font-black rounded-[20px] hover:bg-green-600 shadow-xl shadow-green-100 transition-all uppercase tracking-widest text-xs mb-6">
                 Download MP3 Now
             </a>
-            <a href="/" class="text-blue-600 font-black uppercase text-[10px] tracking-[0.2em] hover:text-gray-900">
-                ← Back to Home
-            </a>
+            <a href="/" class="text-blue-600 font-black uppercase text-[10px] tracking-[0.2em]">← Back to Home</a>
         </div>
-    </div>
-
-    <div class="mt-10 p-4 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-[10px] uppercase tracking-widest">
-        Advertisement
     </div>
 </main>
 
@@ -42,23 +37,28 @@
     const secsEl = document.getElementById('secs');
     const progressBar = document.getElementById('progress-bar');
     const downloadBlock = document.getElementById('download-block');
+    const timerContainer = document.getElementById('timer-container');
+    const waitText = document.getElementById('wait-text');
+    const mainTitle = document.getElementById('main-title');
     const circumference = 2 * Math.PI * 90;
 
     const timer = setInterval(() => {
         timeLeft--;
-        countdownEl.innerText = timeLeft;
-        secsEl.innerText = timeLeft;
-
-        // Обновляем круг
-        const offset = circumference - (timeLeft / 30) * circumference;
-        progressBar.style.strokeDashoffset = offset;
+        if (timeLeft >= 0) {
+            countdownEl.innerText = timeLeft;
+            secsEl.innerText = timeLeft;
+            const offset = circumference - ( (30 - timeLeft) / 30) * circumference;
+            progressBar.style.strokeDashoffset = offset;
+        }
 
         if (timeLeft <= 0) {
             clearInterval(timer);
-            countdownEl.parentElement.classList.add('hidden'); // Скрываем таймер
-            document.querySelector('h1').innerText = "Download Ready!";
-            downloadBlock.classList.remove('hidden'); // Показываем кнопку
+            timerContainer.classList.add('hidden');
+            waitText.classList.add('hidden');
+            mainTitle.innerText = "Download link generated!";
+            downloadBlock.classList.remove('hidden');
         }
     }, 1000);
 </script>
 {% endblock %}
+
