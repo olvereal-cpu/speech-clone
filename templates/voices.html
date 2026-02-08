@@ -1,49 +1,99 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %}
 
-<main class="max-w-4xl mx-auto px-4 py-12"> <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50"> <h1 class="text-4xl font-black mb-10 text-gray-900 uppercase tracking-tighter text-center">Голоса и Технологии</h1>
-
-    <div class="prose prose-blue max-w-none text-gray-600 space-y-8 text-lg leading-relaxed">
-        <p>
-            Проект <strong>SpeechClone AI</strong> базируется на передовых нейронных моделях синтеза речи 2026 года. В отличие от простых систем прошлого, наши голоса генерируются с помощью глубоких нейронных сетей, которые обучались на тысячах часов студийных записей реальных дикторов.
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-12">
+    <div class="text-center mb-16">
+        <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
+            Библиотека голосов <span class="text-blue-600">AI</span>
+        </h1>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+            Мы используем передовые модели синтеза речи, обеспечивающие 99% сходство с человеческим голосом. Выберите идеальный тембр для вашего проекта.
         </p>
+    </div>
 
-        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Популярные направления</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 not-prose">
-            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">CIS / СНГ</h3>
-                <p class="text-gray-900 font-bold mb-2">Русский, Украинский, Казахский</p>
-                <p class="text-sm text-gray-500">Глубокие мужские и мягкие женские тембры с идеальной расстановкой ударений.</p>
-            </div>
-            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">English Global</h3>
-                <p class="text-gray-900 font-bold mb-2">US, UK, Australia</p>
-                <p class="text-sm text-gray-500">Золотой стандарт для YouTube-контента и международных презентаций.</p>
-            </div>
-            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <div class="flex gap-2 mb-2 font-black text-blue-600 uppercase text-[10px] tracking-widest">
-                    <span>DE</span><span>FR</span><span>IT</span><span>ES</span>
+    <div class="grid md:grid-cols-3 gap-8 mb-20">
+        <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-6 text-2xl">🎙️</div>
+            <h3 class="text-xl font-bold mb-3">Мультимедиа</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Идеально подходят для озвучки видео на YouTube, документальных фильмов и аудиокниг. Естественные паузы и мягкий тембр.</p>
+        </div>
+        <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mb-6 text-2xl">📢</div>
+            <h3 class="text-xl font-bold mb-3">Реклама и промо</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Энергичные и убедительные голоса, созданные для захвата внимания аудитории в рекламных интеграциях.</p>
+        </div>
+        <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6 text-2xl">🤖</div>
+            <h3 class="text-xl font-bold mb-3">Помощники</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Четкая артикуляция и нейтральный тон для автоответчиков, навигаторов и обучающих курсов.</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden mb-20">
+        <div class="p-8 border-b border-gray-50 bg-gray-50/50">
+            <h2 class="text-2xl font-bold text-gray-900">Популярные модели (RU)</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-black">
+                    <tr>
+                        <th class="px-8 py-4">Имя голоса</th>
+                        <th class="px-8 py-4">Пол</th>
+                        <th class="px-8 py-4">Тип</th>
+                        <th class="px-8 py-4">Стиль</th>
+                        <th class="px-8 py-4">Статус</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <td class="px-8 py-5 font-bold text-gray-900">Dmitry (Neural)</td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Мужской</td>
+                        <td class="px-8 py-5"><span class="px-3 py-1 bg-blue-100 text-blue-600 text-[10px] font-black rounded-full uppercase">Premium</span></td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Повествовательный</td>
+                        <td class="px-8 py-5 text-green-500 font-bold text-xs italic">Online</td>
+                    </tr>
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <td class="px-8 py-5 font-bold text-gray-900">Svetlana (Neural)</td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Женский</td>
+                        <td class="px-8 py-5"><span class="px-3 py-1 bg-blue-100 text-blue-600 text-[10px] font-black rounded-full uppercase">Premium</span></td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Дружелюбный</td>
+                        <td class="px-8 py-5 text-green-500 font-bold text-xs italic">Online</td>
+                    </tr>
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <td class="px-8 py-5 font-bold text-gray-900">Dariya (Neural)</td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Женский</td>
+                        <td class="px-8 py-5"><span class="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase">Standard</span></td>
+                        <td class="px-8 py-5 text-gray-500 text-sm">Деловой</td>
+                        <td class="px-8 py-5 text-green-500 font-bold text-xs italic">Online</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-12 items-center bg-gray-900 rounded-[3rem] p-12 text-white">
+        <div>
+            <h2 class="text-3xl font-bold mb-6 italic">Технология клонирования интонаций</h2>
+            <p class="text-gray-400 leading-relaxed mb-6">
+                Наши нейронные сети анализируют контекст предложения перед озвучкой. Это позволяет ставить правильные логические ударения и менять высоту голоса в зависимости от знаков препинания.
+            </p>
+            <div class="space-y-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[10px]">✓</div>
+                    <span class="text-sm">Частота дискретизации 48 кГц</span>
                 </div>
-                <p class="text-gray-900 font-bold mb-2">Европейская группа</p>
-                <p class="text-sm text-gray-500">Высокая четкость произношения, идеально подходящая для обучения языкам.</p>
-            </div>
-            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">Asian Group</h3>
-                <p class="text-gray-900 font-bold mb-2">Китайский, Японский, Корейский</p>
-                <p class="text-sm text-gray-500">Полная поддержка тональностей и специфических интонаций восточных языков.</p>
+                <div class="flex items-center space-x-3">
+                    <div class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-[10px]">✓</div>
+                    <span class="text-sm">Задержка генерации менее 2-х секунд</span>
+                </div>
             </div>
         </div>
-
-        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mt-12">Как мы добиваемся качества?</h2>
-        <p>
-            Нейронные голоса анализируют не отдельные слова, а <strong>контекст всего предложения</strong>. Система понимает, где нужно сделать паузу для вдоха, как изменить интонацию в конце вопроса и как выделить важное слово логическим ударением. Это убирает эффект "робота" и делает речь живой.
-        </p>
-
-        <div class="mt-12 p-8 bg-blue-600 rounded-[30px] text-white text-center shadow-lg shadow-blue-200">
-            <h3 class="text-xl font-black uppercase mb-4">Готовы попробовать?</h3>
-            <p class="mb-8 opacity-90 text-sm font-medium">Создайте свою первую профессиональную озвучку прямо сейчас — это бесплатно.</p>
-            <a href="/" class="inline-block px-10 py-4 bg-white text-blue-600 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-xs">На главную страницу</a>
+        <div class="bg-gray-800 p-8 rounded-[2rem] border border-gray-700">
+            <h4 class="font-bold mb-4 text-blue-400 italic">Как протестировать голос?</h4>
+            <p class="text-sm text-gray-400 mb-6">Вернитесь на главную, выберите имя нужного диктора из списка и введите короткую фразу. Мы рекомендуем использовать текст длиннее 5 слов для полной оценки потенциала голоса.</p>
+            <a href="/" class="block text-center bg-white text-gray-900 font-black py-4 rounded-xl hover:bg-blue-500 hover:text-white transition-all">На главную</a>
         </div>
     </div>
 </div>
-</main> {% endblock %}
+{% endblock %}
+
