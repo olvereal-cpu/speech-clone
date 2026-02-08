@@ -68,6 +68,10 @@ async def get_blog_post(request: Request, post_name: str):
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     return templates.TemplateResponse(post_path, {"request": request})
 
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request, file: str):
+    return templates.TemplateResponse("download.html", {"request": request, "file_url": f"/static/audio/{file}"})
+
 @app.get("/ads.txt")
 async def get_ads_txt():
     if os.path.exists("ads.txt"):
@@ -93,6 +97,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
