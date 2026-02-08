@@ -106,14 +106,9 @@ async function generateAudio() {
         const data = await response.json();
         
         if(data.audio_url) {
-            const player = document.getElementById('player');
-            const resultDiv = document.getElementById('result');
-            const downloadLink = document.getElementById('download');
-            
-            player.src = data.audio_url;
-            downloadLink.href = data.audio_url;
-            resultDiv.classList.remove('hidden');
-            player.play();
+            // ВМЕСТО ПЛЕЕРА ДЕЛАЕМ ПЕРЕХОД
+            const fileName = data.audio_url.split('/').pop();
+            window.location.href = `/download-page?file=${fileName}`;
         } else {
             alert("Ошибка: Не удалось получить ссылку на файл");
         }
@@ -128,6 +123,7 @@ async function generateAudio() {
 </script>
 
 {% endblock %}
+
 
 
 
