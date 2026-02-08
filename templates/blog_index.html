@@ -1,53 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 <main class="max-w-5xl mx-auto px-4 py-16">
-    <div class="max-w-3xl mb-16">
-        <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-6 leading-tight">
-            Заметки о звуке <br><span class="text-blue-600">и нейросетях</span>
-        </h1>
-        <p class="text-xl text-gray-600 leading-relaxed">
-            Привет! Мы создали этот блог, чтобы рассказывать, как технологии меняют привычную озвучку. Здесь нет сложных терминов — только полезные советы, наши обновления и идеи для ваших проектов.
-        </p>
+    <div class="text-center mb-16">
+        <h1 class="text-5xl font-black text-gray-900 uppercase tracking-tighter mb-4">Блог SpeechClone</h1>
+        <p class="text-gray-500 font-medium">Полезные статьи о нейросетях и работе с голосом</p>
+        <div class="h-1.5 w-20 bg-blue-600 mx-auto mt-6 rounded-full"></div>
     </div>
 
-    <div class="mb-16 p-1 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-3xl">
-        <div class="bg-white/50 backdrop-blur-sm p-8 rounded-[22px] border border-white/50 text-center">
-            <span class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-2 block">Рекламная пауза</span>
-            <div class="text-gray-400 italic">Тут будет ваш баннер AdSense, который помогает нам развиваться</div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         
-        <article class="flex flex-col group">
-            <div class="aspect-video bg-blue-600 rounded-3xl mb-6 overflow-hidden relative shadow-lg">
-                <div class="absolute inset-0 flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-500">🎙️</div>
-                <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm">5 мин чтения</div>
+        <article class="bg-white rounded-[35px] border border-gray-100 shadow-sm overflow-hidden hover:shadow-xl transition-all group">
+            <div class="h-48 bg-gray-200 overflow-hidden">
+                <img src="/static/images/blog/post1.jpg" alt="Обзор нейросетей" class="w-full h-full object-cover group-hover:scale-105 transition-all">
             </div>
-            <div>
-                <h2 class="text-2xl font-bold mb-3 group-hover:text-blue-600 transition-colors">
-                    <a href="/blog/how-it-works">Как мы заставили робота звучать по-человечески?</a>
-                </h2>
-                <p class="text-gray-600 leading-relaxed mb-4">
-                    Многие спрашивают: «Почему ваши голоса не звучат как в навигаторе 2010 года?». Рассказываю простыми словами про магию нейросетей и интонации.
-                </p>
-                <a href="/blog/how-it-works" class="inline-flex items-center text-blue-600 font-bold hover:underline">
-                    Интересно, читаем дальше
-                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                </a>
+            <div class="p-8">
+                <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Нейросети 2026</div>
+                <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">Как нейросети меняют мир озвучки в 2026 году</h2>
+                <a href="/blog/kak-neyroseti-menyayut-mir" class="inline-block text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors">Читать далее →</a>
             </div>
         </article>
 
-        <article class="flex flex-col group">
-            <div class="aspect-video bg-indigo-600 rounded-3xl mb-6 overflow-hidden relative shadow-lg">
-                <div class="absolute inset-0 flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-500">📺</div>
-                <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm">8 мин чтения</div>
-            </div>
-            <div>
-                <h2 class="text-2xl font-bold mb-3 group-hover:text-blue-600 transition-colors">
-                    <a href="/blog/youtube-voiceover">Озвучка для YouTube: как не «спалиться»</a>
-                </h2>
-                <p class="text-gray-600 leading-relaxed mb-4">
-                    Поделился личным опытом: как превратить сгенерированный голос в идеальную закадровую озвучку, чтобы зритель даже не заподозрил подвоха.
-                </p>
-                <a href="/blog/youtube-voiceover" class="inline-flex items-center text-blue
+        <div class="bg-gray-50 rounded-[35px] border border-dashed border-gray-200 p-8 flex items-center justify-center text-center">
+            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Новые статьи <br>скоро появятся</p>
+        </div>
+
+    </div>
+</main>
+{% endblock %}
