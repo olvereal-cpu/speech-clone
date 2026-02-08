@@ -1,27 +1,92 @@
 {% extends "base.html" %}
+
 {% block content %}
-<main class="max-w-4xl mx-auto p-8 bg-white mt-10 rounded-xl shadow-sm">
-    <h1 class="text-3xl font-bold mb-6 text-gray-900">Руководство по использованию сервиса</h1>
-    
-    <div class="space-y-8">
-        <section>
-            <h2 class="text-2xl font-semibold text-blue-600">1. Подготовка текста</h2>
-            <p class="text-gray-600 mt-2">Очистите текст от лишних символов и сокращений. Для лучшего результата используйте знаки препинания: точка создает паузу, запятая — короткую передышку. Ограничение системы — 2000 символов за один запрос.</p>
-        </section>
+<div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="text-center mb-16">
+        <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
+            Как пользоваться <span class="text-blue-600">SpeechClone AI</span>
+        </h1>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+            Создавайте профессиональную озвучку за считанные секунды. Наша нейросеть превращает текст в живую речь с естественными интонациями.
+        </p>
+    </div>
 
-        <section>
-            <h2 class="text-2xl font-semibold text-blue-600">2. Выбор языка</h2>
-            <p class="text-gray-600 mt-2">Выберите язык, соответствующий вашему тексту. Если вы вставите английский текст и выберете русский голос, система произнесет его с сильным акцентом, что иногда используется для комедийных эффектов.</p>
-        </section>
+    <div class="space-y-12">
+        
+        <div class="flex flex-col md:flex-row gap-8 items-start bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0">1</div>
+            <div>
+                <h3 class="text-xl font-bold mb-3 text-gray-900">Введите ваш текст</h3>
+                <p class="text-gray-600 leading-relaxed mb-4">
+                    Вставьте или напечатайте текст в главное поле на главной странице. 
+                </p>
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-xl">
+                    <p class="text-sm text-blue-800">
+                        <strong>Совет:</strong> Используйте знаки препинания (точки, запятые, вопросительные знаки) — нейросеть учитывает их для создания правильных пауз и интонаций.
+                    </p>
+                </div>
+            </div>
+        </div>
 
-        <section>
-            <h2 class="text-2xl font-semibold text-blue-600">3. Экспорт и форматы</h2>
-            <p class="text-gray-600 mt-2">После нажатия кнопки "Озвучить" система генерирует файл в формате <strong>MP3 (128 kbps)</strong>. Этот формат поддерживается всеми современными устройствами и программами для монтажа видео, такими как CapCut, InShot или Adobe Premiere.</p>
-        </section>
+        <div class="flex flex-col md:flex-row gap-8 items-start bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0">2</div>
+            <div>
+                <h3 class="text-xl font-bold mb-3 text-gray-900">Выберите идеальный голос</h3>
+                <p class="text-gray-600 leading-relaxed">
+                    В выпадающем списке доступно множество голосов. Мы разделили их по стилям:
+                </p>
+                <ul class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <li class="flex items-center text-sm text-gray-700 bg-gray-50 p-3 rounded-xl">
+                        <span class="mr-2 text-blue-500">🎙️</span> Мужские и женские
+                    </li>
+                    <li class="flex items-center text-sm text-gray-700 bg-gray-50 p-3 rounded-xl">
+                        <span class="mr-2 text-blue-500">🎭</span> Разные эмоции
+                    </li>
+                    <li class="flex items-center text-sm text-gray-700 bg-gray-50 p-3 rounded-xl">
+                        <span class="mr-2 text-blue-500">🌍</span> Поддержка разных языков
+                    </li>
+                    <li class="flex items-center text-sm text-gray-700 bg-gray-50 p-3 rounded-xl">
+                        <span class="mr-2 text-blue-500">⚡</span> Высокая скорость генерации
+                    </li>
+                </ul>
+            </div>
+        </div>
 
-        <div class="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500 italic">
-            "Наш сервис идеально подходит для создания закадрового голоса в TikTok, Instagram Reels и образовательных подкастах."
+        <div class="flex flex-col md:flex-row gap-8 items-start bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-black shrink-0">3</div>
+            <div>
+                <h3 class="text-xl font-bold mb-3 text-gray-900">Сгенерируйте и скачайте</h3>
+                <p class="text-gray-600 leading-relaxed mb-4">
+                    Нажмите кнопку <strong>"Озвучить"</strong>. Через несколько секунд появится плеер, где вы сможете прослушать результат. 
+                </p>
+                <p class="text-gray-600 leading-relaxed font-semibold text-blue-600">
+                    Все аудиофайлы доступны для скачивания в формате MP3.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mt-20">
+        <h2 class="text-3xl font-black text-center mb-10 text-gray-900">Часто задаваемые вопросы</h2>
+        <div class="grid gap-6">
+            <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                <h4 class="font-bold text-gray-900 mb-2">Какое ограничение на длину текста?</h4>
+                <p class="text-gray-600 text-sm">В бесплатной версии вы можете озвучивать до 2000 символов за один раз. Этого достаточно для большинства задач озвучки видео и презентаций.</p>
+            </div>
+            <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                <h4 class="font-bold text-gray-900 mb-2">Можно ли использовать озвучку в YouTube?</h4>
+                <p class="text-gray-600 text-sm">Да, сгенерированные файлы можно использовать для видеороликов, подкастов и других творческих проектов.</p>
+            </div>
         </div>
     </div>
-</main>
+
+    <div class="mt-20 bg-blue-600 rounded-[2rem] p-10 text-center text-white shadow-xl shadow-blue-200">
+        <h2 class="text-3xl font-bold mb-4">Готовы начать?</h2>
+        <p class="mb-8 opacity-90 text-lg">Попробуйте создать свою первую озвучку прямо сейчас бесплатно.</p>
+        <a href="/" class="inline-block bg-white text-blue-600 font-black px-10 py-4 rounded-2xl hover:bg-gray-100 transition-all transform hover:scale-105 active:scale-95">
+            Перейти к генератору
+        </a>
+    </div>
+</div>
 {% endblock %}
