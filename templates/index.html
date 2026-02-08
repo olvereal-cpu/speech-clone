@@ -1,163 +1,121 @@
-{% extends "base.html" %}
-{% block content %}
-<main class="max-w-4xl mx-auto px-4 py-12">
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic">AdSense Ads</div>
+{% extends "base.html" %} {% block content %}
 
-    <section class="bg-white rounded-3xl shadow-xl p-8 border border-gray-50">
-        <textarea id="text" class="w-full h-56 p-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none" placeholder="Enter text (up to 2000 chars)... / Введите текст..."></textarea>
-        
-        <div class="mt-8 flex flex-col md:flex-row gap-4 items-end justify-between">
-            <div class="w-full md:w-1/2">
-                <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Language & Voice</label>
-                <select id="voiceSelect" class="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none shadow-sm">
-                    <optgroup label="CIS / СНГ">
-                        <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Male)</option>
-                        <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Female)</option>
-                        <option value="uk-UA-OstapNeural">Українська — Остап</option>
-                        <option value="kk-KZ-DauletNeural">Қазақша — Даулет</option>
-                    </optgroup>
-                    <optgroup label="English">
-                        <option value="en-US-AvaNeural">English (US) — Ava (Female)</option>
-                        <option value="en-US-GuyNeural">English (US) — Guy (Male)</option>
-                        <option value="en-GB-SoniaNeural">English (UK) — Sonia</option>
-                    </optgroup>
-                    <optgroup label="Europe">
-                        <option value="de-DE-KatjaNeural">Deutsch (Germany)</option>
-                        <option value="fr-FR-DeniseNeural">Français (France)</option>
-                        <option value="es-ES-AlvaroNeural">Español (Spain)</option>
-                        <option value="it-IT-DiegoNeural">Italiano (Italy)</option>
-                        <option value="pl-PL-MarekNeural">Polski (Poland)</option>
-                    </optgroup>
-                    <optgroup label="Asia">
-                        <option value="zh-CN-YunxiNeural">Chinese (Mandarin)</option>
-                        <option value="ja-JP-NanamiNeural">Japanese</option>
-                        <option value="ko-KR-SunHiNeural">Korean</option>
-                    </optgroup>
-                </select>
-            </div>
-            <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-12 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg transition-all">Generate / Озвучить</button>
+<main class="max-w-4xl mx-auto px-4 py-12"> <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic"> AdSense Top Ads </div>
+
+<section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50">
+    <textarea id="text" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
+    
+    <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
+        <div class="w-full md:w-1/2">
+            <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос и язык</label>
+            <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all">
+                <optgroup label="СНГ / CIS">
+                    <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Мужской)</option>
+                    <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Женский)</option>
+                    <option value="uk-UA-OstapNeural">Українська — Остап</option>
+                    <option value="kk-KZ-DauletNeural">Қазақша — Даулет</option>
+                </optgroup>
+                <optgroup label="English">
+                    <option value="en-US-AvaNeural">English (US) — Ava</option>
+                    <option value="en-US-GuyNeural">English (US) — Guy</option>
+                    <option value="en-GB-SoniaNeural">English (UK) — Sonia</option>
+                </optgroup>
+                <optgroup label="Europe & Asia">
+                    <option value="de-DE-KatjaNeural">Deutsch (Germany)</option>
+                    <option value="fr-FR-DeniseNeural">Français (France)</option>
+                    <option value="zh-CN-YunxiNeural">Chinese</option>
+                    <option value="ja-JP-NanamiNeural">Japanese</option>
+                </optgroup>
+            </select>
         </div>
+        <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-16 py-5 bg-blue-600 text-white font-black rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-xs">
+            Озвучить сейчас
+        </button>
+    </div>
 
-        <div id="result" class="mt-10 pt-10 border-t hidden text-center">
-            <audio id="player" controls class="w-full mb-6"></audio>
-            <a id="download" href="#" class="inline-block px-10 py-4 bg-green-500 text-white rounded-2xl font-bold hover:bg-green-600 transition-all shadow-md">Prepare Download / Перейти к скачиванию</a>
-        </div>
-    </section>
+    <div id="result" class="mt-12 pt-12 border-t border-gray-100 hidden text-center animate-fade-in">
+        <audio id="player" controls class="w-full mb-8 rounded-xl"></audio>
+        <a id="download" href="#" download class="inline-flex items-center gap-3 px-12 py-5 bg-green-500 text-white rounded-[20px] font-black hover:bg-green-600 transition-all shadow-lg shadow-green-100 uppercase tracking-widest text-xs">
+            <span>Скачать MP3</span>
+        </a>
+    </div>
+</section>
 
-    <section class="mt-16 p-8 bg-white rounded-3xl border border-gray-100 text-center shadow-sm">
-        <h3 class="text-2xl font-bold mb-2">Support the Project ☕</h3>
-        <p class="text-gray-500 mb-8 text-sm">We provide this service for free. Your support helps keep our servers running.</p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="https://www.buymeacoffee.com/YOUR_NAME" target="_blank" class="px-6 py-3 bg-[#FFDD00] text-black font-bold rounded-xl hover:scale-105 transition-transform">☕ Buy me a coffee</a>
-            <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="px-6 py-3 bg-[#0070ba] text-white font-bold rounded-xl hover:scale-105 transition-transform">💙 PayPal</a>
-            <button onclick="alert('BTC: your-address\nUSDT (TRC20): your-address')" class="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:scale-105 transition-transform">₿ Crypto</button>
-        </div>
-    </section>
+<section class="mt-16 p-10 bg-white rounded-[40px] border border-gray-100 text-center shadow-sm">
+    <h3 class="text-2xl font-black mb-2 uppercase tracking-tighter">Поддержать проект ☕</h3>
+    <p class="text-gray-500 mb-10 text-sm font-medium">Мы работаем бесплатно. Ваша поддержка помогает нам оплачивать GPU-серверы.</p>
+    <div class="flex flex-wrap justify-center gap-4">
+        <a href="[https://www.buymeacoffee.com/ТВОЙ_НИК](https://www.buymeacoffee.com/ТВОЙ_НИК)" target="_blank" class="px-8 py-4 bg-[#FFDD00] text-black font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">☕ Buy me a coffee</a>
+        <a href="[https://paypal.me/velial39@gmail.com](https://paypal.me/velial39@gmail.com)" target="_blank" class="px-8 py-4 bg-[#0070ba] text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">PayPal</a>
+        <button onclick="alert('BTC: твой-адрес\nUSDT (TRC20): твой-адрес')" class="px-8 py-4 bg-gray-900 text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">Crypto</button>
+    </div>
+</section>
 
-    <section class="mt-24 mb-12">
-    <div class="text-center mb-12">
-        <h3 class="text-3xl font-extrabold text-gray-900 md:text-4xl">Часто задаваемые вопросы</h3>
-        <p class="text-gray-500 mt-4 text-lg">Если у вас остались сомнения, скорее всего, ответ есть ниже</p>
+<section class="mt-24 mb-12">
+    <div class="text-center mb-16">
+        <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">Часто задаваемые вопросы</h3>
+        <div class="h-1.5 w-20 bg-blue-600 mx-auto mt-4 rounded-full"></div>
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">🙌</span> Это правда бесплатно или есть подвох?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Никаких подвохов. Мы используем современные нейросети, которые позволяют генерировать голос без огромных затрат. Наша цель — сделать качественную озвучку доступной каждому, будь то студент с презентацией или начинающий блогер.
-            </p>
+        <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+            <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3">🙌 Это бесплатно?</h4>
+            <p class="text-gray-600 leading-relaxed text-sm font-medium">Никаких подвохов. Мы используем современные нейросети 2026 года, которые позволяют генерировать голос без огромных затрат.</p>
         </div>
-
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">📝</span> Почему ограничение именно 2000 знаков?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Мы подобрали этот лимит опытным путем: он позволяет озвучить текст за считанные секунды, не заставляя вас ждать «очереди» на сервере. Если ваш текст длиннее — просто разбейте его на пару заходов. Это бесплатно и не займет много времени.
-            </p>
+        <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+            <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3">🎬 Можно в YouTube?</h4>
+            <p class="text-gray-600 leading-relaxed text-sm font-medium">Конечно! Вы — полноправный владелец созданного аудиофайла. Голоса звучат максимально естественно.</p>
         </div>
-
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">🎬</span> Можно ли использовать голос в моих видео на YouTube?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Конечно! Вы — полноправный владелец созданного аудиофайла. Голоса звучат максимально естественно, поэтому они отлично подходят для закадровой озвучки роликов, подкастов или даже аудиокниг.
-            </p>
+        <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+            <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3">📝 Почему 2000 знаков?</h4>
+            <p class="text-gray-600 leading-relaxed text-sm font-medium">Это позволяет озвучивать текст мгновенно. Если текст больше — просто разбейте его на части.</p>
         </div>
-
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">⏳</span> Зачем ждать 30 секунд перед скачиванием?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Это время нужно нашей системе, чтобы окончательно «склеить» файл и подготовить его к передаче в высоком качестве. Кроме того, это помогает нам поддерживать серверы бесплатными за счет показа рекламы, пока вы ждете загрузку.
-            </p>
+        <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+            <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3">🔒 Что с приватностью?</h4>
+            <p class="text-gray-600 leading-relaxed text-sm font-medium">Текст не сохраняется, а аудио удаляется с сервера автоматически через 24 часа.</p>
         </div>
-
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">🔒</span> Что происходит с моим текстом после озвучки?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Мы уважаем вашу приватность. Текст не сохраняется в базе данных, а готовый аудиофайл автоматически удаляется с нашего сервера через 24 часа. Мы здесь только для того, чтобы помочь вам с озвучкой, а не собирать данные.
-            </p>
-        </div>
-
-        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <h4 class="text-lg font-bold text-blue-600 mb-3 flex items-center">
-                <span class="mr-2">🎙️</span> Планируются ли новые голоса?
-            </h4>
-            <p class="text-gray-600 leading-relaxed">
-                Да, мы постоянно работаем над расширением библиотеки. В ближайшее время мы планируем добавить больше мужских и женских тембров, а также поддержку различных эмоциональных окрасок (радость, строгость, шепот).
-            </p>
-        </div>
-
     </div>
 </section>
-    <div class="mt-20 p-8 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 text-sm italic">
-        Рекламный блок (AdSense Bottom)
-    </div>
+
+<div class="mt-20 p-6 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-xs italic uppercase tracking-[0.2em]">
+    Рекламный блок (AdSense Bottom)
+</div>
 </main>
 
-<script>
-async function generateAudio() {
-    const btn = document.getElementById('mainBtn');
-    const text = document.getElementById('text').value;
-    const lang = document.getElementById('lang').value;
+<script> async function generateAudio() { const btn = document.getElementById('mainBtn'); const text = document.getElementById('text').value; const voice = document.getElementById('voiceSelect').value; // Исправлено на voiceSelect
+
+if(!text) return alert(&quot;Пожалуйста, введите текст&quot;);
+
+btn.disabled = true;
+btn.innerHTML = `&lt;span class=&quot;animate-pulse&quot;&gt;Генерируем...&lt;/span&gt;`;
+
+try {
+    const response = await fetch(&#39;/api/generate&#39;, {
+        method: &#39;POST&#39;,
+        headers: {&#39;Content-Type&#39;: &#39;application/json&#39;},
+        body: JSON.stringify({text: text, voice: voice}) // Отправляем правильные ключи
+    });
+    const data = await response.json();
     
-    if(!text) return alert("Пожалуйста, введите текст");
-
-    btn.disabled = true;
-    btn.innerHTML = `<span class="animate-pulse">Обработка...</span>`;
-
-    try {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, lang})
-        });
-        const data = await response.json();
-        
-        if(data.audio_url) {
-            const player = document.getElementById('player');
-            player.src = data.audio_url;
-            document.getElementById('download').href = data.audio_url;
-            document.getElementById('result').classList.remove('hidden');
-            player.play();
-        }
-    } catch (e) {
-        alert("Ошибка сервера. Попробуйте позже.");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Озвучить сейчас";
+    if(data.audio_url) {
+        const player = document.getElementById(&#39;player&#39;);
+        player.src = data.audio_url;
+        document.getElementById(&#39;download&#39;).href = data.audio_url;
+        document.getElementById(&#39;result&#39;).classList.remove(&#39;hidden&#39;);
+        player.play();
+    } else {
+        alert(&quot;Ошибка: &quot; + (data.error || &quot;Неизвестная ошибка&quot;));
     }
+} catch (e) {
+    alert(&quot;Ошибка сервера. Попробуйте обновить страницу.&quot;);
+} finally {
+    btn.disabled = false;
+    btn.innerText = &quot;Озвучить сейчас&quot;;
 }
-</script>
+} </script>
+
 {% endblock %}
+
 
 
 
