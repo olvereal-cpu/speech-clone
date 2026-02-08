@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -106,6 +107,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
