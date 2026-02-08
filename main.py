@@ -1,20 +1,22 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware  # Импорт добавлен здесь
 from pydantic import BaseModel
 import os
 import edge_tts
 import uuid
 import asyncio
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=True)
+
+# Разрешаем CORS, чтобы запросы с домена проходили к API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешает запросы с твоего домена
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Разрешает POST, GET и т.д.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 # --------------------------------------------------
@@ -107,6 +109,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
