@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="max-w-xl mx-auto py-20 text-center px-4">
+    <div class="mb-8 p-10 bg-white border border-dashed rounded-2xl text-gray-400 italic">Advertisement</div>
+    
+    <div class="bg-white p-10 rounded-3xl shadow-xl border border-gray-50">
+        <h2 class="text-2xl font-bold mb-4">Your file is ready!</h2>
+        <div class="relative flex items-center justify-center mb-6">
+            <span id="countdown" class="text-5xl font-black text-blue-600">30</span>
+            <svg class="absolute w-32 h-32">
+                <circle cx="64" cy="64" r="60" stroke="#eee" stroke-width="8" fill="none"/>
+                <circle id="progress-bar" cx="64" cy="64" r="60" stroke="#2563eb" stroke-width="8" fill="none" stroke-dasharray="377" stroke-dashoffset="0"/>
+            </svg>
+        </div>
+        <p class="text-gray-400 text-sm mb-6">Please wait 30 seconds to finish processing...</p>
+        <a id="dl-btn" href="{{ file_url }}" download class="hidden w-full py-4 bg-green-500 text-white font-bold rounded-2xl shadow-lg hover:bg-green-600 transition-all">Download MP3 Now</a>
+    </div>
+
+    <div class="mt-8 p-10 bg-white border border-dashed rounded-2xl text-gray-400 italic">Advertisement</div>
+</main>
+
+<script>
+    let time = 30;
+    const progress = document.getElementById('progress-bar');
+    const timer = setInterval(() => {
+        time--;
+        document.getElementById('countdown').innerText = time;
+        progress.style.strokeDashoffset = 377 - (377 * (30 - time) / 30);
+        if(time <= 0) {
+            clearInterval(timer);
+            document.getElementById('dl-btn').classList.remove('hidden');
+            window.location.href = "{{ file_url }}";
+        }
+    }, 1000);
+</script>
+{% endblock %}
