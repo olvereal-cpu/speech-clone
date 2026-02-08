@@ -3,22 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeechClone AI - Free Text-to-Speech Service</title>
+    <title>SpeechClone AI - Профессиональная озвучка текста</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        #progress-bar { transition: stroke-dashoffset 1s linear; transform: rotate(-90deg); transform-origin: 50% 50%; }
+        
+        /* Анимация для кольца на странице загрузки */
+        #progress-bar {
+            transition: stroke-dashoffset 1s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Плавные переходы для кнопок */
+        .transition-all { transition: all 0.3s ease; }
     </style>
-</head>
+    
+    </head>
 <body class="bg-[#F9FAFB] text-gray-900">
     <nav class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div class="max-w-5xl mx-auto px-4 h-16 flex justify-between items-center">
             <a href="/" class="text-2xl font-bold text-blue-600 tracking-tight">SpeechClone AI</a>
-            <div class="hidden md:flex space-x-8 font-medium text-gray-600 text-sm">
-                <a href="/" class="hover:text-blue-600 transition">Home</a>
-                <a href="/blog" class="hover:text-blue-600 transition">Blog</a>
-                <a href="/guide" class="hover:text-blue-600 transition">Guide</a>
+            <div class="hidden md:flex space-x-8 font-medium text-gray-600">
+                <a href="/" class="hover:text-blue-600 transition-all">Главная</a>
+                <a href="/blog" class="hover:text-blue-600 transition-all">Блог</a>
+                <a href="/voices" class="hover:text-blue-600 transition-all">Голоса</a>
+                <a href="/guide" class="hover:text-blue-600 transition-all">Инструкция</a>
             </div>
         </div>
     </nav>
@@ -30,10 +41,11 @@
     <footer class="bg-gray-900 text-gray-400 py-12 mt-20">
         <div class="max-w-5xl mx-auto px-4 text-center">
             <div class="flex justify-center space-x-6 mb-6 text-sm">
-                <a href="/privacy" class="hover:text-white transition">Privacy Policy</a>
-                <a href="/blog" class="hover:text-white transition">Articles</a>
+                <a href="/privacy" class="hover:text-white transition-all">Политика конфиденциальности</a>
+                <a href="/blog" class="hover:text-white transition-all">Статьи</a>
+                <a href="/guide" class="hover:text-white transition-all">Помощь</a>
             </div>
-            <p class="text-xs tracking-widest uppercase">© 2026 SpeechClone AI. All rights reserved.</p>
+            <p class="text-xs tracking-widest uppercase text-gray-600">© 2026 SpeechClone AI. Все права защищены.</p>
         </div>
     </footer>
 </body>
