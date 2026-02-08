@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpeechClone AI - Профессиональная озвучка текста</title>
     
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
     
     <link rel="canonical" href="https://speechclone.online/" />
     
@@ -34,7 +34,7 @@
         <div class="max-w-5xl mx-auto px-4 h-20 flex justify-between items-center">
             
             <a href="/" class="flex items-center">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="SpeechClone AI" class="h-12 w-auto">
+                <img src="{{ url_for('static', path='logo.png') }}" alt="SpeechClone AI" class="h-12 w-auto">
             </a>
             
             <div class="hidden md:flex items-center space-x-8">
@@ -97,6 +97,7 @@
     </script>
 </body>
 </html>
+
 
 
 
