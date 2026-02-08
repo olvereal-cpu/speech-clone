@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware  # Импорт добавлен здесь
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import edge_tts
@@ -11,7 +11,6 @@ import asyncio
 
 app = FastAPI(redirect_slashes=True)
 
-# Разрешаем CORS, чтобы запросы с домена проходили к API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,16 +18,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# --------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Создаем структуру папок
 for path in ["static", "static/audio", "static/images/blog"]:
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
-# Очистка старых файлов при запуске
+# Очистка старых файлов
 def clean_audio():
-    audio_dir = "static/audio"
+    audio_dir = os.path.join(BASE_DIR, "static/audio")
     if os.path.exists(audio_dir):
         for filename in os.listdir(audio_dir):
             file_path = os.path.join(audio_dir, filename)
@@ -40,8 +39,9 @@ def clean_audio():
 
 clean_audio()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+# Монтируем статику
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 class TTSRequest(BaseModel):
     text: str
@@ -79,10 +79,11 @@ async def blog_index(request: Request):
 
 @app.get("/blog/{post_name}", response_class=HTMLResponse)
 async def get_blog_post(request: Request, post_name: str):
-    post_path = f"blog/{post_name}.html"
-    if not os.path.exists(os.path.join("templates", post_path)):
+    template_name = f"blog/{post_name}.html"
+    # Проверка физического наличия файла статьи
+    if not os.path.exists(os.path.join(BASE_DIR, "templates", template_name)):
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
-    return templates.TemplateResponse(post_path, {"request": request})
+    return templates.TemplateResponse(template_name, {"request": request})
 
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_page(request: Request, file: str):
@@ -90,8 +91,9 @@ async def download_page(request: Request, file: str):
 
 @app.get("/ads.txt")
 async def get_ads_txt():
-    if os.path.exists("ads.txt"):
-        return FileResponse("ads.txt")
+    file_path = os.path.join(BASE_DIR, "ads.txt")
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="ads.txt not found")
 
 @app.post("/api/generate")
@@ -100,7 +102,7 @@ async def generate(request: TTSRequest):
         raise HTTPException(status_code=400, detail="Text empty or too long")
     
     file_id = f"{uuid.uuid4()}.mp3"
-    file_path = os.path.join("static/audio", file_id)
+    file_path = os.path.join(BASE_DIR, "static/audio", file_id)
     
     try:
         communicate = edge_tts.Communicate(request.text, request.voice)
@@ -113,6 +115,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
