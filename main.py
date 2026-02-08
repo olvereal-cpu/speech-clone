@@ -34,7 +34,26 @@ class TTSRequest(BaseModel):
     text: str
     lang: str
     voice: str
+# Маршрут для главной страницы блога
+@app.get("/blog", response_class=HTMLResponse)
+async def read_blog(request: Request):
+    return templates.TemplateResponse("blog_index.html", {"request": request})
 
+# Универсальный маршрут для всех статей блога
+@app.get("/blog/{article_name}", response_class=HTMLResponse)
+async def read_article(request: Request, article_name: str):
+    # Проверяем, существует ли файл, чтобы сервер не падал
+    file_path = f"blog/{article_name}.html"
+    if os.path.exists(f"templates/{file_path}"):
+        return templates.TemplateResponse(file_path, {"request": request})
+    return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
+# Маршрут для AdSense
+@app.get("/ads.txt")
+async def get_ads_txt():
+    if os.path.exists("ads.txt"):
+        return FileResponse("ads.txt")
+    return "Файл ads.txt еще не создан", 404
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -81,3 +100,4 @@ async def generate(request: TTSRequest):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="TTS Engine Error")
+
