@@ -80,9 +80,4 @@ async def generate(request: TTSRequest):
         return {"audio_url": f"/static/audio/{file_id}"}
     except Exception as e:
         print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="TTS Engine Error"), lang=request.lang)
-        tts.save(file_path)
-        return {"audio_url": f"/static/audio/{file_id}"}
-    except Exception:
-
         raise HTTPException(status_code=500, detail="TTS Engine Error")
