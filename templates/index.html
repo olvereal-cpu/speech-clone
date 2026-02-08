@@ -1,85 +1,113 @@
 {% extends "base.html" %}
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 text-sm italic">
-        Рекламный блок (AdSense)
-    </div>
+    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic">AdSense Ads</div>
 
-    <section class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-8 border border-gray-50">
-        <h2 class="text-lg font-semibold mb-4 text-gray-500 uppercase tracking-wider">Введите текст для озвучки</h2>
-        <textarea id="text" class="w-full h-56 p-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all text-lg resize-none" placeholder="До 2000 символов..."></textarea>
+    <section class="bg-white rounded-3xl shadow-xl p-8 border border-gray-50">
+        <textarea id="text" class="w-full h-56 p-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none" placeholder="Enter text (up to 2000 chars)... / Введите текст..."></textarea>
         
-        <div class="mt-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div class="w-full md:w-64">
-                <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Язык озвучки</label>
-                <select id="lang" class="w-full p-3 bg-white border border-gray-200 rounded-xl shadow-sm appearance-none cursor-pointer focus:border-blue-500">
-                    <option value="ru">Русский (RU)</option>
-                    <option value="en">English (US)</option>
-                    <option value="de">Deutsch (DE)</option>
+        <div class="mt-8 flex flex-col md:flex-row gap-4 items-end justify-between">
+            <div class="w-full md:w-1/2">
+                <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Language & Voice</label>
+                <select id="voiceSelect" class="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none shadow-sm">
+                    <optgroup label="CIS / СНГ">
+                        <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Male)</option>
+                        <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Female)</option>
+                        <option value="uk-UA-OstapNeural">Українська — Остап</option>
+                        <option value="kk-KZ-DauletNeural">Қазақша — Даулет</option>
+                    </optgroup>
+                    <optgroup label="English">
+                        <option value="en-US-AvaNeural">English (US) — Ava (Female)</option>
+                        <option value="en-US-GuyNeural">English (US) — Guy (Male)</option>
+                        <option value="en-GB-SoniaNeural">English (UK) — Sonia</option>
+                    </optgroup>
+                    <optgroup label="Europe">
+                        <option value="de-DE-KatjaNeural">Deutsch (Germany)</option>
+                        <option value="fr-FR-DeniseNeural">Français (France)</option>
+                        <option value="es-ES-AlvaroNeural">Español (Spain)</option>
+                        <option value="it-IT-DiegoNeural">Italiano (Italy)</option>
+                        <option value="pl-PL-MarekNeural">Polski (Poland)</option>
+                    </optgroup>
+                    <optgroup label="Asia">
+                        <option value="zh-CN-YunxiNeural">Chinese (Mandarin)</option>
+                        <option value="ja-JP-NanamiNeural">Japanese</option>
+                        <option value="ko-KR-SunHiNeural">Korean</option>
+                    </optgroup>
                 </select>
             </div>
-            <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-12 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
-                Озвучить сейчас
-            </button>
+            <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-12 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 shadow-lg transition-all">Generate / Озвучить</button>
         </div>
 
-        <div id="result" class="mt-10 pt-10 border-t border-gray-50 hidden text-center">
-            <audio id="player" controls class="w-full mb-4"></audio>
-            <a id="download" href="#" download class="text-blue-600 font-bold hover:underline">Скачать результат в MP3</a>
+        <div id="result" class="mt-10 pt-10 border-t hidden text-center">
+            <audio id="player" controls class="w-full mb-6"></audio>
+            <a id="download" href="#" class="inline-block px-10 py-4 bg-green-500 text-white rounded-2xl font-bold hover:bg-green-600 transition-all shadow-md">Prepare Download / Перейти к скачиванию</a>
         </div>
     </section>
 
-    <section class="mt-20">
-        <h3 class="text-3xl font-bold text-center mb-10">Часто задаваемые вопросы (FAQ)</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h4 class="font-bold mb-2">Это бесплатно?</h4>
-                <p class="text-gray-500 text-sm">Да, вы можете использовать наш сервис абсолютно бесплатно без ограничений по количеству запросов.</p>
-            </div>
-            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h4 class="font-bold mb-2">Какое ограничение?</h4>
-                <p class="text-gray-500 text-sm">Вы можете озвучить до 2000 символов за один раз для сохранения высокой скорости обработки.</p>
-            </div>
+    <section class="mt-16 p-8 bg-white rounded-3xl border border-gray-100 text-center shadow-sm">
+        <h3 class="text-2xl font-bold mb-2">Support the Project ☕</h3>
+        <p class="text-gray-500 mb-8 text-sm">We provide this service for free. Your support helps keep our servers running.</p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="https://www.buymeacoffee.com/YOUR_NAME" target="_blank" class="px-6 py-3 bg-[#FFDD00] text-black font-bold rounded-xl hover:scale-105 transition-transform">☕ Buy me a coffee</a>
+            <a href="https://paypal.me/YOUR_NAME" target="_blank" class="px-6 py-3 bg-[#0070ba] text-white font-bold rounded-xl hover:scale-105 transition-transform">💙 PayPal</a>
+            <button onclick="alert('BTC: your-address\nUSDT (TRC20): your-address')" class="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:scale-105 transition-transform">₿ Crypto</button>
         </div>
     </section>
 
-    <div class="mt-20 p-8 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 text-sm italic">
-        Рекламный блок (AdSense Bottom)
-    </div>
+    <section class="mt-24">
+        <h3 class="text-3xl font-bold text-center mb-12">Common Questions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+            <div class="bg-white p-8 rounded-3xl border border-gray-50 shadow-sm">
+                <h4 class="text-lg font-bold text-blue-600 mb-3">🙌 Is it really free?</h4>
+                <p class="text-gray-600 text-sm leading-relaxed">Absolutely. We use open neural technologies to keep it free. No hidden subscriptions or forced payments.</p>
+            </div>
+            <div class="bg-white p-8 rounded-3xl border border-gray-50 shadow-sm">
+                <h4 class="text-lg font-bold text-blue-600 mb-3">🎬 Can I use it for YouTube?</h4>
+                <p class="text-gray-600 text-sm leading-relaxed">Yes! You own the audio. It's perfect for YouTube, podcasts, or social media content.</p>
+            </div>
+            <div class="bg-white p-8 rounded-3xl border border-gray-50 shadow-sm">
+                <h4 class="text-lg font-bold text-blue-600 mb-3">⏳ Why wait 30 seconds?</h4>
+                <p class="text-gray-600 text-sm leading-relaxed">This time allows us to process the audio and sustain the service through minimal advertising. Thank you for understanding!</p>
+            </div>
+            <div class="bg-white p-8 rounded-3xl border border-gray-50 shadow-sm">
+                <h4 class="text-lg font-bold text-blue-600 mb-3">📝 2000 chars limit?</h4>
+                <p class="text-gray-600 text-sm leading-relaxed">It's a balance between quality and speed. For longer texts, just process them in parts — it's still free.</p>
+            </div>
+        </div>
+    </section>
 </main>
 
 <script>
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const text = document.getElementById('text').value;
-    const lang = document.getElementById('lang').value;
-    
-    if(!text) return alert("Пожалуйста, введите текст");
+    const voice = document.getElementById('voiceSelect').value;
+    const lang = voice.split('-')[0];
 
+    if(!text) return alert("Please enter text");
     btn.disabled = true;
-    btn.innerHTML = `<span class="animate-pulse">Обработка...</span>`;
+    btn.innerText = "Processing...";
 
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, lang})
+            body: JSON.stringify({text, lang, voice})
         });
         const data = await response.json();
-        
         if(data.audio_url) {
-            const player = document.getElementById('player');
-            player.src = data.audio_url;
-            document.getElementById('download').href = data.audio_url;
+            document.getElementById('player').src = data.audio_url;
+            const fileName = data.audio_url.split('/').pop();
+            document.getElementById('download').href = `/download-page?file=${fileName}`;
             document.getElementById('result').classList.remove('hidden');
-            player.play();
+            document.getElementById('player').play();
         }
-    } catch (e) {
-        alert("Ошибка сервера. Попробуйте позже.");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Озвучить сейчас";
-    }
+    } catch (e) { alert("Server Error"); }
+    finally { btn.disabled = false; btn.innerText = "Generate / Озвучить"; }
 }
 </script>
+{% endblock %}
+}
+</script>
+
 {% endblock %}
