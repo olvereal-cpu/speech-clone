@@ -70,10 +70,19 @@
             </p>
         </div>
     </footer>
+    <script>
+    // Показываем пользователю, сколько раз он заходил (создает ощущение заботы)
+    document.addEventListener('DOMContentLoaded', () => {
+        let count = localStorage.getItem('my_visits') || 0;
+        count++;
+        localStorage.setItem('my_visits', count);
+        console.log("Рады видеть вас снова! Это ваш визит №" + count);
+    });
+</script>
 </body>
 </html>
-</body>
-</html>
+
+
 
 
 
