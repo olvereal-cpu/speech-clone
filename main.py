@@ -9,7 +9,16 @@ import uuid
 import asyncio
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Разрешает запросы с твоего домена
+    allow_credentials=True,
+    allow_methods=["*"],  # Разрешает POST, GET и т.д.
+    allow_headers=["*"],
+)
+# --------------------------------------------------
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Создаем структуру папок
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(path, exist_ok=True)
@@ -97,6 +106,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
