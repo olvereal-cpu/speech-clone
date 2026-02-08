@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpeechClone AI - Профессиональная озвучка текста</title>
     <link rel="canonical" href="https://speechclone.online/" />
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-CHHSM6PFGH"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-CHHSM6PFGH');
-</script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CHHSM6PFGH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-CHHSM6PFGH');
+    </script>
+    
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -56,31 +55,53 @@
         {% block content %}{% endblock %}
     </div>
 
-    <footer class="bg-gray-900 text-gray-400 py-16 mt-20">
+    <footer class="bg-gray-900 text-gray-400 py-16 mt-20 border-t border-gray-800">
         <div class="max-w-5xl mx-auto px-4 text-center">
-            <div class="flex flex-wrap justify-center gap-6 md:gap-10 mb-8 text-[11px] font-bold uppercase tracking-[0.2em]">
+            <div class="flex flex-wrap justify-center gap-6 md:gap-10 mb-10 text-[11px] font-bold uppercase tracking-[0.2em]">
                 <a href="/privacy" class="hover:text-white transition-all">Конфиденциальность</a>
                 <a href="/disclaimer" class="hover:text-white transition-all">Отказ от ответственности</a>
                 <a href="/about" class="hover:text-white transition-all">О проекте</a>
                 <a href="/blog" class="hover:text-white transition-all">Статьи</a>
                 <a href="/guide" class="hover:text-white transition-all">Помощь</a>
             </div>
-            <p class="text-[10px] tracking-[0.3em] uppercase text-gray-600 border-t border-gray-800 pt-8">
-                © 2026 SpeechClone Online. Все права защищены.
-            </p>
+            
+            <div class="flex flex-col items-center space-y-4">
+                <p class="text-[10px] tracking-[0.3em] uppercase text-gray-600">
+                    © 2026 SpeechClone Online. Все права защищены.
+                </p>
+                
+                <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
+                    <span class="flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                        Ваш визит №<span id="user-counter" class="text-white ml-1">1</span>
+                    </p>
+                </div>
+            </div>
         </div>
     </footer>
+
     <script>
-    // Показываем пользователю, сколько раз он заходил (создает ощущение заботы)
     document.addEventListener('DOMContentLoaded', () => {
+        // Логика счетчика
         let count = localStorage.getItem('my_visits') || 0;
         count++;
         localStorage.setItem('my_visits', count);
+        
+        // Отображение в футере
+        const counterDisplay = document.getElementById('user-counter');
+        if (counterDisplay) {
+            counterDisplay.innerText = count;
+        }
+        
         console.log("Рады видеть вас снова! Это ваш визит №" + count);
     });
-</script>
+    </script>
 </body>
 </html>
+
 
 
 
