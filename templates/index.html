@@ -36,42 +36,47 @@
                 Озвучить сейчас
             </button>
         </div>
-
-        <div id="result" class="mt-12 pt-12 border-t border-gray-100 hidden text-center">
-            <audio id="player" controls class="w-full mb-8 rounded-xl"></audio>
-            <div class="flex flex-wrap justify-center gap-4">
-                <a id="download" href="#" download class="px-12 py-5 bg-green-500 text-white rounded-[20px] font-black hover:bg-green-600 transition-all shadow-lg shadow-green-100 uppercase tracking-widest text-[10px]">
-                    Скачать MP3
-                </a>
-            </div>
-        </div>
     </section>
 
     <section class="mt-16 p-10 bg-white rounded-[40px] border border-gray-100 text-center shadow-sm">
         <h3 class="text-2xl font-black mb-2 uppercase tracking-tighter">Поддержать проект ☕</h3>
-        <p class="text-gray-500 mb-10 text-sm font-medium">Ваша поддержка помогает нам оплачивать GPU-серверы.</p>
+        <p class="text-gray-500 mb-10 text-sm font-medium">Мы работаем бесплатно. Ваша поддержка помогает нам оплачивать GPU-серверы.</p>
         <div class="flex flex-wrap justify-center gap-4">
-            <a href="https://www.buymeacoffee.com/speechclone" target="_blank" class="px-8 py-4 bg-[#FFDD00] text-black font-black rounded-2xl hover:scale-105 transition-all text-[10px] uppercase tracking-widest shadow-md">☕ Buy me a coffee</a>
-            <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="px-8 py-4 bg-[#0070ba] text-white font-black rounded-2xl hover:scale-105 transition-all text-[10px] uppercase tracking-widest shadow-md">PayPal</a>
+            <a href="https://www.buymeacoffee.com/speechclone" target="_blank" class="px-8 py-4 bg-[#FFDD00] text-black font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">☕ Buy me a coffee</a>
+            <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="px-8 py-4 bg-[#0070ba] text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">PayPal</a>
+            <button onclick="alert('BTC: твой-адрес\nUSDT (TRC20): твой-адрес')" class="px-8 py-4 bg-gray-900 text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">Crypto</button>
         </div>
     </section>
 
     <section class="mt-24 mb-12">
         <div class="text-center mb-16">
-            <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">FAQ</h3>
+            <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">Часто задаваемые вопросы</h3>
             <div class="h-1.5 w-20 bg-blue-600 mx-auto mt-4 rounded-full"></div>
         </div>
+        
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm">
-                <h4 class="text-lg font-black text-blue-600 mb-4 uppercase text-xs tracking-widest">🙌 Бесплатно?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Да, проект работает на энтузиазме и пожертвованиях пользователей.</p>
+            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🙌 Это бесплатно?</h4>
+                <p class="text-gray-600 leading-relaxed text-sm font-medium">Никаких подвохов. Мы используем современные нейросети 2026 года, которые позволяют генерировать голос без огромных затрат.</p>
             </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm">
-                <h4 class="text-lg font-black text-blue-600 mb-4 uppercase text-xs tracking-widest">🎬 YouTube?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Вы можете использовать озвучку в любых коммерческих целях.</p>
+            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🎬 Можно в YouTube?</h4>
+                <p class="text-gray-600 leading-relaxed text-sm font-medium">Конечно! Вы — полноправный владелец созданного аудиофайла. Голоса звучат максимально естественно.</p>
+            </div>
+            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">📝 Почему 2000 знаков?</h4>
+                <p class="text-gray-600 leading-relaxed text-sm font-medium">Это позволяет озвучивать текст мгновенно. Если текст больше — просто разбейте его на части.</p>
+            </div>
+            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
+                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🔒 Что с приватностью?</h4>
+                <p class="text-gray-600 leading-relaxed text-sm font-medium">Текст не сохраняется, а аудио удаляется с сервера автоматически через 24 часа.</p>
             </div>
         </div>
     </section>
+
+    <div class="mt-20 p-6 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-xs italic uppercase tracking-[0.2em]">
+        Рекламный блок (AdSense Bottom)
+    </div>
 </main>
 
 <script>
@@ -99,30 +104,29 @@ async function generateAudio() {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || "Ошибка сервера");
+            throw new Error("Ошибка сервера");
         }
 
         const data = await response.json();
         
         if(data.audio_url) {
-            // ВМЕСТО ПЛЕЕРА ДЕЛАЕМ ПЕРЕХОД
             const fileName = data.audio_url.split('/').pop();
+            // Переход на страницу загрузки
             window.location.href = `/download-page?file=${fileName}`;
         } else {
-            alert("Ошибка: Не удалось получить ссылку на файл");
+            alert("Ошибка получения файла");
         }
     } catch (e) {
-        console.error("Ошибка API:", e);
-        alert("Произошла ошибка при генерации. Попробуйте еще раз.");
+        console.error(e);
+        alert("Произошла ошибка. Попробуйте еще раз.");
     } finally {
         btn.disabled = false;
         btn.innerText = "Озвучить сейчас";
     }
 }
 </script>
-
 {% endblock %}
+
 
 
 
