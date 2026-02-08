@@ -1,1 +1,35 @@
 
+{% extends "base.html" %}
+{% block content %}
+<article class="max-w-4xl mx-auto px-4 py-16">
+    <div class="mb-10">
+        <a href="/blog" class="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:opacity-70">← Назад в блог</a>
+    </div>
+
+    <header class="mb-12">
+        <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-6 leading-[1.1] tracking-tighter italic">Как ИИ изменит ваш голос в 2026 году</h1>
+        <p class="text-xl text-gray-500 leading-relaxed">Разбираемся, почему в этом году ваш цифровой двойник будет звучать убедительнее, чем вы сами.</p>
+    </header>
+
+    <div class="rounded-[3rem] overflow-hidden mb-12 shadow-2xl aspect-video">
+        <img src="https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=1200" class="w-full h-full object-cover">
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div class="lg:col-span-8 space-y-6 text-lg text-gray-600 leading-relaxed font-light">
+            <p>В 2026 году ваш голос — это больше не биологическая случайность. Это программный код. Благодаря технологии <span class="text-gray-900 font-bold">Zero-Shot Cloning</span>, SpeechClone AI воссоздает ваш тембр по 3-секундной записи.</p>
+            
+            <h2 class="text-3xl font-black text-gray-900 pt-4">Цифровое бессмертие</h2>
+            <p>Теперь вы можете записывать курсы, болея ангиной, или озвучивать ролики на китайском, даже не зная ни одного иероглифа. Голос становится отдельным активом, который работает на вас 24/7.</p>
+
+            <div class="bg-gray-900 rounded-[2.5rem] p-10 text-white my-10 relative overflow-hidden">
+                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Попробуйте сейчас</p>
+                <h4 class="text-2xl font-bold mb-4 italic">Клонируйте свой голос бесплатно</h4>
+                <a href="/" class="inline-block bg-white text-gray-900 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">На главную</a>
+            </div>
+
+            <p>Главный тренд года — эмоциональный синтез. Нейросеть больше не звучит как робот; она понимает сарказм, умеет шептать и даже делать паузы для вдоха, имитируя волнение диктора.</p>
+        </div>
+    </div>
+</article>
+{% endblock %}
