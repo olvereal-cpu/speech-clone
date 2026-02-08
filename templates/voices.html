@@ -1,22 +1,49 @@
-{% extends "base.html" %}
-{% block content %}
-<main class="max-w-4xl mx-auto p-8 bg-white mt-10 rounded-xl shadow-sm">
-    <h1 class="text-3xl font-bold mb-6 text-gray-900">Доступные голоса и технологии</h1>
-    
-    <div class="prose lg:prose-xl text-gray-600">
-        <p>Наш сервис SpeechClone AI использует алгоритмы <strong>Google Text-to-Speech (gTTS)</strong>. Эта технология основана на глубоком обучении нейронных сетей, что позволяет преобразовывать текст в естественную человеческую речь с высокой точностью.</p>
-        
-        <h2 class="text-2xl font-semibold mt-8 text-gray-800">Список поддерживаемых языков</h2>
-        <p>Мы поддерживаем более 100 языковых пакетов, включая:</p>
-        <ul class="grid grid-cols-2 gap-4 mt-4">
-            <li><strong>Русский (RU):</strong> Натуральный женский голос с правильными ударениями.</li>
-            <li><strong>English (US/UK):</strong> Идеально для озвучки YouTube-каналов.</li>
-            <li><strong>Deutsch & Français:</strong> Высокая четкость для обучения языкам.</li>
-            <li><strong>Español & Italiano:</strong> Темпераментная и быстрая речь.</li>
-        </ul>
+{% extends "base.html" %} {% block content %}
 
-        <h2 class="text-2xl font-semibold mt-8 text-gray-800">Как работают нейронные голоса?</h2>
-        <p>В отличие от старых систем синтеза, нейронные модели анализируют весь контекст предложения, а не отдельные слова. Это помогает избежать "роботизированного" звучания и правильно расставлять интонационные акценты в вопросительных и восклицательных предложениях.</p>
+<main class="max-w-4xl mx-auto px-4 py-12"> <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50"> <h1 class="text-4xl font-black mb-10 text-gray-900 uppercase tracking-tighter text-center">Голоса и Технологии</h1>
+
+    <div class="prose prose-blue max-w-none text-gray-600 space-y-8 text-lg leading-relaxed">
+        <p>
+            Проект <strong>SpeechClone AI</strong> базируется на передовых нейронных моделях синтеза речи 2026 года. В отличие от простых систем прошлого, наши голоса генерируются с помощью глубоких нейронных сетей, которые обучались на тысячах часов студийных записей реальных дикторов.
+        </p>
+
+        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Популярные направления</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 not-prose">
+            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">CIS / СНГ</h3>
+                <p class="text-gray-900 font-bold mb-2">Русский, Украинский, Казахский</p>
+                <p class="text-sm text-gray-500">Глубокие мужские и мягкие женские тембры с идеальной расстановкой ударений.</p>
+            </div>
+            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">English Global</h3>
+                <p class="text-gray-900 font-bold mb-2">US, UK, Australia</p>
+                <p class="text-sm text-gray-500">Золотой стандарт для YouTube-контента и международных презентаций.</p>
+            </div>
+            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <div class="flex gap-2 mb-2 font-black text-blue-600 uppercase text-[10px] tracking-widest">
+                    <span>DE</span><span>FR</span><span>IT</span><span>ES</span>
+                </div>
+                <p class="text-gray-900 font-bold mb-2">Европейская группа</p>
+                <p class="text-sm text-gray-500">Высокая четкость произношения, идеально подходящая для обучения языкам.</p>
+            </div>
+            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <h3 class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">Asian Group</h3>
+                <p class="text-gray-900 font-bold mb-2">Китайский, Японский, Корейский</p>
+                <p class="text-sm text-gray-500">Полная поддержка тональностей и специфических интонаций восточных языков.</p>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mt-12">Как мы добиваемся качества?</h2>
+        <p>
+            Нейронные голоса анализируют не отдельные слова, а <strong>контекст всего предложения</strong>. Система понимает, где нужно сделать паузу для вдоха, как изменить интонацию в конце вопроса и как выделить важное слово логическим ударением. Это убирает эффект "робота" и делает речь живой.
+        </p>
+
+        <div class="mt-12 p-8 bg-blue-600 rounded-[30px] text-white text-center shadow-lg shadow-blue-200">
+            <h3 class="text-xl font-black uppercase mb-4">Готовы попробовать?</h3>
+            <p class="mb-8 opacity-90 text-sm font-medium">Создайте свою первую профессиональную озвучку прямо сейчас — это бесплатно.</p>
+            <a href="/" class="inline-block px-10 py-4 bg-white text-blue-600 font-black rounded-2xl hover:bg-gray-100 transition-all uppercase tracking-widest text-xs">На главную страницу</a>
+        </div>
     </div>
-</main>
-{% endblock %}
+</div>
+</main> {% endblock %}
