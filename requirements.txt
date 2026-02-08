@@ -4,3 +4,5 @@ jinja2
 python-multipart
 edge-tts
 pydantic
+gunicorn
+
