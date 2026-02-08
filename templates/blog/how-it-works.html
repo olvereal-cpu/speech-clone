@@ -1,11 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<article class="max-w-3xl mx-auto px-4 py-16">
-    <h1 class="text-4xl font-black mb-6 leading-tight">Как мы научили нейросеть говорить «с душой»?</h1>
-    <div class="prose prose-lg text-gray-700 leading-relaxed space-y-6">
-        <p>Привет! Задумывались, почему старые навигаторы звучали как жестяные банки, а наши голоса — почти как живые люди? Всё дело в том, что мы отказались от старых методов «склейки» звуков.</p>
-        <p>Раньше звук собирали по кусочкам, как конструктор Лего. Сейчас нейросеть обучается на тысячах часов реальных разговоров. Она слышит, как человек вдыхает воздух, как он делает паузу перед важным словом и как меняется тембр, когда предложение заканчивается.</p>
-        <p>Когда вы нажимаете кнопку «Озвучить», система буквально «проживает» ваш текст. Она понимает контекст. Именно поэтому наши Дмитрий и Светлана умеют делать правильные логические ударения. Это уже не просто код, это почти искусство.</p>
+<article class="max-w-4xl mx-auto px-4 py-16">
+    <div class="mb-10">
+        <span class="text-indigo-600 font-black uppercase text-[10px] tracking-[0.3em] block mb-2">Inside the Machine</span>
+        <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-8 leading-tight tracking-tighter">Магия кода: Как нейронки «понимают» ваш текст</h1>
+    </div>
+
+    <div class="rounded-[3.5rem] overflow-hidden mb-12 shadow-2xl aspect-video border-8 border-white shadow-indigo-100">
+        <img src="https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=1200" class="w-full h-full object-cover">
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div class="lg:col-span-8 space-y-6 text-lg text-gray-600 leading-relaxed font-light">
+            <p>Внутри SpeechClone — сложнейшая архитектура трансформеров. Мы не просто "склеиваем" звуки. Нейросеть предсказывает эмоциональный окрас каждого слова, анализируя контекст всего предложения.</p>
+            
+            <blockquote class="bg-indigo-50 p-8 rounded-[2rem] border-l-8 border-indigo-500 my-8">
+                <p class="text-indigo-900 font-bold italic">«Это и есть секрет того самого "живого" дыхания в речи. Система знает, где вы бы сделали вдох, если бы читали это сами». </p>
+            </blockquote>
+
+            <p>Технология основана на глубоком обучении на массивах данных, где размечены не только звуки, но и чувства. Когда вы ставите восклицательный знак, нейросеть меняет давление воздуха в виртуальных "связках" модели, создавая эффект присутствия.</p>
+
+            <div class="bg-indigo-900 rounded-[3rem] p-10 text-white my-12 text-center">
+                <h4 class="text-xl font-bold mb-4">Хотите внедрить наш API в свой проект?</h4>
+                <p class="text-indigo-200 text-sm mb-6 leading-relaxed">Документация для разработчиков доступна по запросу.</p>
+                <a href="mailto:api@speechclone.online" class="inline-block bg-indigo-500 px-8 py-3 rounded-xl font-bold hover:bg-white hover:text-indigo-900 transition-all">Получить доступ</a>
+            </div>
+        </div>
     </div>
 </article>
 {% endblock %}
+
