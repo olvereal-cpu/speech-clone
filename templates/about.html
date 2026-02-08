@@ -1,14 +1,103 @@
 {% extends "base.html" %}
+
 {% block content %}
-<main class="max-w-4xl mx-auto px-4 py-16">
-    <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50">
-        <h1 class="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-8">О проекте</h1>
-        <p class="text-gray-600 leading-relaxed mb-6 font-medium">
-            SpeechClone AI — это современный инструмент для озвучки текста, использующий передовые технологии нейросетей 2026 года.
-        </p>
-        <p class="text-gray-600 leading-relaxed mb-6 font-medium">
-            Наша миссия — сделать качественный синтез речи доступным для каждого блогера, мейкера и разработчика.
+<div class="max-w-5xl mx-auto px-4 py-16">
+    <div class="text-center mb-24">
+        <span class="text-blue-600 font-black uppercase text-xs tracking-[0.3em] mb-4 block">Наша миссия</span>
+        <h1 class="text-5xl md:text-6xl font-black text-gray-900 mb-8 tracking-tighter">
+            Стираем границы между <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">человеком и ИИ</span>
+        </h1>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            SpeechClone AI родился из идеи, что качественная озвучка не должна стоить тысячи долларов и требовать часы работы в студии. Мы создаем инструменты, которые делают профессиональный продакшн доступным каждому.
         </p>
     </div>
-</main>
+
+    <div class="grid md:grid-cols-2 gap-12 mb-24">
+        <div class="relative">
+            <div class="absolute -top-4 -left-4 w-24 h-24 bg-blue-50 rounded-full -z-10"></div>
+            <h2 class="text-3xl font-black text-gray-900 mb-6">Почему мы это делаем?</h2>
+            <p class="text-gray-600 mb-6 leading-relaxed">
+                В современном мире контент — это валюта. Но создание аудиоконтента долгое время оставалось сложным процессом. Мы верим, что нейросети способны дополнить человеческий талант, освобождая время для творчества.
+            </p>
+            <ul class="space-y-4">
+                <li class="flex items-start">
+                    <span class="text-blue-600 mr-3 font-bold">01.</span>
+                    <span class="text-gray-700 font-medium text-sm">Демократизация технологий синтеза речи.</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-blue-600 mr-3 font-bold">02.</span>
+                    <span class="text-gray-700 font-medium text-sm">Поддержка малых авторов и образовательных проектов.</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="text-blue-600 mr-3 font-bold">03.</span>
+                    <span class="text-gray-700 font-medium text-sm">Постоянное улучшение качества нейронных моделей.</span>
+                </li>
+            </ul>
+        </div>
+        <div class="bg-gray-50 rounded-[3rem] p-10 border border-gray-100 shadow-inner">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Технологический стек</h2>
+            <div class="space-y-6">
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-widest text-gray-400">Точность интонаций</span>
+                        <span class="text-xs font-black text-blue-600">98%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full w-[98%]"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-widest text-gray-400">Скорость обработки</span>
+                        <span class="text-xs font-black text-blue-600">~250 слов/сек</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full w-[92%]"></div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-4 leading-tight italic">
+                    Мы используем кастомные модели Edge-TTS и оптимизированные алгоритмы обработки текста для достижения мгновенного результата.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white border border-gray-100 rounded-[3rem] p-12 shadow-sm mb-24">
+        <h2 class="text-3xl font-black text-center mb-12">Планы на 2026 год</h2>
+        <div class="grid md:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="text-blue-600 font-black text-xl mb-2">Q1</div>
+                <div class="h-1 w-full bg-blue-100 mb-4 rounded-full overflow-hidden">
+                    <div class="bg-blue-600 h-full w-full"></div>
+                </div>
+                <p class="text-xs font-bold text-gray-800 uppercase">Запуск блога и оптимизация SEO</p>
+            </div>
+            <div class="text-center">
+                <div class="text-gray-300 font-black text-xl mb-2">Q2</div>
+                <div class="h-1 w-full bg-gray-100 mb-4 rounded-full"></div>
+                <p class="text-xs font-medium text-gray-400 uppercase">Клонирование голоса по образцу</p>
+            </div>
+            <div class="text-center">
+                <div class="text-gray-300 font-black text-xl mb-2">Q3</div>
+                <div class="h-1 w-full bg-gray-100 mb-4 rounded-full"></div>
+                <p class="text-xs font-medium text-gray-400 uppercase">Мобильное приложение (iOS/Android)</p>
+            </div>
+            <div class="text-center">
+                <div class="text-gray-300 font-black text-xl mb-2">Q4</div>
+                <div class="h-1 w-full bg-gray-100 mb-4 rounded-full"></div>
+                <p class="text-xs font-medium text-gray-400 uppercase">API для разработчиков игр</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center py-12 border-t border-gray-100">
+        <h3 class="text-xl font-bold mb-4 italic">Есть идеи или предложения?</h3>
+        <p class="text-gray-500 mb-8">Мы всегда открыты для сотрудничества и обратной связи.</p>
+        <div class="flex justify-center gap-4">
+            <a href="mailto:support@speechclone.online" class="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-600 transition-all">Написать нам</a>
+            <a href="/guide" class="border border-gray-200 px-8 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all text-gray-600">Инструкция</a>
+        </div>
+    </div>
+</div>
 {% endblock %}
