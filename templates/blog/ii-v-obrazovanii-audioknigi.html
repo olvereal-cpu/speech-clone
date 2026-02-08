@@ -1,23 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-<main class="max-w-3xl mx-auto px-4 py-16">
-    <a href="/blog" class="text-blue-600 font-bold uppercase text-[10px] tracking-widest mb-8 block">← Вернуться в блог</a>
-    <article class="bg-white rounded-[40px] shadow-sm border border-gray-50 p-10 md:p-16">
-        <div class="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-4">Образование</div>
-        <h1 class="text-4xl font-black text-gray-900 mb-8 leading-tight uppercase tracking-tighter">Революция аудиокниг: Как ИИ делает чтение доступным</h1>
-        <img src="https://picsum.photos/id/1018/800/450" alt="Аудиокниги" class="w-full rounded-2xl mb-8 shadow-md">
-        
-        <div class="prose prose-blue max-w-none text-gray-600 font-medium leading-relaxed">
-            <p class="mb-6">Рынок аудиокниг растет быстрее, чем любая другая отрасль книгоиздания. Однако тысячи прекрасных произведений остаются без аудиоверсий из-за высокой стоимости производства. Запись одной книги профессиональным чтецом в студии может стоить тысячи долларов. Мы меняем эту ситуацию, делая профессиональную озвучку массовой.</p>
-            
-            <h3 class="text-xl font-black text-gray-900 mb-4 mt-8">Вторая жизнь для научной литературы</h3>
-            <p class="mb-6">Художественные книги озвучиваются чаще, но учебники и научные труды часто остаются «за бортом». С помощью SpeechClone студенты и ученые могут превращать тяжелые тома текстов в удобные аудиофайлы, чтобы слушать их в дороге. Это не только экономит время, но и помогает лучше усваивать информацию людям с дислексией или нарушениями зрения.</p>
-
-            <h3 class="text-xl font-black text-gray-900 mb-4 mt-8">Интонации, которые не утомляют</h3>
-            <p class="mb-6">Старые системы синтеза речи звучали механически, из-за чего слушать их дольше 5 минут было невозможно. Современные модели SpeechClone имитируют естественный ритм человеческого дыхания и логические паузы. Вы можете прослушать 10-часовой роман и не почувствовать усталости от «роботизированного» звука.</p>
-
-            <p class="mb-6">Мы верим, что каждая книга заслуживает того, чтобы быть услышанной. Технологии ИИ позволяют авторам-самоиздатам (инди-авторам) конкурировать с крупными издательствами, выпуская аудиоверсии своих книг одновременно с печатными. Это демократизация знаний в чистом виде.</p>
+<article class="max-w-4xl mx-auto px-4 py-16">
+    <header class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-16">
+        <div>
+            <span class="text-orange-500 font-black uppercase text-[10px] tracking-widest block mb-4">EdTech & Future</span>
+            <h1 class="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight">Образование в наушниках: ИИ меняет правила</h1>
+            <p class="text-gray-500 text-lg">Как озвучить библиотеку за неделю и почему студенты стали учиться лучше.</p>
         </div>
-    </article>
-</main>
+        <div class="rounded-[2.5rem] overflow-hidden shadow-2xl shadow-orange-100 rotate-2">
+            <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=600" class="w-full object-cover aspect-square">
+        </div>
+    </header>
+
+    <div class="max-w-2xl space-y-8 text-lg text-gray-600 leading-relaxed">
+        <p>Раньше озвучка одного учебника занимала месяц студийной работы. Сегодня онлайн-школы генерируют аудио-уроки в реальном времени. Если ученик не понял тему, ИИ может пересказать её другим, более мягким голосом.</p>
+        
+        <h3 class="text-2xl font-black text-gray-900">Персонализация обучения</h3>
+        <p>Мы внедрили адаптивные профили: для сложных технических тем нейросеть автоматически снижает темп речи и делает более четкие паузы между терминами, помогая лучшему усвоению материала.</p>
+
+        <div class="bg-orange-600 rounded-[2.5rem] p-10 text-white shadow-xl shadow-orange-200">
+            <h4 class="text-xl font-bold mb-2 uppercase tracking-tighter">Нужна озвучка курсов?</h4>
+            <p class="text-orange-100 text-sm mb-6">Спецпредложение для онлайн-платформ: первый модуль — бесплатно.</p>
+            <a href="/" class="inline-block bg-white text-orange-600 px-8 py-3 rounded-xl font-bold hover:scale-105 transition-all">Начать проект</a>
+        </div>
+
+        <p>Будущее — за мгновенными аудиокнигами. Представьте, что вы покупаете книгу и тут же получаете её аудиоверсию, озвученную голосом самого автора. Это то, что SpeechClone делает возможным прямо сейчас.</p>
+    </div>
+</article>
 {% endblock %}
