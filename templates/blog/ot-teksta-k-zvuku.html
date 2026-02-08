@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="max-w-4xl mx-auto px-4 py-16">
+    <div class="mb-12">
+        <span class="text-cyan-600 font-black uppercase text-[10px] tracking-[0.3em] block mb-4">Step-by-Step Guide</span>
+        <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-6 leading-none tracking-tighter">Преобразование текста в звук: <span class="italic text-gray-400">Пошаговый гайд</span></h1>
+    </div>
+
+    <div class="rounded-[3rem] overflow-hidden mb-12 shadow-2xl">
+        <img src="https://images.unsplash.com/photo-1484662020986-75935d2ebc66?q=80&w=1200" class="w-full h-full object-cover">
+    </div>
+
+    <div class="max-w-3xl mx-auto space-y-10 text-lg text-gray-600">
+        <p class="text-2xl font-light text-gray-900 leading-relaxed italic">«Многие думают, что синтез речи — это просто нажать кнопку. Но чтобы аудио "задышало", нужно знать пару секретов». </p>
+
+        <h2 class="text-3xl font-black text-gray-900 mt-12 mb-6">Этап 1: Подготовка текста</h2>
+        <p>Нейросеть SpeechClone читает так, как вы пишете. Если в тексте нет знаков препинания — она задохнется. Используйте восклицательные знаки для акцентов и многоточия для длинных пауз. Это база, без которой ваш аудиофайл будет звучать как инструкция к пылесосу.</p>
+
+        <div class="bg-cyan-50 border-2 border-cyan-100 rounded-[2.5rem] p-10 text-center my-12">
+            <h4 class="text-xl font-bold text-cyan-900 mb-4">Хотите голос как у диктора BBC?</h4>
+            <p class="text-cyan-700 text-sm mb-6">Начни создавать профессиональное аудио без студии и микрофона уже сегодня.</p>
+            <a href="/" class="bg-cyan-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all inline-block">Попробовать SpeechClone</a>
+        </div>
+
+        <h2 class="text-3xl font-black text-gray-900 mt-12 mb-6">Этап 2: Тонкая настройка (SSML)</h2>
+        <p>В нашей панели управления можно вручную менять высоту тона. Хотите добавить драматизма в конце предложения? Просто опустите тон на пару полутонов. Хотите радости? Поднимите выше. Это превращает обычный Text-to-Speech в актерскую игру.</p>
+
+        <p>И последний совет: всегда слушайте результат на разной громкости. Живая речь имеет широкий динамический диапазон, и SpeechClone — единственный инструмент, который это учитывает на 100%.</p>
+    </div>
+</article>
+{% endblock %}
