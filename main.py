@@ -1,11 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse 
-from fastapi.staticfiles 
-import StaticFiles 
-from fastapi.templating 
-import Jinja2Templates 
-from pydantic 
-import BaseModel 
+from fastapi.staticfiles import StaticFiles 
+from fastapi.templating import Jinja2Templates 
+from pydantic import BaseModel 
 import os 
 import edge_tts 
 import uuid 
@@ -82,6 +79,7 @@ except Exception as e:
 @app.exception_handler(404) 
 async def custom_404_handler(request: Request, __): 
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
