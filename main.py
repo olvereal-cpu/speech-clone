@@ -69,6 +69,10 @@ async def guide(request: Request):
 async def privacy(request: Request):
     return templates.TemplateResponse("privacy.html", {"request": request})
 
+@app.get("/disclaimer", response_class=HTMLResponse)
+async def disclaimer(request: Request):
+    return templates.TemplateResponse("disclaimer.html", {"request": request})
+
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_index(request: Request):
     return templates.TemplateResponse("blog_index.html", {"request": request})
@@ -109,6 +113,7 @@ async def generate(request: TTSRequest):
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, __):
     return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+
 
 
 
