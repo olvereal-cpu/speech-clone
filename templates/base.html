@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeechClone AI - Профессиональная озвучка текста</title>
+    <title>SpeechClone AI - Профессиональная озвучка текста нейросетью</title>
     
     <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
-    
     <link rel="canonical" href="https://speechclone.online/" />
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CHHSM6PFGH"></script>
@@ -25,14 +24,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
         .transition-all { transition: all 0.3s ease; }
+        /* Плавное появление контента */
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="bg-[#F9FAFB] text-gray-900 antialiased">
     <nav class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div class="max-w-5xl mx-auto px-4 h-20 flex justify-between items-center">
-            
             <a href="/" class="flex items-center">
                 <img src="{{ url_for('static', path='logo.png') }}" alt="SpeechClone AI" class="h-12 w-auto">
             </a>
@@ -48,15 +49,15 @@
 
                 <div class="flex bg-gray-100 p-1 rounded-xl ml-4">
                     <button class="px-3 py-1 text-[10px] font-black rounded-lg bg-white shadow-sm text-blue-600">RU</button>
-                    <button onclick="alert('English version coming soon!')" class="px-3 py-1 text-[10px] font-black text-gray-400 hover:text-gray-600 transition-all">EN</button>
+                    <button onclick="alert('Жақында қазақша нұсқасы шығады!')" class="px-3 py-1 text-[10px] font-black text-gray-400 hover:text-gray-600 transition-all">KZ</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="min-h-screen">
+    <main class="min-h-screen fade-in">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <footer class="bg-gray-900 text-gray-400 py-16 mt-20 border-t border-gray-800">
         <div class="max-w-5xl mx-auto px-4 text-center">
@@ -68,17 +69,11 @@
                 <a href="/guide" class="hover:text-white transition-all">Помощь</a>
             </div>
             
-            <div class="flex flex-col items-center space-y-4">
+            <div class="flex flex-col items-center space-y-6">
                 <p class="text-[10px] tracking-[0.3em] uppercase text-gray-600">
                     © 2026 SpeechClone Online. Все права защищены.
                 </p>
                 
-            <div class="flex gap-8">
-              
-            </div>
-        </div>
-    </div>
-</footer>
                 <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
                     <span class="flex h-2 w-2 relative">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
