@@ -32,6 +32,7 @@ user_data = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Создание необходимых папок
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -46,6 +47,7 @@ def clean_audio():
             except Exception as e:
                 print(f"Error cleaning: {e}")
 
+# Очистка при запуске
 clean_audio()
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -56,20 +58,20 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-# --- ОБНОВЛЕННАЯ ЛОГИКА ГЕНЕРАЦИИ (ИСПРАВЛЕН SLOW РЕЖИМ) ---
+# --- ОБНОВЛЕННАЯ ЛОГИКА ГЕНЕРАЦИИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
     
-    # Настройки пресетов для стабильности
+    # Настройки пресетов
     rates = {
         "natural": "-10%", 
-        "slow": "-20%",    # Смягчили замедление для стабильности API
+        "slow": "-20%", 
         "fast": "+15%"
     }
     pitches = {
         "natural": "-5Hz", 
-        "slow": "+0Hz",    # Убрали Pitch для Slow, чтобы не было конфликта
+        "slow": "+0Hz", 
         "fast": "+2Hz"
     }
     
@@ -77,11 +79,11 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     pitch = pitches.get(mode, "+0Hz")
 
     try:
+        # Знак "+" в тексте для ударений подхватится библиотекой edge_tts автоматически
         communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
         await communicate.save(file_path)
     except Exception as e:
         print(f"TTS Param Error, falling back: {e}")
-        # Если возникла ошибка с параметрами, генерируем стандартным голосом
         communicate = edge_tts.Communicate(text, voice)
         await communicate.save(file_path)
         
@@ -91,7 +93,7 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("👋 Привет! Пришли мне текст для озвучки (до 1000 знаков).")
+    await message.answer("👋 Привет! Пришли мне текст для озвучки (до 1000 знаков). Используй + перед гласной для ударения.")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
@@ -111,7 +113,7 @@ async def handle_text(message: types.Message):
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Китайский", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Японский", callback_data="v_ja-JP-NanamiNeural"))
     
-    await message.answer("Выберите голос из списка ниже:", reply_markup=builder.as_markup())
+    await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
 async def select_voice(callback: types.CallbackQuery):
@@ -124,7 +126,7 @@ async def select_voice(callback: types.CallbackQuery):
         types.InlineKeyboardButton(text="Slow (Медленно)", callback_data="m_slow"),
         types.InlineKeyboardButton(text="Fast (Быстро)", callback_data="m_fast")
     )
-    await callback.message.edit_text("Теперь выберите режим звучания:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("Выберите режим звучания:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("m_"))
 async def select_mode(callback: types.CallbackQuery):
@@ -132,10 +134,10 @@ async def select_mode(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     
     if user_id not in user_data:
-        return await callback.message.answer("⚠️ Сессия истекла. Пожалуйста, пришлите текст заново.")
+        return await callback.message.answer("⚠️ Сессия истекла. Пришлите текст заново.")
     
     data = user_data[user_id]
-    await callback.message.edit_text("⌛ Начинаю генерацию аудио...")
+    await callback.message.edit_text("⌛ Генерирую аудио...")
     
     try:
         file_id = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
@@ -143,22 +145,40 @@ async def select_mode(callback: types.CallbackQuery):
         
         await callback.message.answer_audio(
             types.FSInputFile(file_path),
-            caption=(
-                "✅ Ваша озвучка готова!\n\n"
-                "💎 Нужна озвучка длинных текстов без ограничений? \n"
-                "Переходите на наш сайт: https://speechclone.online"
-            )
+            caption="✅ Готово! Длинные тексты — на https://speechclone.online"
         )
         await callback.message.delete()
     except Exception as e:
-        print(f"Bot Error: {e}")
-        await callback.message.answer("❌ Произошла ошибка. Попробуйте другой голос или текст покороче.")
+        await callback.message.answer("❌ Ошибка генерации.")
 
 # --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+# Страница загрузки с таймером
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request, file: str):
+    # 'file' содержит имя файла (например: uuid.mp3)
+    return templates.TemplateResponse("download.html", {
+        "request": request, 
+        "file_name": file,
+        "download_link": f"/get-audio/{file}" # Ссылка для кнопки скачивания
+    })
+
+# Эндпоинт для принудительного скачивания файла
+@app.get("/get-audio/{file_name}")
+async def get_audio(file_name: str):
+    file_path = os.path.join(BASE_DIR, "static/audio", file_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    return FileResponse(
+        path=file_path, 
+        filename=f"speechclone_{file_name}", 
+        media_type='audio/mpeg'
+    )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices(request: Request):
@@ -191,10 +211,6 @@ async def get_blog_post(request: Request, post_name: str):
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     return templates.TemplateResponse(template_name, {"request": request})
 
-@app.get("/download-page", response_class=HTMLResponse)
-async def download_page(request: Request, file: str):
-    return templates.TemplateResponse("download.html", {"request": request, "file_url": f"/static/audio/{file}"})
-
 @app.get("/ads.txt")
 async def get_ads_txt():
     file_path = os.path.join(BASE_DIR, "ads.txt")
@@ -221,6 +237,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
