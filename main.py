@@ -56,18 +56,35 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
+# --- ОБНОВЛЕННАЯ ЛОГИКА ГЕНЕРАЦИИ (ИСПРАВЛЕН SLOW РЕЖИМ) ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
     
-    rates = {"natural": "-10%", "slow": "-25%", "fast": "+10%"}
-    pitches = {"natural": "-5Hz", "slow": "0Hz", "fast": "+2Hz"}
+    # Настройки пресетов для стабильности
+    rates = {
+        "natural": "-10%", 
+        "slow": "-20%",    # Смягчили замедление для стабильности API
+        "fast": "+15%"
+    }
+    pitches = {
+        "natural": "-5Hz", 
+        "slow": "+0Hz",    # Убрали Pitch для Slow, чтобы не было конфликта
+        "fast": "+2Hz"
+    }
     
     rate = rates.get(mode, "+0%")
     pitch = pitches.get(mode, "+0Hz")
 
-    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
-    await communicate.save(file_path)
+    try:
+        communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+        await communicate.save(file_path)
+    except Exception as e:
+        print(f"TTS Param Error, falling back: {e}")
+        # Если возникла ошибка с параметрами, генерируем стандартным голосом
+        communicate = edge_tts.Communicate(text, voice)
+        await communicate.save(file_path)
+        
     return file_id
 
 # --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
@@ -82,16 +99,13 @@ async def handle_text(message: types.Message):
     user_data[user_id] = {"text": message.text}
     
     builder = InlineKeyboardBuilder()
-    # СНГ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
-    # English
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
                 types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"))
     builder.row(types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
-    # Другие
     builder.row(types.InlineKeyboardButton(text="🇩🇪 Немецкий", callback_data="v_de-DE-KatjaNeural"),
                 types.InlineKeyboardButton(text="🇫🇷 Французский", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Китайский", callback_data="v_zh-CN-YunxiNeural"),
@@ -124,7 +138,6 @@ async def select_mode(callback: types.CallbackQuery):
     await callback.message.edit_text("⌛ Начинаю генерацию аудио...")
     
     try:
-        # Ограничиваем текст для бота (защита от перегрузки)
         file_id = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
         file_path = os.path.join(BASE_DIR, "static/audio", file_id)
         
@@ -208,6 +221,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
