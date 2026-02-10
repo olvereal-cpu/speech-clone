@@ -14,7 +14,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- ФИКС SSL ---
+# --- ФИКС SSL (для стабильной связи с Microsoft на любых серверах) ---
 try:
     _create_unverified_https_context = ssl._create_unverified_context
 except AttributeError:
@@ -40,6 +40,7 @@ dp = Dispatcher()
 user_data = {}
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Гарантируем наличие всех папок
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -64,20 +65,20 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-# --- ЛОГИКА ГЕНЕРАЦИИ ---
+# --- ЛОГИКА ГЕНЕРАЦИИ (ИСПРАВЛЕНА ОШИБКА BAD ESCAPE) ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     audio_dir = os.path.join(BASE_DIR, "static/audio")
     file_path = os.path.join(audio_dir, file_id)
     
-    # Очистка текста от мусора
+    # Очистка текста от лишних символов
     clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
     
-    # Фикс ударений (используем chr(769) вместо \u чтобы избежать bad escape)
+    # Исправляем ударения через chr(769), чтобы избежать ошибки "bad escape \u"
     def fix_stress(t):
         vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
-        stress_char = chr(769) # Это Unicode комбинируемое ударение
-        return re.sub(r'\+([%s])' % vowels, r'\1' + stress_char, t)
+        stress_symbol = chr(769) 
+        return re.sub(r'\+([%s])' % vowels, r'\1' + stress_symbol, t)
 
     processed_text = fix_stress(clean_text)
     
@@ -87,11 +88,10 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     try:
         communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
         await communicate.save(file_path)
-        
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            raise ValueError("Empty file")
+            raise ValueError("Empty file generated")
     except Exception as e:
-        print(f"Fallback due to: {e}")
+        print(f"Fallback due to error: {e}")
         communicate = edge_tts.Communicate(clean_text.replace("+", ""), voice)
         await communicate.save(file_path)
         
@@ -103,7 +103,7 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 async def cmd_start(message: types.Message):
     await message.answer(
         "👋 Привет! Пришли текст для озвучки.\n"
-        "💡 Используй **+** перед гласной для ударения (з+амок)."
+        "💡 Используй **+** перед гласной для ударения (например, з+амок)."
     )
 
 @dp.callback_query(F.data == "main_menu")
@@ -116,23 +116,20 @@ async def back_to_main(callback: types.CallbackQuery):
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith("/"): return
-    user_data[message.from_user.id] = {"text": message.text}
+    user_id = message.from_user.id
+    user_data[user_id] = {"text": message.text}
     
     builder = InlineKeyboardBuilder()
-    # Ряд 1: RU
+    # Восстановленный полный список голосов
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
-    # Ряд 2: CIS
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
-    # Ряд 3: EN
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
                 types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"),
                 types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
-    # Ряд 4: EU
     builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
-    # Ряд 5: Asia
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     
@@ -147,14 +144,14 @@ async def select_voice(callback: types.CallbackQuery):
         types.InlineKeyboardButton(text="Медленно", callback_data="m_slow"),
         types.InlineKeyboardButton(text="Быстро", callback_data="m_fast")
     )
-    await callback.message.edit_text("Выберите режим:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("Выберите режим звучания:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("m_"))
 async def select_mode(callback: types.CallbackQuery):
     mode = callback.data.split("_")[1]
     user_id = callback.from_user.id
     if user_id not in user_data:
-        return await callback.message.answer("⚠️ Ошибка сессии. Напишите текст заново.")
+        return await callback.message.answer("⚠️ Сессия истекла. Пришлите текст заново.")
     
     data = user_data[user_id]
     status_msg = await callback.message.edit_text("⌛ Озвучиваю...")
@@ -164,7 +161,7 @@ async def select_mode(callback: types.CallbackQuery):
         file_path = os.path.join(BASE_DIR, "static/audio", file_id)
         
         nav = InlineKeyboardBuilder()
-        nav.row(types.InlineKeyboardButton(text="🏠 Еще раз", callback_data="main_menu"))
+        nav.row(types.InlineKeyboardButton(text="🏠 Озвучить ещё", callback_data="main_menu"))
 
         await callback.message.answer_audio(
             types.FSInputFile(file_path),
@@ -175,11 +172,11 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {str(e)}")
 
-# --- API ---
+# --- МАРШРУТЫ САЙТА (ПОЛНЫЙ СПИСОК) ---
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
-    if not request.text: raise HTTPException(400)
+    if not request.text: raise HTTPException(400, "Empty text")
     try:
         file_id = await generate_speech_logic(request.text, request.voice, request.mode)
         return {"audio_url": f"/static/audio/{file_id}"}
@@ -193,7 +190,42 @@ async def home(request: Request):
 @app.get("/get-audio/{file_name}")
 async def get_audio(file_name: str):
     file_path = os.path.join(BASE_DIR, "static/audio", file_name)
+    if not os.path.exists(file_path): raise HTTPException(404)
     return FileResponse(file_path, media_type='audio/mpeg')
+
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request, file: str):
+    return templates.TemplateResponse("download.html", {
+        "request": request, "file_name": file, "download_link": f"/get-audio/{file}"
+    })
+
+# Инфо-страницы
+@app.get("/voices")
+async def voices(request: Request): return templates.TemplateResponse("voices.html", {"request": request})
+@app.get("/about")
+async def about(request: Request): return templates.TemplateResponse("about.html", {"request": request})
+@app.get("/guide")
+async def guide(request: Request): return templates.TemplateResponse("guide.html", {"request": request})
+@app.get("/privacy")
+async def privacy(request: Request): return templates.TemplateResponse("privacy.html", {"request": request})
+@app.get("/disclaimer")
+async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
+
+# Блог
+@app.get("/blog")
+async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
+
+@app.get("/blog/{post_name}")
+async def get_blog_post(request: Request, post_name: str):
+    template_name = f"blog/{post_name}.html"
+    if not os.path.exists(os.path.join(BASE_DIR, "templates", template_name)):
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+    return templates.TemplateResponse(template_name, {"request": request})
+
+@app.get("/ads.txt")
+async def get_ads_txt():
+    path = os.path.join(BASE_DIR, "ads.txt")
+    return FileResponse(path) if os.path.exists(path) else HTTPException(404)
 
 @app.on_event("startup")
 async def startup_event():
