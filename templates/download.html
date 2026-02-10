@@ -1,14 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<main class="max-w-4xl mx-auto px-4 py-16 text-center flex flex-col items-center">
+<main class="max-w-4xl mx-auto px-4 py-8 text-center flex flex-col items-center">
     
+    <div class="w-full mb-8 min-h-[90px] bg-gray-50 border border-dashed border-gray-200 rounded-2xl flex items-center justify-center">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-2792779022553212"
+             data-ad-slot="ТУТ_ID_ВЕРХНЕГО_БЛОКА"
+             data-ad-format="horizontal"
+             data-full-width-responsive="true"></ins>
+        <span class="text-[9px] uppercase tracking-widest text-gray-300 absolute">Реклама</span>
+    </div>
+
     <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50 w-full flex flex-col items-center">
         
         <h1 id="main-title" class="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-12 block">
-            Your file is ready!
+            Ваш файл готов!
         </h1>
 
-        <div id="timer-container" class="relative flex items-center justify-center mb-10" style="width: 200px; height: 200px;">
+        <div id="timer-container" class="relative flex items-center justify-center mb-6" style="width: 180px; height: 180px;">
             <svg class="w-full h-full" viewBox="0 0 200 200">
                 <circle cx="100" cy="100" r="90" stroke="#f3f4f6" stroke-width="12" fill="transparent" />
                 <circle id="progress-bar" cx="100" cy="100" r="90" stroke="#2563eb" stroke-width="12" fill="transparent" 
@@ -18,20 +28,39 @@
             <span id="countdown" class="absolute text-5xl font-black text-blue-600">30</span>
         </div>
 
-        <p id="wait-text" class="text-gray-400 font-bold uppercase text-[11px] tracking-widest mb-4">
-            Please wait <span id="secs">30</span> seconds...
+        <p id="wait-text" class="text-gray-400 font-bold uppercase text-[11px] tracking-widest mb-8">
+            Подождите <span id="secs">30</span> секунд...
         </p>
 
-        <div id="download-block" class="hidden flex flex-col items-center w-full">
-            <a href="{{ file_url }}" download class="w-full md:w-auto px-16 py-5 bg-green-500 text-white font-black rounded-[20px] hover:bg-green-600 shadow-xl shadow-green-100 transition-all uppercase tracking-widest text-xs mb-6">
-                Download MP3 Now
+        <div class="w-full max-w-[336px] min-h-[280px] bg-gray-50 border border-dashed border-gray-200 rounded-2xl mb-8 flex items-center justify-center relative">
+             <ins class="adsbygoogle"
+                 style="display:inline-block;width:336px;height:280px"
+                 data-ad-client="ca-pub-2792779022553212"
+                 data-ad-slot="ТУТ_ID_ЦЕНТРАЛЬНОГО_БЛОКА"></ins>
+            <span class="text-[9px] uppercase tracking-widest text-gray-300 absolute top-2">Рекламная пауза</span>
+        </div>
+
+        <div id="download-block" class="hidden flex flex-col items-center w-full animate-fade-in">
+            <a href="{{ file_url }}" download class="w-full md:w-auto px-16 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black shadow-2xl shadow-green-200 transition-all uppercase tracking-widest text-sm mb-8">
+                Скачать MP3 файл
             </a>
-            <a href="/" class="text-blue-600 font-black uppercase text-[10px] tracking-[0.2em]">← Back to Home</a>
+            
+            <div class="w-full min-h-[100px] mb-8">
+                 <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-format="autorelaxed"
+                     data-ad-client="ca-pub-2792779022553212"
+                     data-ad-slot="ТУТ_ID_НИЖНЕГО_БЛОКА"></ins>
+            </div>
+
+            <a href="/" class="text-blue-600 font-black uppercase text-[10px] tracking-[0.2em] hover:text-black transition-all">← На главную</a>
         </div>
     </div>
 </main>
 
 <script>
+    (adsbygoogle = window.adsbygoogle || []).push({});
+
     let timeLeft = 30;
     const countdownEl = document.getElementById('countdown');
     const secsEl = document.getElementById('secs');
@@ -55,10 +84,18 @@
             clearInterval(timer);
             timerContainer.classList.add('hidden');
             waitText.classList.add('hidden');
-            mainTitle.innerText = "Download link generated!";
+            mainTitle.innerText = "Ссылка создана!";
             downloadBlock.classList.remove('hidden');
+            // Принудительная перезагрузка рекламы при появлении кнопки
+            (adsbygoogle = window.adsbygoogle || []).push({});
         }
     }, 1000);
 </script>
+
+<style>
+    .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 {% endblock %}
+
 
