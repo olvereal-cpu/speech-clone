@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /blog/
+Allow: /static/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /config/
+
+# Укажите путь к вашей карте сайта
+Sitemap: https://speechclone.online/sitemap.xml
+
+# Хост
+Host: https://speechclone.online
