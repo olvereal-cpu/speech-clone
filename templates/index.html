@@ -2,7 +2,7 @@
 {% block content %}
 
 <main class="max-w-4xl mx-auto px-4 py-12">
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic text-[10px] uppercase tracking-widest min-h-[90px] flex items-center justify-center">
+    <div class="mb-10 p-4 bg-white border border-dashed border-gray-200 rounded-[30px] text-center min-h-[90px] flex items-center justify-center overflow-hidden">
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-2792779022553212"
@@ -11,7 +11,7 @@
              data-full-width-responsive="true"></ins>
     </div>
 
-    <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50">
+    <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50 animate-fade-in">
         <textarea id="text" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
         
         <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
@@ -58,11 +58,11 @@
             </button>
         </div>
 
-        <div id="resultSection" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border border-blue-100">
+        <div id="resultSection" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border border-blue-100 animate-fade-in">
             <div class="flex flex-col items-center gap-6">
                 <audio id="audioPlayer" controls class="w-full"></audio>
                 
-                <div class="w-full py-4 bg-white/50 rounded-2xl flex items-center justify-center">
+                <div class="w-full py-2 bg-white/50 rounded-2xl flex items-center justify-center min-h-[100px]">
                      <ins class="adsbygoogle"
                          style="display:block"
                          data-ad-client="ca-pub-2792779022553212"
@@ -78,49 +78,36 @@
         </div>
     </section>
 
-    <section class="mt-20">
-        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 ml-4">Часто задаваемые вопросы</h2>
-        <div class="space-y-4">
-            <details class="group bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden" open>
+    <section class="mt-20 px-4">
+        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 italic">Популярные вопросы</h2>
+        <div class="grid gap-4">
+            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all" open>
                 <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
-                    Как работает озвучка текста?
-                    <span class="transition group-open:rotate-180">
-                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                    </span>
+                    Как скачать аудио?
+                    <span class="transition group-open:rotate-180">▼</span>
                 </summary>
-                <div class="px-6 pb-6 text-gray-500 leading-relaxed text-sm">
-                    Наш сервис использует нейронные сети Microsoft Edge TTS для создания естественного и живого звучания. Мы поддерживаем более 10 языков и различные эмоциональные режимы (Natural, Slow, Fast).
-                </div>
+                <p class="px-6 pb-6 text-gray-500 text-sm leading-relaxed">
+                    После генерации нажмите кнопку "Скачать файл". Система перенаправит вас на страницу загрузки, где через 30 секунд ожидания (необходимых для обработки файла) вы получите прямую ссылку на MP3.
+                </p>
             </details>
 
-            <details class="group bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all">
                 <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
-                    Есть ли ограничения по объему текста?
-                    <span class="transition group-open:rotate-180">
-                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                    </span>
+                    В чем разница между режимами?
+                    <span class="transition group-open:rotate-180">▼</span>
                 </summary>
-                <div class="px-6 pb-6 text-gray-500 leading-relaxed text-sm">
-                    На сайте вы можете озвучить до 2000 знаков за один раз. В нашем Telegram-боте ограничение составляет 1000 знаков. Этого достаточно для большинства задач — от коротких постов до озвучки видео.
-                </div>
-            </details>
-
-            <details class="group bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
-                    Можно ли использовать аудио в коммерческих целях?
-                    <span class="transition group-open:rotate-180">
-                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                    </span>
-                </summary>
-                <div class="px-6 pb-6 text-gray-500 leading-relaxed text-sm">
-                    Да, сгенерированные файлы можно использовать для озвучки видео на YouTube, TikTok, в презентациях или личных проектах. Голоса звучат профессионально и не отличаются от дикторской речи.
-                </div>
+                <p class="px-6 pb-6 text-gray-500 text-sm leading-relaxed">
+                    <b>Natural</b> — стандартная скорость. <b>Slow</b> — замедленный темп для обучения или презентаций. <b>Fast</b> — ускоренная дикция для динамичных видео.
+                </p>
             </details>
         </div>
     </section>
 </main>
 
 <script>
+// Инициализация верхнего баннера
+(adsbygoogle = window.adsbygoogle || []).push({});
+
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
@@ -130,10 +117,10 @@ async function generateAudio() {
     const audioPlayer = document.getElementById('audioPlayer');
     const downloadBtn = document.getElementById('downloadBtn');
     
-    if(!textInput.value.trim()) return alert("Пожалуйста, введите текст");
+    if(!textInput.value.trim()) return alert("Введите текст");
 
     btn.disabled = true;
-    btn.innerHTML = `<span class="animate-pulse">Обработка...</span>`;
+    btn.innerHTML = `<span class="animate-pulse">Генерируем...</span>`;
     resultSection.classList.add('hidden');
 
     try {
@@ -158,11 +145,11 @@ async function generateAudio() {
                 window.location.href = `/download-page?file=${fileName}`;
             };
             
-            // Инициализация AdSense при появлении плеера
+            // Инициализация рекламы под плеером
             (adsbygoogle = window.adsbygoogle || []).push({});
         }
     } catch (e) {
-        alert("Ошибка сервера");
+        alert("Ошибка на стороне API");
     } finally {
         btn.disabled = false;
         btn.innerText = "Озвучить";
@@ -170,6 +157,7 @@ async function generateAudio() {
 }
 </script>
 {% endblock %}
+
 
 
 
