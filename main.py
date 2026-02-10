@@ -64,22 +64,13 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
     
     # Настройки пресетов
-    rates = {
-        "natural": "-10%", 
-        "slow": "-20%", 
-        "fast": "+15%"
-    }
-    pitches = {
-        "natural": "-5Hz", 
-        "slow": "+0Hz", 
-        "fast": "+2Hz"
-    }
+    rates = {"natural": "-10%", "slow": "-20%", "fast": "+15%"}
+    pitches = {"natural": "-5Hz", "slow": "+0Hz", "fast": "+2Hz"}
     
     rate = rates.get(mode, "+0%")
     pitch = pitches.get(mode, "+0Hz")
 
     try:
-        # Знак "+" в тексте для ударений подхватится библиотекой edge_tts автоматически
         communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
         await communicate.save(file_path)
     except Exception as e:
@@ -93,10 +84,29 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("👋 Привет! Пришли мне текст для озвучки (до 1000 знаков). Используй + перед гласной для ударения.")
+    # Добавляем Reply-кнопку /start, чтобы она всегда была под рукой у пользователя
+    kb = [[types.KeyboardButton(text="/start")]]
+    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer(
+        "👋 Привет! Пришли мне текст для озвучки (до 1000 знаков).\n\n"
+        "💡 Используй **+** перед гласной для ударения (например: з+амок).",
+        reply_markup=keyboard
+    )
+
+# Обработчик кнопки "В главное меню"
+@dp.callback_query(F.data == "main_menu")
+async def back_to_main(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_data:
+        user_data.pop(user_id) # Сбрасываем кэш текста
+    
+    await callback.message.answer("🏠 Начнем сначала. Пришлите новый текст для озвучки:")
+    await callback.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
+    if message.text == "/start": return # Игнорируем повторный старт из кнопок
+    
     user_id = message.from_user.id
     user_data[user_id] = {"text": message.text}
     
@@ -134,51 +144,48 @@ async def select_mode(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     
     if user_id not in user_data:
-        return await callback.message.answer("⚠️ Сессия истекла. Пришлите текст заново.")
+        return await callback.message.answer("⚠️ Сессия истекла. Нажмите /start")
     
     data = user_data[user_id]
-    await callback.message.edit_text("⌛ Генерирую аудио...")
+    status_msg = await callback.message.edit_text("⌛ Генерирую аудио...")
     
     try:
         file_id = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
         file_path = os.path.join(BASE_DIR, "static/audio", file_id)
         
+        # Клавиатура с кнопкой возврата
+        nav_builder = InlineKeyboardBuilder()
+        nav_builder.row(types.InlineKeyboardButton(text="🏠 Озвучить ещё текст", callback_data="main_menu"))
+
         await callback.message.answer_audio(
             types.FSInputFile(file_path),
-            caption="✅ Готово! Длинные тексты — на https://speechclone.online"
+            caption="✅ Готово! Длинные тексты — на https://speechclone.online",
+            reply_markup=nav_builder.as_markup()
         )
-        await callback.message.delete()
+        await status_msg.delete()
     except Exception as e:
-        await callback.message.answer("❌ Ошибка генерации.")
+        await callback.message.answer("❌ Ошибка генерации. Попробуйте другой текст.")
 
-# --- МАРШРУТЫ САЙТА ---
+# --- МАРШРУТЫ САЙТА (ОСТАВЛЕНЫ БЕЗ ИЗМЕНЕНИЙ) ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# Страница загрузки с таймером
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_page(request: Request, file: str):
-    # 'file' содержит имя файла (например: uuid.mp3)
     return templates.TemplateResponse("download.html", {
         "request": request, 
         "file_name": file,
-        "download_link": f"/get-audio/{file}" # Ссылка для кнопки скачивания
+        "download_link": f"/get-audio/{file}"
     })
 
-# Эндпоинт для принудительного скачивания файла
 @app.get("/get-audio/{file_name}")
 async def get_audio(file_name: str):
     file_path = os.path.join(BASE_DIR, "static/audio", file_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Файл не найден")
-    
-    return FileResponse(
-        path=file_path, 
-        filename=f"speechclone_{file_name}", 
-        media_type='audio/mpeg'
-    )
+    return FileResponse(path=file_path, filename=f"speechclone_{file_name}", media_type='audio/mpeg')
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices(request: Request):
@@ -237,6 +244,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
