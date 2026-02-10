@@ -5,4 +5,5 @@ python-multipart
 edge-tts
 pydantic
 gunicorn
+aiogram
 
