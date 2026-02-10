@@ -3,76 +3,77 @@
 
 <main class="max-w-4xl mx-auto px-4 py-12">
     <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic text-[10px] uppercase tracking-widest">
-        Рекламный блок
+        Рекламный блок (AdSense Top)
     </div>
 
     <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50">
         <textarea id="text" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
         
-        <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
+        <div class="mt-8">
+            <label class="text-[10px] font-black text-gray-400 uppercase mb-4 block tracking-[0.2em] ml-2 text-center md:text-left">Выберите режим голоса</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <label class="cursor-pointer">
+                    <input type="radio" name="voice_mode" value="natural" class="peer hidden" checked>
+                    <div class="p-4 border-2 border-gray-100 rounded-2xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all hover:bg-gray-50">
+                        <span class="block text-xl mb-1">🍃</span>
+                        <span class="block font-bold text-sm">Табиғи</span>
+                        <span class="text-[10px] text-gray-400">Естественный</span>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="voice_mode" value="slow" class="peer hidden">
+                    <div class="p-4 border-2 border-gray-100 rounded-2xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all hover:bg-gray-50">
+                        <span class="block text-xl mb-1">🐢</span>
+                        <span class="block font-bold text-sm">Анық</span>
+                        <span class="text-[10px] text-gray-400">Медленно</span>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="voice_mode" value="fast" class="peer hidden">
+                    <div class="p-4 border-2 border-gray-100 rounded-2xl text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all hover:bg-gray-50">
+                        <span class="block text-xl mb-1">⚡</span>
+                        <span class="block font-bold text-sm">Жылдам</span>
+                        <span class="text-[10px] text-gray-400">Быстро</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="mt-10 flex flex-col md:flex-row gap-6 items-end justify-between border-t border-gray-100 pt-8">
             <div class="w-full md:w-1/2">
                 <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос и язык</label>
                 <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all">
                     <optgroup label="СНГ / CIS">
-                        <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Мужской)</option>
-                        <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Женский)</option>
-                        <option value="uk-UA-OstapNeural">Українська — Остап</option>
-                        <option value="kk-KZ-DauletNeural">Қазақша — Даулет</option>
+                        <option value="kk-KZ-DauletNeural" selected>Қазақша — Даулет</option>
+                        <option value="ru-RU-DmitryNeural">Русский — Дмитрий</option>
+                        <option value="ru-RU-SvetlanaNeural">Русский — Светлана</option>
                     </optgroup>
-                    <optgroup label="English">
-                        <option value="en-US-AvaNeural">English (US) — Ava</option>
-                        <option value="en-US-GuyNeural">English (US) — Guy</option>
-                        <option value="en-GB-SoniaNeural">English (UK) — Sonia</option>
-                    </optgroup>
-                    <optgroup label="Europe & Asia">
-                        <option value="de-DE-KatjaNeural">Deutsch (Germany)</option>
-                        <option value="fr-FR-DeniseNeural">Français (France)</option>
-                        <option value="zh-CN-YunxiNeural">Chinese</option>
-                        <option value="ja-JP-NanamiNeural">Japanese</option>
-                    </optgroup>
-                </select>
+                    </select>
             </div>
             <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-16 py-5 bg-blue-600 text-white font-black rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-xs">
                 Озвучить сейчас
             </button>
         </div>
+
+        <div id="previewContainer" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border-2 border-blue-100 animate-fade-in">
+            <div class="text-center">
+                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Предварительное прослушивание</p>
+                <audio id="audioPlayer" controls class="w-full mb-6 accent-blue-600 shadow-sm"></audio>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button onclick="goToDownload()" class="flex-1 bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                        📥 Скачать MP3
+                    </button>
+                    <button onclick="resetPreview()" class="flex-1 bg-white text-gray-500 font-bold py-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all">
+                        🔄 Сбросить
+                    </button>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="mt-16 p-10 bg-white rounded-[40px] border border-gray-100 text-center shadow-sm">
         <h3 class="text-2xl font-black mb-2 uppercase tracking-tighter">Поддержать проект ☕</h3>
-        <p class="text-gray-500 mb-10 text-sm font-medium">Мы работаем бесплатно. Ваша поддержка помогает нам оплачивать GPU-серверы.</p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="https://www.buymeacoffee.com/speechclone" target="_blank" class="px-8 py-4 bg-[#FFDD00] text-black font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">☕ Buy me a coffee</a>
-            <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="px-8 py-4 bg-[#0070ba] text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">PayPal</a>
-            <button onclick="alert('BTC: твой-адрес\nUSDT (TRC20): твой-адрес')" class="px-8 py-4 bg-gray-900 text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">Crypto</button>
-        </div>
-    </section>
-
-    <section class="mt-24 mb-12">
-        <div class="text-center mb-16">
-            <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">Часто задаваемые вопросы</h3>
-            <div class="h-1.5 w-20 bg-blue-600 mx-auto mt-4 rounded-full"></div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🙌 Это бесплатно?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Никаких подвохов. Мы используем современные нейросети 2026 года, которые позволяют генерировать голос без огромных затрат.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🎬 Можно в YouTube?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Конечно! Вы — полноправный владелец созданного аудиофайла. Голоса звучат максимально естественно.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">📝 Почему 2000 знаков?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Это позволяет озвучивать текст мгновенно. Если текст больше — просто разбейте его на части.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🔒 Что с приватностью?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Текст не сохраняется, а аудио удаляется с сервера автоматически через 24 часа.</p>
-            </div>
-        </div>
-    </section>
+        </section>
 
     <div class="mt-20 p-6 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-xs italic uppercase tracking-[0.2em]">
         Рекламный блок (AdSense Bottom)
@@ -80,10 +81,13 @@
 </main>
 
 <script>
+let currentFileName = "";
+
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
     const voiceSelect = document.getElementById('voiceSelect');
+    const mode = document.querySelector('input[name="voice_mode"]:checked').value;
     
     if(!textInput.value.trim()) return alert("Пожалуйста, введите текст");
 
@@ -93,39 +97,59 @@ async function generateAudio() {
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 text: textInput.value,
-                voice: voiceSelect.value
+                voice: voiceSelect.value,
+                mode: mode
             })
         });
-
-        if (!response.ok) {
-            throw new Error("Ошибка сервера");
-        }
 
         const data = await response.json();
         
         if(data.audio_url) {
-            const fileName = data.audio_url.split('/').pop();
-            // Переход на страницу загрузки
-            window.location.href = `/download-page?file=${fileName}`;
-        } else {
-            alert("Ошибка получения файла");
+            currentFileName = data.file_name;
+            const player = document.getElementById('audioPlayer');
+            player.src = data.audio_url;
+            
+            // Показываем плеер и прокручиваем к нему
+            document.getElementById('previewContainer').classList.remove('hidden');
+            document.getElementById('previewContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            btn.innerText = "Обновить озвучку";
         }
     } catch (e) {
-        console.error(e);
-        alert("Произошла ошибка. Попробуйте еще раз.");
+        alert("Ошибка. Попробуйте еще раз.");
     } finally {
         btn.disabled = false;
-        btn.innerText = "Озвучить сейчас";
     }
 }
+
+function goToDownload() {
+    if(currentFileName) {
+        window.location.href = `/download-page?file=${currentFileName}`;
+    }
+}
+
+function resetPreview() {
+    document.getElementById('previewContainer').classList.add('hidden');
+    document.getElementById('text').value = "";
+    document.getElementById('mainBtn').innerText = "Озвучить сейчас";
+    currentFileName = "";
+}
 </script>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 {% endblock %}
+
 
 
 
