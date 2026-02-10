@@ -1,9 +1,10 @@
 fastapi
 uvicorn
+edge-tts
+aiogram
 jinja2
 python-multipart
-edge-tts
 pydantic
 gunicorn
-aiogram
+
 
