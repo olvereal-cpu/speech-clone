@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 import asyncio
+import ssl
 import edge_tts
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -12,6 +13,14 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+# --- ФИКС SSL ---
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
 # --- ИНИЦИАЛИЗАЦИЯ ---
 app = FastAPI(redirect_slashes=True)
@@ -31,7 +40,6 @@ dp = Dispatcher()
 user_data = {}
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Гарантируем наличие папок
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -56,73 +64,77 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-# --- ЛОГИКА ГЕНЕРАЦИИ (СТАБИЛЬНАЯ) ---
+# --- ЛОГИКА ГЕНЕРАЦИИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     audio_dir = os.path.join(BASE_DIR, "static/audio")
     file_path = os.path.join(audio_dir, file_id)
     
-    # Исправляем ударения: "+а" на "а" с невидимым символом ударения (Unicode U+0301)
+    # Очистка текста от мусора
+    clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
+    
+    # Фикс ударений (используем chr(769) вместо \u чтобы избежать bad escape)
     def fix_stress(t):
         vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
-        # Меняем местами + и гласную, чтобы символ ударения встал ПОСЛЕ гласной
-        return re.sub(r'\+([%s])' % vowels, r'\1\u0301', t)
+        stress_char = chr(769) # Это Unicode комбинируемое ударение
+        return re.sub(r'\+([%s])' % vowels, r'\1' + stress_char, t)
 
-    processed_text = fix_stress(text)
+    processed_text = fix_stress(clean_text)
     
-    rates = {"natural": "-10%", "slow": "-20%", "fast": "+15%"}
-    pitches = {"natural": "-5Hz", "slow": "+0Hz", "fast": "+2Hz"}
-    
+    rates = {"natural": "-5%", "slow": "-15%", "fast": "+15%"}
     rate = rates.get(mode, "+0%")
-    pitch = pitches.get(mode, "+0Hz")
 
     try:
-        # Проверяем наличие папки прямо перед сохранением
-        if not os.path.exists(audio_dir):
-            os.makedirs(audio_dir, exist_ok=True)
-            
-        communicate = edge_tts.Communicate(processed_text, voice, rate=rate, pitch=pitch)
+        communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
         await communicate.save(file_path)
+        
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            raise ValueError("Empty file")
     except Exception as e:
-        print(f"TTS Error: {e}")
-        # Запасной вариант без параметров
-        communicate = edge_tts.Communicate(processed_text, voice)
+        print(f"Fallback due to: {e}")
+        communicate = edge_tts.Communicate(clean_text.replace("+", ""), voice)
         await communicate.save(file_path)
         
     return file_id
 
-# --- ЛОГИКА ТЕЛЕГРАМ БОТА ---
+# --- ТЕЛЕГРАМ БОТ ---
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    kb = [[types.KeyboardButton(text="/start")]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.answer(
-        "👋 Привет! Пришли текст (до 1000 знаков).\n\n"
-        "💡 Используй **+** перед гласной для ударения (з+амок).",
-        reply_markup=keyboard
+        "👋 Привет! Пришли текст для озвучки.\n"
+        "💡 Используй **+** перед гласной для ударения (з+амок)."
     )
 
 @dp.callback_query(F.data == "main_menu")
 async def back_to_main(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    if user_id in user_data:
-        user_data.pop(user_id)
-    await callback.message.answer("🏠 Пришлите новый текст:")
+    if callback.from_user.id in user_data:
+        user_data.pop(callback.from_user.id)
+    await callback.message.answer("🏠 Жду новый текст:")
     await callback.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    if message.text == "/start": return
+    if message.text.startswith("/"): return
     user_data[message.from_user.id] = {"text": message.text}
     
     builder = InlineKeyboardBuilder()
+    # Ряд 1: RU
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
+    # Ряд 2: CIS
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
+    # Ряд 3: EN
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
-                types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"))
+                types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"),
+                types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
+    # Ряд 4: EU
+    builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
+                types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
+    # Ряд 5: Asia
+    builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
+                types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
@@ -131,9 +143,9 @@ async def select_voice(callback: types.CallbackQuery):
     user_data[callback.from_user.id]["voice"] = callback.data.split("_")[1]
     builder = InlineKeyboardBuilder()
     builder.row(
-        types.InlineKeyboardButton(text="Natural", callback_data="m_natural"),
-        types.InlineKeyboardButton(text="Slow", callback_data="m_slow"),
-        types.InlineKeyboardButton(text="Fast", callback_data="m_fast")
+        types.InlineKeyboardButton(text="Обычный", callback_data="m_natural"),
+        types.InlineKeyboardButton(text="Медленно", callback_data="m_slow"),
+        types.InlineKeyboardButton(text="Быстро", callback_data="m_fast")
     )
     await callback.message.edit_text("Выберите режим:", reply_markup=builder.as_markup())
 
@@ -142,21 +154,21 @@ async def select_mode(callback: types.CallbackQuery):
     mode = callback.data.split("_")[1]
     user_id = callback.from_user.id
     if user_id not in user_data:
-        return await callback.message.answer("⚠️ Ошибка сессии. Нажмите /start")
+        return await callback.message.answer("⚠️ Ошибка сессии. Напишите текст заново.")
     
     data = user_data[user_id]
-    status_msg = await callback.message.edit_text("⌛ Генерирую...")
+    status_msg = await callback.message.edit_text("⌛ Озвучиваю...")
     
     try:
         file_id = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
         file_path = os.path.join(BASE_DIR, "static/audio", file_id)
         
         nav = InlineKeyboardBuilder()
-        nav.row(types.InlineKeyboardButton(text="🏠 Озвучить ещё", callback_data="main_menu"))
+        nav.row(types.InlineKeyboardButton(text="🏠 Еще раз", callback_data="main_menu"))
 
         await callback.message.answer_audio(
             types.FSInputFile(file_path),
-            caption="✅ Готово! https://speechclone.online",
+            caption="✅ Готово! Озвучено на SpeechClone.online",
             reply_markup=nav.as_markup()
         )
         await status_msg.delete()
@@ -167,19 +179,12 @@ async def select_mode(callback: types.CallbackQuery):
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
-    if not request.text:
-        raise HTTPException(status_code=400, detail="Текст пустой")
+    if not request.text: raise HTTPException(400)
     try:
         file_id = await generate_speech_logic(request.text, request.voice, request.mode)
-        file_path = os.path.join(BASE_DIR, "static/audio", file_id)
-        
-        if os.path.exists(file_path):
-            return {"audio_url": f"/static/audio/{file_id}"}
-        else:
-            raise Exception("Файл не найден на диске")
+        return {"audio_url": f"/static/audio/{file_id}"}
     except Exception as e:
-        print(f"API Error: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка на сервере")
+        raise HTTPException(500, detail=str(e))
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -188,15 +193,14 @@ async def home(request: Request):
 @app.get("/get-audio/{file_name}")
 async def get_audio(file_name: str):
     file_path = os.path.join(BASE_DIR, "static/audio", file_name)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Файл удален или не найден")
-    return FileResponse(path=file_path, filename=f"audio_{file_name}", media_type='audio/mpeg')
+    return FileResponse(file_path, media_type='audio/mpeg')
 
 @app.on_event("startup")
 async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
