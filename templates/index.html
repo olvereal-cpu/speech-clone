@@ -169,7 +169,6 @@
 // Активация рекламы
 (adsbygoogle = window.adsbygoogle || []).push({});
 
-// Обертка для безопасности работы скрипта после загрузки страницы
 document.addEventListener('DOMContentLoaded', () => {
     const chatToggle = document.getElementById('chat-toggle');
     const chatWindow = document.getElementById('chat-window');
@@ -177,15 +176,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
 
-    // Переключение окна чата
     if (chatToggle) {
         chatToggle.onclick = (e) => {
             e.preventDefault();
             chatWindow.classList.toggle('hidden');
+            if (!chatWindow.classList.contains('hidden')) {
+                chatInput.focus();
+            }
         };
     }
 
-    // Функция добавления сообщения в интерфейс
     function addMessage(text, isBot = false) {
         const msg = document.createElement('div');
         msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700 mb-2" 
@@ -195,25 +195,24 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Приветствие ИИ
     setTimeout(() => {
-        if(chatMessages.children.length === 0) {
+        if(chatMessages && chatMessages.children.length === 0) {
             addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
         }
     }, 1000);
 
-    // Отправка сообщения на бэкенд
     async function handleChat() {
         const text = chatInput.value.trim();
         if (!text) return;
 
         addMessage(text, false);
-        chatInput.value = '';
+        chatInput.value = ''; // Очищаем поле сразу
 
         const typing = document.createElement('div');
-        typing.className = "self-start text-[10px] text-gray-400 italic ml-2";
+        typing.className = "self-start text-[10px] text-gray-400 italic ml-2 mb-2";
         typing.innerText = "Печатает...";
         chatMessages.appendChild(typing);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
 
         try {
             const response = await fetch('/api/chat', {
@@ -223,18 +222,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             typing.remove();
-            addMessage(data.reply, true);
+            addMessage(data.reply || "Извини, бро, я задумался. Повторишь?", true);
         } catch (e) {
             if(typing) typing.remove();
             addMessage("Бро, сервер прилег отдохнуть. Попробуй позже! 🔌", true);
         }
     }
 
-    if(chatSend) chatSend.onclick = handleChat;
-    if(chatInput) chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
+    // Привязка через addEventListener надежнее
+    if(chatSend) {
+        chatSend.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleChat();
+        });
+    }
+    
+    if(chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleChat();
+            }
+        });
+    }
 });
 
-// Логика генерации аудио (вынесена из DOMContentLoaded для доступа из HTML onclick)
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
