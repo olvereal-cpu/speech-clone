@@ -17,18 +17,31 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- НАСТРОЙКА GEMINI AI ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
-
-if GOOGLE_API_KEY:
-    print("✅ GEMINI_KEY найден в переменных окружения.")
-
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Мы пробуем 'gemini-1.5-flash-latest' — это самый живучий вариант для API v1beta
+# Авто-подбор рабочей модели
+try:
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    print(f"📡 Доступные модели Google: {available_models}")
+    
+    # Пытаемся выбрать лучшую из доступных
+    if 'models/gemini-1.5-flash' in available_models:
+        selected_model = 'models/gemini-1.5-flash'
+    elif 'models/gemini-pro' in available_models:
+        selected_model = 'models/gemini-pro'
+    else:
+        selected_model = available_models[0] if available_models else 'gemini-1.5-flash'
+        
+    print(f"🎯 Выбрана модель: {selected_model}")
+except Exception as e:
+    print(f"⚠️ Не удалось получить список моделей: {e}")
+    selected_model = 'gemini-1.5-flash'
+
 model_ai = genai.GenerativeModel(
-    model_name='gemini-1.5-flash-latest', 
+    model_name=selected_model,
     system_instruction=(
         "Ты — Спич-Бро, официальный ИИ-помощник сайта SpeechClone.online. "
-        "Твоя задача: помогать пользователям с озвучкой текста. "
+        "Помогай с озвучкой текста, пиши коротко и с эмодзи."
         "1. Про ударения: пиши, что нужно ставить '+' перед гласной (напр. з+амок). "
         "2. Про скачивание: объясни, что после кнопки 'Скачать' есть страница с ожиданием 30 сек. "
         "3. Твой стиль: дружелюбный, короткие ответы, используй эмодзи. Не будь занудой."
@@ -347,6 +360,7 @@ async def startup_event():
         print("🚀 Starting Telegram Bot (Clean Instance)...")
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
