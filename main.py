@@ -5,7 +5,7 @@ import asyncio
 import ssl
 import edge_tts
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- ФИКС SSL (для стабильной связи с Microsoft на любых серверах) ---
+# --- ФИКС SSL ---
 try:
     _create_unverified_https_context = ssl._create_unverified_context
 except AttributeError:
@@ -65,16 +65,14 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-# --- ЛОГИКА ГЕНЕРАЦИИ (ИСПРАВЛЕНА ОШИБКА BAD ESCAPE) ---
+# --- ЛОГИКА ГЕНЕРАЦИИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     audio_dir = os.path.join(BASE_DIR, "static/audio")
     file_path = os.path.join(audio_dir, file_id)
     
-    # Очистка текста от лишних символов
     clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
     
-    # Исправляем ударения через chr(769), чтобы избежать ошибки "bad escape \u"
     def fix_stress(t):
         vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
         stress_symbol = chr(769) 
@@ -88,8 +86,6 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     try:
         communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
         await communicate.save(file_path)
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            raise ValueError("Empty file generated")
     except Exception as e:
         print(f"Fallback due to error: {e}")
         communicate = edge_tts.Communicate(clean_text.replace("+", ""), voice)
@@ -120,7 +116,6 @@ async def handle_text(message: types.Message):
     user_data[user_id] = {"text": message.text}
     
     builder = InlineKeyboardBuilder()
-    # Восстановленный полный список голосов
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
@@ -172,7 +167,35 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {str(e)}")
 
-# --- МАРШРУТЫ САЙТА (ПОЛНЫЙ СПИСОК) ---
+# --- МАРШРУТЫ САЙТА ---
+
+# РОУТ ДЛЯ ROBOTS.TXT
+@app.get("/robots.txt")
+async def robots_txt():
+    content = """User-agent: *
+Allow: /
+Allow: /blog/
+Allow: /static/
+Disallow: /admin/
+Sitemap: https://speechclone.online/sitemap.xml
+Host: https://speechclone.online"""
+    return Response(content=content, media_type="text/plain")
+
+# РОУТ ДЛЯ SITEMAP.XML
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    # Если файлов sitemap.xml нет в папке, генерируем его "на лету"
+    path = os.path.join(BASE_DIR, "sitemap.xml")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="application/xml")
+    
+    # Резервный вариант: генерация базового XML, если файла нет
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://speechclone.online/</loc><priority>1.0</priority></url>
+  <url><loc>https://speechclone.online/blog</loc><priority>0.8</priority></url>
+</urlset>"""
+    return Response(content=xml_content, media_type="application/xml")
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
