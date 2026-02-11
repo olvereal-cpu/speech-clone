@@ -24,7 +24,7 @@ if GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 
 model_ai = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name='models/gemini-1.5-flash', 
     system_instruction=(
         "Ты — Спич-Бро, официальный ИИ-помощник сайта SpeechClone.online. "
         "Твоя задача: помогать пользователям с озвучкой текста. "
@@ -33,7 +33,6 @@ model_ai = genai.GenerativeModel(
         "3. Твой стиль: дружелюбный, короткие ответы, используй эмодзи. Не будь занудой."
     )
 )
-
 # --- ФИКС SSL ---
 try:
     _create_unverified_https_context = ssl._create_unverified_context
@@ -347,6 +346,7 @@ async def startup_event():
         print("🚀 Starting Telegram Bot (Clean Instance)...")
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
