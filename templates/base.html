@@ -29,6 +29,8 @@
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         html { scroll-behavior: smooth; }
+        /* Фикс для того, чтобы чат не перекрывался футером */
+        #chat-widget { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)); }
     </style>
 </head>
 <body class="bg-[#F9FAFB] text-gray-900 antialiased">
@@ -84,7 +86,7 @@
                 <a href="/disclaimer" class="hover:text-white transition-all">Отказ от ответственности</a>
                 <a href="/about" class="hover:text-white transition-all">О проекте</a>
                 <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="text-blue-400 hover:text-white transition-all">PayPal</a>
-                <a href="https://yoomoney.ru/to/ТУТ_ID" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
+                <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
                 <a href="https://kaspi.kz/pay/ТУТ_ID" target="_blank" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
                 <a href="https://t.me/speechclonebot?start=donate" target="_blank" class="text-yellow-400 hover:text-white transition-all">Stars ⭐️</a>
                 <a href="/guide" class="hover:text-white transition-all">Помощь</a>
@@ -114,18 +116,31 @@
     const menu = document.getElementById('mobile-menu');
     const icon = document.getElementById('menu-icon');
 
-    menuBtn.addEventListener('click', () => {
-        const isHidden = menu.classList.toggle('hidden');
-        icon.setAttribute('d', isHidden ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12');
-    });
+    if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+            const isHidden = menu.classList.toggle('hidden');
+            icon.setAttribute('d', isHidden ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12');
+        });
+    }
 
-    // Логика счетчика визитов в локальном хранилище
+    // Логика счетчика и скролла
     document.addEventListener('DOMContentLoaded', () => {
+        // Счетчик визитов
         let count = localStorage.getItem('my_visits') || 0;
         count++;
         localStorage.setItem('my_visits', count);
         const counterDisplay = document.getElementById('user-counter');
         if (counterDisplay) { counterDisplay.innerText = count; }
+
+        // Авто-скролл если нужно (для кнопки Поддержать)
+        {% if scroll_to %}
+        const target = document.getElementById('{{ scroll_to }}');
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        }
+        {% endif %}
     });
     </script>
 </body>
