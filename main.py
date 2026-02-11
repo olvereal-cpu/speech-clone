@@ -4,7 +4,7 @@ import uuid
 import asyncio
 import ssl
 import edge_tts
-import google.generativeai as genai  # ДОБАВИЛИ
+import google.generativeai as genai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -16,8 +16,10 @@ from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- НАСТРОЙКА GEMINI AI ---
-# Твой API ключ
-genai.configure(api_key="AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M")
+# Теперь берем ключ из переменных окружения Render (безопасно)
+GOOGLE_API_KEY = os.getenv("GEMINI_KEY", "AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M") 
+genai.configure(api_key=GOOGLE_API_KEY)
+
 model_ai = genai.GenerativeModel(
     model_name='gemini-1.5-flash',
     system_instruction=(
@@ -80,7 +82,7 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-class ChatRequest(BaseModel): # ДОБАВИЛИ ДЛЯ ЧАТА
+class ChatRequest(BaseModel): 
     message: str
 
 # --- ЛОГИКА ГЕНЕРАЦИИ ---
@@ -115,7 +117,6 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
-        # asyncio.to_thread нужен, чтобы не блокировать сервер во время запроса к Google
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
         return {"reply": response.text}
     except Exception as e:
@@ -317,6 +318,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
