@@ -20,10 +20,7 @@ GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 
 if GOOGLE_API_KEY:
     print("✅ GEMINI_KEY найден в переменных окружения.")
-else:
-    # Запасной ключ
-    GOOGLE_API_KEY = "AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M"
-    print("⚠️ GEMINI_KEY не найден в Render, использую запасной ключ из кода.")
+
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -343,6 +340,7 @@ async def startup_event():
         # Очищаем старые запросы, чтобы избежать ConflictError
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
