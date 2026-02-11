@@ -21,7 +21,6 @@ GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 if GOOGLE_API_KEY:
     print("✅ GEMINI_KEY найден в переменных окружения.")
 
-
 genai.configure(api_key=GOOGLE_API_KEY)
 
 model_ai = genai.GenerativeModel(
@@ -65,7 +64,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
-# Авто-создание ads.txt если его нет
+# Авто-создание ads.txt
 ads_txt_path = os.path.join(BASE_DIR, "ads.txt")
 if not os.path.exists(ads_txt_path):
     with open(ads_txt_path, "w") as f:
@@ -92,7 +91,7 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
-class ChatRequest(BaseModel): 
+class ChatRequest(BaseModel):
     message: str
 
 # --- ЛОГИКА ГЕНЕРАЦИИ ---
@@ -130,7 +129,6 @@ async def chat_ai(request: ChatRequest):
         if not request.message.strip():
             return {"reply": "Бро, напиши что-нибудь, я не умею читать мысли... пока что! 😉"}
 
-        # Увеличиваем таймаут и запускаем через to_thread, чтобы не вешать сервер
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
         
         if response and response.text:
@@ -140,8 +138,7 @@ async def chat_ai(request: ChatRequest):
             
     except Exception as e:
         print(f"🛑 Gemini Error: {e}")
-        # Выводим конкретную ошибку в логи сервера
-        return {"reply": f"Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
+        return {"reply": "Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
 
 # --- ТЕЛЕГРАМ БОТ ---
 async def send_donation_invoice(message: types.Message):
@@ -333,13 +330,14 @@ async def get_ads_txt():
 # --- ИСПРАВЛЕННЫЙ БЛОК ЗАПУСКА ---
 @app.on_event("startup")
 async def startup_event():
-    # Флаг предотвращает двойной запуск бота при перезагрузке воркеров
+    # Флаг для предотвращения двойного запуска
     if not os.environ.get("BOT_RUNNING"):
         os.environ["BOT_RUNNING"] = "true"
         print("🚀 Starting Telegram Bot (Clean Instance)...")
-        # Очищаем старые запросы, чтобы избежать ConflictError
+        # Удаляем старые запросы для чистого старта
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
