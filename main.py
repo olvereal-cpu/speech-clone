@@ -23,8 +23,9 @@ if GOOGLE_API_KEY:
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+# Мы пробуем 'gemini-1.5-flash-latest' — это самый живучий вариант для API v1beta
 model_ai = genai.GenerativeModel(
-    model_name='models/gemini-1.5-flash', 
+    model_name='gemini-1.5-flash-latest', 
     system_instruction=(
         "Ты — Спич-Бро, официальный ИИ-помощник сайта SpeechClone.online. "
         "Твоя задача: помогать пользователям с озвучкой текста. "
@@ -346,6 +347,7 @@ async def startup_event():
         print("🚀 Starting Telegram Bot (Clean Instance)...")
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
