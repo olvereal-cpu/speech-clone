@@ -113,7 +113,7 @@
         </div>
     </section>
 
-    <section class="mt-20">
+    <section class="mt-20" id="support">
         <div class="bg-gray-900 rounded-[50px] p-10 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-200">
             <div class="relative z-10">
                 <h2 class="text-3xl md:text-5xl font-black mb-6 leading-none tracking-tighter italic">Поддержите <span class="text-blue-500">Open Source</span>.</h2>
@@ -126,6 +126,14 @@
                         <span>ЮMoney</span>
                         <span class="opacity-90 font-normal italic">РФ 🇷🇺</span>
                     </a>
+                    <a href="https://kaspi.kz/pay/ТУТ_ID" class="bg-red-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                        <span>Kaspi</span>
+                        <span class="opacity-90 font-normal italic">KZ 🇰🇿</span>
+                    </a>
+                    <a href="https://t.me/speechclonebot?start=donate" class="bg-yellow-500 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2 text-black">
+                        <span>Stars ⭐️</span>
+                        <span class="opacity-90 font-normal italic">Telegram</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -133,7 +141,7 @@
 </main>
 
 <div id="chat-widget" class="fixed bottom-6 right-6 z-[100] font-sans">
-    <button id="chat-toggle" class="w-14 h-14 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:bg-black transition-all hover:scale-110 active:scale-95">
+    <button id="chat-toggle" class="w-14 h-14 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:bg-black transition-all hover:scale-110 active:scale-95 text-white">
         💬
     </button>
     
@@ -161,72 +169,83 @@
 // Активация рекламы
 (adsbygoogle = window.adsbygoogle || []).push({});
 
-const chatToggle = document.getElementById('chat-toggle');
-const chatWindow = document.getElementById('chat-window');
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
-const chatSend = document.getElementById('chat-send');
+// Обертка для безопасности работы скрипта после загрузки страницы
+document.addEventListener('DOMContentLoaded', () => {
+    const chatToggle = document.getElementById('chat-toggle');
+    const chatWindow = document.getElementById('chat-window');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
 
-// Переключение окна чата
-chatToggle.onclick = () => chatWindow.classList.toggle('hidden');
-
-// Функция добавления сообщения в интерфейс
-function addMessage(text, isBot = false) {
-    const msg = document.createElement('div');
-    msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700" 
-                         : "self-end bg-blue-600 p-3 rounded-2xl rounded-br-none text-white max-w-[85%] text-sm font-medium shadow-md shadow-blue-100";
-    msg.innerText = text;
-    chatMessages.appendChild(msg);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Приветствие ИИ
-setTimeout(() => {
-    addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
-}, 1000);
-
-// Отправка сообщения на бэкенд (Gemini API)
-async function handleChat() {
-    const text = chatInput.value.trim();
-    if (!text) return;
-
-    addMessage(text, false);
-    chatInput.value = '';
-
-    const typing = document.createElement('div');
-    typing.className = "self-start text-[10px] text-gray-400 italic ml-2";
-    typing.innerText = "Печатает...";
-    chatMessages.appendChild(typing);
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
-        });
-        const data = await response.json();
-        typing.remove();
-        addMessage(data.reply, true);
-    } catch (e) {
-        typing.remove();
-        addMessage("Бро, сервер прилег отдохнуть. Попробуй позже! 🔌", true);
+    // Переключение окна чата
+    if (chatToggle) {
+        chatToggle.onclick = (e) => {
+            e.preventDefault();
+            chatWindow.classList.toggle('hidden');
+        };
     }
-}
 
-chatSend.onclick = handleChat;
-chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
+    // Функция добавления сообщения в интерфейс
+    function addMessage(text, isBot = false) {
+        const msg = document.createElement('div');
+        msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700 mb-2" 
+                               : "self-end bg-blue-600 p-3 rounded-2xl rounded-br-none text-white max-w-[85%] text-sm font-medium shadow-md shadow-blue-100 mb-2";
+        msg.innerText = text;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
-// Логика генерации аудио через API
+    // Приветствие ИИ
+    setTimeout(() => {
+        if(chatMessages.children.length === 0) {
+            addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
+        }
+    }, 1000);
+
+    // Отправка сообщения на бэкенд
+    async function handleChat() {
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        addMessage(text, false);
+        chatInput.value = '';
+
+        const typing = document.createElement('div');
+        typing.className = "self-start text-[10px] text-gray-400 italic ml-2";
+        typing.innerText = "Печатает...";
+        chatMessages.appendChild(typing);
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            typing.remove();
+            addMessage(data.reply, true);
+        } catch (e) {
+            if(typing) typing.remove();
+            addMessage("Бро, сервер прилег отдохнуть. Попробуй позже! 🔌", true);
+        }
+    }
+
+    if(chatSend) chatSend.onclick = handleChat;
+    if(chatInput) chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
+});
+
+// Логика генерации аудио (вынесена из DOMContentLoaded для доступа из HTML onclick)
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
     const voiceSelect = document.getElementById('voiceSelect');
-    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const modeElement = document.querySelector('input[name="mode"]:checked');
     const resultSection = document.getElementById('resultSection');
     const audioPlayer = document.getElementById('audioPlayer');
     const downloadBtn = document.getElementById('downloadBtn');
     
     if(!textInput.value.trim()) return alert("Введите текст");
+    const mode = modeElement ? modeElement.value : 'natural';
 
     btn.disabled = true;
     btn.innerHTML = `<span class="animate-pulse">Генерируем...</span>`;
@@ -243,7 +262,6 @@ async function generateAudio() {
             audioPlayer.src = data.audio_url;
             resultSection.classList.remove('hidden');
             const fileName = data.audio_url.split('/').pop();
-            // Перенаправление на страницу ожидания перед скачиванием
             downloadBtn.onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
         }
     } catch (e) {
@@ -255,6 +273,7 @@ async function generateAudio() {
 }
 </script>
 {% endblock %}
+
 
 
 
