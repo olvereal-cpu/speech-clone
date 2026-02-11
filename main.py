@@ -130,11 +130,9 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
-        # Проверка на пустой запрос
         if not request.message.strip():
             return {"reply": "Бро, напиши что-нибудь, я не умею читать мысли... пока что! 😉"}
 
-        # Запускаем генерацию в отдельном потоке
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
         
         if response and response.text:
@@ -337,8 +335,8 @@ async def get_ads_txt():
 async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
-        # Запускаем бота фоновой задачей
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
