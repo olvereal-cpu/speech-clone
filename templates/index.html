@@ -71,11 +71,11 @@
                 
                 <div class="w-full py-2 bg-white/50 rounded-2xl flex items-center justify-center min-h-[100px]">
                      <ins class="adsbygoogle"
-                         style="display:block"
-                         data-ad-client="ca-pub-2792779022553212"
-                         data-ad-slot="ТУТ_ID_ПОД_ПЛЕЕРОМ"
-                         data-ad-format="auto"
-                         data-full-width-responsive="true"></ins>
+                          style="display:block"
+                          data-ad-client="ca-pub-2792779022553212"
+                          data-ad-slot="ТУТ_ID_ПОД_ПЛЕЕРОМ"
+                          data-ad-format="auto"
+                          data-full-width-responsive="true"></ins>
                 </div>
 
                 <button id="downloadBtn" class="w-full md:w-auto whitespace-nowrap px-8 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest text-center hover:bg-blue-600 transition-all">
@@ -158,6 +158,7 @@
 </div>
 
 <script>
+// Активация рекламы
 (adsbygoogle = window.adsbygoogle || []).push({});
 
 const chatToggle = document.getElementById('chat-toggle');
@@ -166,8 +167,10 @@ const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
 
+// Переключение окна чата
 chatToggle.onclick = () => chatWindow.classList.toggle('hidden');
 
+// Функция добавления сообщения в интерфейс
 function addMessage(text, isBot = false) {
     const msg = document.createElement('div');
     msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700" 
@@ -177,12 +180,12 @@ function addMessage(text, isBot = false) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Приветствие
+// Приветствие ИИ
 setTimeout(() => {
     addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
 }, 1000);
 
-// Реальная отправка в Gemini через твой бэкенд
+// Отправка сообщения на бэкенд (Gemini API)
 async function handleChat() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -190,7 +193,6 @@ async function handleChat() {
     addMessage(text, false);
     chatInput.value = '';
 
-    // Индикатор печати
     const typing = document.createElement('div');
     typing.className = "self-start text-[10px] text-gray-400 italic ml-2";
     typing.innerText = "Печатает...";
@@ -214,7 +216,7 @@ async function handleChat() {
 chatSend.onclick = handleChat;
 chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
 
-// Логика генерации аудио
+// Логика генерации аудио через API
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
@@ -241,6 +243,7 @@ async function generateAudio() {
             audioPlayer.src = data.audio_url;
             resultSection.classList.remove('hidden');
             const fileName = data.audio_url.split('/').pop();
+            // Перенаправление на страницу ожидания перед скачиванием
             downloadBtn.onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
         }
     } catch (e) {
