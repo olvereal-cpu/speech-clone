@@ -117,39 +117,17 @@
         <div class="bg-gray-900 rounded-[50px] p-10 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-200">
             <div class="relative z-10">
                 <h2 class="text-3xl md:text-5xl font-black mb-6 leading-none tracking-tighter italic">Поддержите <span class="text-blue-500">Open Source</span>.</h2>
-                <p class="text-gray-400 text-lg mb-10 max-w-2xl mx-auto font-medium">Мы развиваем этот инструмент бесплатно. Ваша поддержка помогает нам оплачивать сервера и развивать проект.</p>
-                
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <a href="https://paypal.me/velial39@gmail.com" class="bg-blue-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
                         <span>PayPal</span>
                         <span class="opacity-60 font-normal italic">Global</span>
                     </a>
-                    
                     <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" class="bg-[#8b3ffd] px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
                         <span>ЮMoney</span>
                         <span class="opacity-90 font-normal italic">РФ 🇷🇺</span>
                     </a>
-
-                    <a href="https://kaspi.kz/pay/ТУТ_ТВОЙ_ID" class="bg-[#F14635] px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
-                        <span>Kaspi.kz</span>
-                        <span class="opacity-90 font-normal italic">КЗ 🇰🇿</span>
-                    </a>
-
-                    <a href="https://t.me/speechclonebot?start=donate" class="bg-gradient-to-br from-blue-400 to-blue-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2 border border-blue-300/30">
-                        <span class="flex items-center gap-1">Stars ⭐️</span>
-                        <span class="opacity-90 font-normal italic">В боте</span>
-                    </a>
-                </div>
-
-                <div class="mt-10">
-                    <a href="https://t.me/speechclonebot" class="inline-flex items-center gap-3 bg-white/5 hover:bg-white/10 px-8 py-4 rounded-full transition-all border border-white/10 group">
-                        <span class="text-[10px] font-black uppercase tracking-[0.2em] italic text-gray-300 group-hover:text-white">Наш Telegram Бот: @speechclonebot</span>
-                        <span class="text-lg">🤖</span>
-                    </a>
                 </div>
             </div>
-            <div class="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full blur-[100px]"></div>
-            <div class="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-[100px]"></div>
         </div>
     </section>
 </main>
@@ -168,8 +146,7 @@
             </div>
         </div>
         
-        <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
-            </div>
+        <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col"></div>
 
         <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
             <input type="text" id="chat-input" placeholder="Задать вопрос..." class="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 font-medium">
@@ -183,7 +160,6 @@
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
 
-// ЛОГИКА ЧАТА
 const chatToggle = document.getElementById('chat-toggle');
 const chatWindow = document.getElementById('chat-window');
 const chatMessages = document.getElementById('chat-messages');
@@ -201,11 +177,12 @@ function addMessage(text, isBot = false) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Приветствие при загрузке
+// Приветствие
 setTimeout(() => {
-    addMessage("Привет! 👋 Я ваш помощник. Чем могу помочь с озвучкой?", true);
+    addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
 }, 1000);
 
+// Реальная отправка в Gemini через твой бэкенд
 async function handleChat() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -213,19 +190,31 @@ async function handleChat() {
     addMessage(text, false);
     chatInput.value = '';
 
-    // Имитация ответа (можно заменить на fetch к твоему API)
-    setTimeout(() => {
-        let reply = "Хороший вопрос! Если вам нужно поставить ударение, просто напишите '+' перед гласной.";
-        if(text.toLowerCase().includes("голос")) reply = "У нас есть голоса для русского, украинского, казахского и многих других языков!";
-        if(text.toLowerCase().includes("цена")) reply = "Проект абсолютно бесплатный! Но вы можете поддержать нас в блоке 'Донат'.";
-        addMessage(reply, true);
-    }, 800);
+    // Индикатор печати
+    const typing = document.createElement('div');
+    typing.className = "self-start text-[10px] text-gray-400 italic ml-2";
+    typing.innerText = "Печатает...";
+    chatMessages.appendChild(typing);
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await response.json();
+        typing.remove();
+        addMessage(data.reply, true);
+    } catch (e) {
+        typing.remove();
+        addMessage("Бро, сервер прилег отдохнуть. Попробуй позже! 🔌", true);
+    }
 }
 
 chatSend.onclick = handleChat;
 chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
 
-
+// Логика генерации аудио
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
@@ -245,25 +234,14 @@ async function generateAudio() {
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: textInput.value,
-                voice: voiceSelect.value,
-                mode: mode
-            })
+            body: JSON.stringify({ text: textInput.value, voice: voiceSelect.value, mode: mode })
         });
-
         const data = await response.json();
-        
         if(data.audio_url) {
             audioPlayer.src = data.audio_url;
             resultSection.classList.remove('hidden');
-            
             const fileName = data.audio_url.split('/').pop();
-            downloadBtn.onclick = () => {
-                window.location.href = `/download-page?file=${fileName}`;
-            };
-            
-            (adsbygoogle = window.adsbygoogle || []).push({});
+            downloadBtn.onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
         }
     } catch (e) {
         alert("Ошибка на стороне API");
