@@ -16,8 +16,16 @@ from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- НАСТРОЙКА GEMINI AI ---
-# Теперь берем ключ из переменных окружения Render (безопасно)
-GOOGLE_API_KEY = os.getenv("GEMINI_KEY", "AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M") 
+# Сначала пробуем взять из настроек Render (Key: GEMINI_KEY)
+GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
+
+if GOOGLE_API_KEY:
+    print("✅ GEMINI_KEY найден в переменных окружения.")
+else:
+    # Запасной ключ, если в Render не настроено
+    GOOGLE_API_KEY = "AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M"
+    print("⚠️ GEMINI_KEY не найден в Render, использую запасной ключ из кода.")
+
 genai.configure(api_key=GOOGLE_API_KEY)
 
 model_ai = genai.GenerativeModel(
@@ -117,10 +125,11 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
+        # Запускаем генерацию в отдельном потоке, чтобы не блокировать сервер
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
         return {"reply": response.text}
     except Exception as e:
-        print(f"Gemini Error: {e}")
+        print(f"🛑 Gemini Error: {e}")
         return {"reply": "Бро, я на секунду потерял связь с космосом... Спроси еще раз! 🤖"}
 
 # --- ТЕЛЕГРАМ БОТ ---
