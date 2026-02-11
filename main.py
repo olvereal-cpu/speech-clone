@@ -4,6 +4,7 @@ import uuid
 import asyncio
 import ssl
 import edge_tts
+import google.generativeai as genai  # ДОБАВИЛИ
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -11,8 +12,22 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command, CommandObject # ДОБАВИЛИ CommandObject
+from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+# --- НАСТРОЙКА GEMINI AI ---
+# Твой API ключ
+genai.configure(api_key="AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M")
+model_ai = genai.GenerativeModel(
+    model_name='gemini-1.5-flash',
+    system_instruction=(
+        "Ты — Спич-Бро, официальный ИИ-помощник сайта SpeechClone.online. "
+        "Твоя задача: помогать пользователям с озвучкой текста. "
+        "1. Про ударения: пиши, что нужно ставить '+' перед гласной (напр. з+амок). "
+        "2. Про скачивание: объясни, что после кнопки 'Скачать' есть страница с ожиданием 30 сек. "
+        "3. Твой стиль: дружелюбный, короткие ответы, используй эмодзи. Не будь занудой."
+    )
+)
 
 # --- ФИКС SSL ---
 try:
@@ -65,6 +80,9 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str = "natural"
 
+class ChatRequest(BaseModel): # ДОБАВИЛИ ДЛЯ ЧАТА
+    message: str
+
 # --- ЛОГИКА ГЕНЕРАЦИИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
@@ -93,9 +111,18 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
         
     return file_id
 
-# --- ТЕЛЕГРАМ БОТ ---
+# --- ЭНДПОИНТ УМНОГО ЧАТА (GEMINI) ---
+@app.post("/api/chat")
+async def chat_ai(request: ChatRequest):
+    try:
+        # asyncio.to_thread нужен, чтобы не блокировать сервер во время запроса к Google
+        response = await asyncio.to_thread(model_ai.generate_content, request.message)
+        return {"reply": response.text}
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return {"reply": "Бро, я на секунду потерял связь с космосом... Спроси еще раз! 🤖"}
 
-# Функция для создания инвойса (чтобы не дублировать код)
+# --- ТЕЛЕГРАМ БОТ ---
 async def send_donation_invoice(message: types.Message):
     try:
         return await message.answer_invoice(
@@ -114,24 +141,18 @@ async def send_donation_invoice(message: types.Message):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, command: CommandObject):
-    # ПЕРСОНАЛИЗАЦИЯ: определяем имя
     user_name = message.from_user.first_name if message.from_user.first_name else "друг"
-
-    # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
     if command.args == "donate":
         return await send_donation_invoice(message)
-
     await message.answer(
         f"👋 Привет, {user_name}! Пришли текст для озвучки.\n"
         f"💡 Используй **+** перед гласной для ударения (например, з+амок)."
     )
 
-# Исправлено: название класса PreCheckoutQuery
 @dp.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout_query: types.PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True)
 
-# Уведомление об успешной оплате
 @dp.message(F.successful_payment)
 async def success_payment_handler(message: types.Message):
     await message.answer(
@@ -146,7 +167,6 @@ async def back_to_main(callback: types.CallbackQuery):
     await callback.message.answer("🏠 Жду новый текст:")
     await callback.answer()
 
-# Обработчик кнопки доната в инлайне
 @dp.callback_query(F.data == "donate_menu")
 async def inline_donate_handler(callback: types.CallbackQuery):
     await callback.answer()
@@ -171,9 +191,7 @@ async def handle_text(message: types.Message):
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     
-    # ДОБАВЛЯЕМ КНОПКУ ДОНАТА В МЕНЮ
     builder.row(types.InlineKeyboardButton(text="Поддержать проект ⭐️", callback_data="donate_menu"))
-    
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
