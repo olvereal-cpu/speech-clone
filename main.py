@@ -114,13 +114,16 @@ async def send_donation_invoice(message: types.Message):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, command: CommandObject):
+    # ПЕРСОНАЛИЗАЦИЯ: определяем имя
+    user_name = message.from_user.first_name if message.from_user.first_name else "друг"
+
     # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
     if command.args == "donate":
         return await send_donation_invoice(message)
 
     await message.answer(
-        "👋 Привет! Пришли текст для озвучки.\n"
-        "💡 Используй **+** перед гласной для ударения (например, з+амок)."
+        f"👋 Привет, {user_name}! Пришли текст для озвучки.\n"
+        f"💡 Используй **+** перед гласной для ударения (например, з+амок)."
     )
 
 # Исправлено: название класса PreCheckoutQuery
@@ -296,6 +299,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
