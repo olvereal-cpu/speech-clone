@@ -3,8 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeechClone AI - Профессиональная озвучка текста</title>
     
+    <title>{% block title %}SpeechClone AI — Озвучка текста нейросетью онлайн бесплатно{% endblock %}</title>
+    <meta name="description" content="{% block description %}Бесплатная озвучка текста нейросетями онлайн. Более 50 реалистичных голосов, поддержка ударений и скачивание в MP3. Лучший сервис для создания аудио из текста.{% endblock %}">
+    <meta name="keywords" content="озвучка текста, нейросеть голос, текст в речь, синтез речи онлайн, SpeechClone, скачать озвучку mp3">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://speechclone.online/">
+    <meta property="og:title" content="SpeechClone AI — Профессиональная озвучка текста">
+    <meta property="og:description" content="Озвучивайте тексты живыми голосами нейросетей. Бесплатно, быстро и качественно.">
+    <meta property="og:image" content="{{ url_for('static', path='logo.png') }}">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://speechclone.online/">
+    <meta property="twitter:title" content="SpeechClone AI — Озвучка текста">
+    <meta property="twitter:description" content="Бесплатный синтез речи онлайн. MP3 скачивание.">
+    <meta property="twitter:image" content="{{ url_for('static', path='logo.png') }}">
+
     <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
     <link rel="canonical" href="https://speechclone.online/" />
     
@@ -29,7 +44,6 @@
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         html { scroll-behavior: smooth; }
-        /* Фикс для того, чтобы чат не перекрывался футером */
         #chat-widget { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)); }
     </style>
 </head>
@@ -111,7 +125,6 @@
     </footer>
 
     <script>
-    // Логика переключения мобильного меню
     const menuBtn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
     const icon = document.getElementById('menu-icon');
@@ -123,16 +136,13 @@
         });
     }
 
-    // Логика счетчика и скролла
     document.addEventListener('DOMContentLoaded', () => {
-        // Счетчик визитов
         let count = localStorage.getItem('my_visits') || 0;
         count++;
         localStorage.setItem('my_visits', count);
         const counterDisplay = document.getElementById('user-counter');
         if (counterDisplay) { counterDisplay.innerText = count; }
 
-        // Авто-скролл если нужно (для кнопки Поддержать)
         {% if scroll_to %}
         const target = document.getElementById('{{ scroll_to }}');
         if (target) {
