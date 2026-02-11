@@ -129,15 +129,27 @@ async def chat_ai(request: ChatRequest):
         if not request.message.strip():
             return {"reply": "Бро, напиши что-нибудь, я не умею читать мысли... пока что! 😉"}
 
-        response = await asyncio.to_thread(model_ai.generate_content, request.message)
+        # Добавляем лог для проверки ключа (только первые 4 символа для безопасности)
+        key_status = f"{GOOGLE_API_KEY[:4]}***" if GOOGLE_API_KEY else "MISSING"
+        print(f"🛠 Chat request received. Key status: {key_status}")
+
+        # Таймаут 10 секунд, чтобы сайт не висел вечно
+        response = await asyncio.wait_for(
+            asyncio.to_thread(model_ai.generate_content, request.message),
+            timeout=10.0
+        )
         
         if response and response.text:
             return {"reply": response.text}
         else:
             return {"reply": "Хм, я задумался и забыл, что хотел сказать. Спроси еще раз! 🤖"}
             
+    except asyncio.TimeoutError:
+        print("🛑 Gemini Timeout: Google не ответил вовремя.")
+        return {"reply": "Бро, Google чет долго тупит. Давай еще разок через секунду? 🔌"}
     except Exception as e:
-        print(f"🛑 Gemini Error: {e}")
+        print(f"🛑 Gemini Error: {str(e)}")
+        # Если в логах будет 403 - значит ключ/регион, если 429 - лимиты
         return {"reply": "Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
 
 # --- ТЕЛЕГРАМ БОТ ---
@@ -330,13 +342,12 @@ async def get_ads_txt():
 # --- ИСПРАВЛЕННЫЙ БЛОК ЗАПУСКА ---
 @app.on_event("startup")
 async def startup_event():
-    # Флаг для предотвращения двойного запуска
     if not os.environ.get("BOT_RUNNING"):
         os.environ["BOT_RUNNING"] = "true"
         print("🚀 Starting Telegram Bot (Clean Instance)...")
-        # Удаляем старые запросы для чистого старта
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
