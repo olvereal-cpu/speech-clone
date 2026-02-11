@@ -125,6 +125,7 @@
     </footer>
 
     <script>
+    // Мобильное меню
     const menuBtn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
     const icon = document.getElementById('menu-icon');
@@ -136,6 +137,7 @@
         });
     }
 
+    // Счетчик визитов и скролл
     document.addEventListener('DOMContentLoaded', () => {
         let count = localStorage.getItem('my_visits') || 0;
         count++;
