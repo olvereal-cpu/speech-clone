@@ -95,26 +95,28 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 
 # --- ТЕЛЕГРАМ БОТ ---
 
+# Функция для создания инвойса (чтобы не дублировать код)
+async def send_donation_invoice(message: types.Message):
+    try:
+        return await message.answer_invoice(
+            title="Поддержать SpeechClone AI",
+            description="Добровольный донат 50 Stars на развитие Open Source проекта.",
+            payload="donate_stars_50",
+            currency="XTR",
+            prices=[types.LabeledPrice(label="Донат 50 ⭐️", amount=50)],
+            provider_token="",
+            start_parameter="donate_redirect",
+            protect_content=True
+        )
+    except Exception as e:
+        print(f"ОШИБКА ИНВОЙСА: {e}")
+        return await message.answer("💎 Для поддержки проекта воспользуйтесь картой на сайте.")
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, command: CommandObject):
     # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
     if command.args == "donate":
-        try:
-            # Отправляем инвойс. Для Stars (XTR) provider_token ВСЕГДА пустая строка.
-            return await message.answer_invoice(
-                title="Поддержать SpeechClone AI",
-                description="Добровольный донат 50 Stars на развитие Open Source проекта.",
-                payload="donate_stars_50",
-                currency="XTR",
-                prices=[types.LabeledPrice(label="Донат 50 ⭐️", amount=50)],
-                provider_token="",
-                start_parameter="donate_redirect", # Обязательный параметр для диплинков
-                protect_content=True
-            )
-        except Exception as e:
-            # Если не сработало, бот напишет ошибку в консоль и отправит текст пользователю
-            print(f"ОШИБКА ИНВОЙСА: {e}")
-            return await message.answer("💎 Для поддержки проекта отправьте Stars через меню или воспользуйтесь картой на сайте.")
+        return await send_donation_invoice(message)
 
     await message.answer(
         "👋 Привет! Пришли текст для озвучки.\n"
@@ -141,6 +143,12 @@ async def back_to_main(callback: types.CallbackQuery):
     await callback.message.answer("🏠 Жду новый текст:")
     await callback.answer()
 
+# Обработчик кнопки доната в инлайне
+@dp.callback_query(F.data == "donate_menu")
+async def inline_donate_handler(callback: types.CallbackQuery):
+    await callback.answer()
+    await send_donation_invoice(callback.message)
+
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith("/"): return
@@ -159,6 +167,9 @@ async def handle_text(message: types.Message):
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
+    
+    # ДОБАВЛЯЕМ КНОПКУ ДОНАТА В МЕНЮ
+    builder.row(types.InlineKeyboardButton(text="Поддержать проект ⭐️", callback_data="donate_menu"))
     
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
@@ -285,6 +296,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
