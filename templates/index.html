@@ -1,6 +1,8 @@
 {% extends "base.html" %}
-{% block content %}
 
+{% block description %}Озвучьте текст онлайн бесплатно с помощью ИИ. Натуральные голоса (Дмитрий, Светлана и др.), настройка скорости и ударений. Скачивайте готовые аудиофайлы без регистрации на SpeechClone.{% endblock %}
+
+{% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
     <div class="mb-10 p-4 bg-white border border-dashed border-gray-200 rounded-[30px] text-center min-h-[90px] flex items-center justify-center overflow-hidden">
         <ins class="adsbygoogle"
@@ -206,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) return;
 
         addMessage(text, false);
-        chatInput.value = ''; // Очищаем поле сразу
+        chatInput.value = '';
 
         const typing = document.createElement('div');
         typing.className = "self-start text-[10px] text-gray-400 italic ml-2 mb-2";
@@ -229,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Привязка через addEventListener надежнее
     if(chatSend) {
         chatSend.addEventListener('click', (e) => {
             e.preventDefault();
@@ -285,6 +286,7 @@ async function generateAudio() {
 }
 </script>
 {% endblock %}
+
 
 
 
