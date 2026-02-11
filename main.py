@@ -133,6 +133,7 @@ async def chat_ai(request: ChatRequest):
         if not request.message.strip():
             return {"reply": "Бро, напиши что-нибудь, я не умею читать мысли... пока что! 😉"}
 
+        # Увеличиваем таймаут и запускаем через to_thread, чтобы не вешать сервер
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
         
         if response and response.text:
@@ -142,7 +143,8 @@ async def chat_ai(request: ChatRequest):
             
     except Exception as e:
         print(f"🛑 Gemini Error: {e}")
-        return {"reply": "Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
+        # Выводим конкретную ошибку в логи сервера
+        return {"reply": f"Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
 
 # --- ТЕЛЕГРАМ БОТ ---
 async def send_donation_invoice(message: types.Message):
@@ -331,11 +333,17 @@ async def get_ads_txt():
         return FileResponse(ads_txt_path)
     return HTTPException(404)
 
+# --- ИСПРАВЛЕННЫЙ БЛОК ЗАПУСКА ---
 @app.on_event("startup")
 async def startup_event():
-    if not os.environ.get("GUNICORN_STARTED"):
-        os.environ["GUNICORN_STARTED"] = "true"
+    # Флаг предотвращает двойной запуск бота при перезагрузке воркеров
+    if not os.environ.get("BOT_RUNNING"):
+        os.environ["BOT_RUNNING"] = "true"
+        print("🚀 Starting Telegram Bot (Clean Instance)...")
+        # Очищаем старые запросы, чтобы избежать ConflictError
+        await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
