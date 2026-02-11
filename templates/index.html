@@ -154,8 +154,77 @@
     </section>
 </main>
 
+<div id="chat-widget" class="fixed bottom-6 right-6 z-[100] font-sans">
+    <button id="chat-toggle" class="w-14 h-14 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:bg-black transition-all hover:scale-110 active:scale-95">
+        💬
+    </button>
+    
+    <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[320px] bg-white rounded-[30px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-fade-in">
+        <div class="bg-gray-900 p-5 text-white flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-lg">🤖</div>
+            <div>
+                <p class="font-black text-[10px] uppercase tracking-widest">SpeechClone Assistant</p>
+                <p class="text-[10px] text-blue-400 font-bold italic">Онлайн</p>
+            </div>
+        </div>
+        
+        <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
+            </div>
+
+        <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
+            <input type="text" id="chat-input" placeholder="Задать вопрос..." class="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 font-medium">
+            <button id="chat-send" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black transition-all">
+                🚀
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 (adsbygoogle = window.adsbygoogle || []).push({});
+
+// ЛОГИКА ЧАТА
+const chatToggle = document.getElementById('chat-toggle');
+const chatWindow = document.getElementById('chat-window');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+
+chatToggle.onclick = () => chatWindow.classList.toggle('hidden');
+
+function addMessage(text, isBot = false) {
+    const msg = document.createElement('div');
+    msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700" 
+                         : "self-end bg-blue-600 p-3 rounded-2xl rounded-br-none text-white max-w-[85%] text-sm font-medium shadow-md shadow-blue-100";
+    msg.innerText = text;
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Приветствие при загрузке
+setTimeout(() => {
+    addMessage("Привет! 👋 Я ваш помощник. Чем могу помочь с озвучкой?", true);
+}, 1000);
+
+async function handleChat() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    addMessage(text, false);
+    chatInput.value = '';
+
+    // Имитация ответа (можно заменить на fetch к твоему API)
+    setTimeout(() => {
+        let reply = "Хороший вопрос! Если вам нужно поставить ударение, просто напишите '+' перед гласной.";
+        if(text.toLowerCase().includes("голос")) reply = "У нас есть голоса для русского, украинского, казахского и многих других языков!";
+        if(text.toLowerCase().includes("цена")) reply = "Проект абсолютно бесплатный! Но вы можете поддержать нас в блоке 'Донат'.";
+        addMessage(reply, true);
+    }, 800);
+}
+
+chatSend.onclick = handleChat;
+chatInput.onkeypress = (e) => e.key === 'Enter' && handleChat();
+
 
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
@@ -205,6 +274,7 @@ async function generateAudio() {
 }
 </script>
 {% endblock %}
+
 
 
 
