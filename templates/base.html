@@ -50,7 +50,7 @@
                     <a href="/contribute" class="text-blue-600 hover:text-gray-900 transition-all">❤️ Поддержать</a>
                 </div>
 
-                <a href="https://t.me/speechclonebot" class="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">Бот</a>
+                <a href="https://t.me/speechclonebot" target="_blank" class="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">Бот</a>
 
                 <div class="flex bg-gray-100 p-1 rounded-xl ml-2">
                     <button class="px-2 py-1 text-[9px] font-black rounded-lg bg-white shadow-sm text-blue-600">RU</button>
@@ -69,7 +69,7 @@
             <a href="/blog" class="block font-black uppercase text-xs tracking-widest text-gray-900">Блог</a>
             <a href="/guide" class="block font-black uppercase text-xs tracking-widest text-gray-900">Инструкция</a>
             <a href="/contribute" class="block font-black uppercase text-xs tracking-widest text-blue-600">❤️ Поддержать</a>
-            <a href="https://t.me/speechclonebot" class="block w-full text-center bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Открыть бота</a>
+            <a href="https://t.me/speechclonebot" target="_blank" class="block w-full text-center bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Открыть бота</a>
         </div>
     </nav>
 
@@ -83,10 +83,10 @@
                 <a href="/privacy" class="hover:text-white transition-all">Конфиденциальность</a>
                 <a href="/disclaimer" class="hover:text-white transition-all">Отказ от ответственности</a>
                 <a href="/about" class="hover:text-white transition-all">О проекте</a>
-                <a href="https://paypal.me/velial39@gmail.com" class="text-blue-400 hover:text-white transition-all">PayPal</a>
-                <a href="https://yoomoney.ru/to/ТУТ_ID" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
-                <a href="https://kaspi.kz/pay/ТУТ_ID" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
-                <a href="https://t.me/speechclonebot?start=donate" class="text-yellow-400 hover:text-white transition-all">Stars ⭐️</a>
+                <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="text-blue-400 hover:text-white transition-all">PayPal</a>
+                <a href="https://yoomoney.ru/to/ТУТ_ID" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
+                <a href="https://kaspi.kz/pay/ТУТ_ID" target="_blank" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
+                <a href="https://t.me/speechclonebot?start=donate" target="_blank" class="text-yellow-400 hover:text-white transition-all">Stars ⭐️</a>
                 <a href="/guide" class="hover:text-white transition-all">Помощь</a>
             </div>
             
@@ -109,6 +109,7 @@
     </footer>
 
     <script>
+    // Логика переключения мобильного меню
     const menuBtn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
     const icon = document.getElementById('menu-icon');
@@ -118,6 +119,7 @@
         icon.setAttribute('d', isHidden ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12');
     });
 
+    // Логика счетчика визитов в локальном хранилище
     document.addEventListener('DOMContentLoaded', () => {
         let count = localStorage.getItem('my_visits') || 0;
         count++;
