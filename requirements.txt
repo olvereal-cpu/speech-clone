@@ -4,11 +4,12 @@ jinja2
 python-multipart
 pydantic
 edge-tts
-google-generativeai
+google-generativeai>=0.8.3
 aiogram
 aiohttp
 certifi
 gunicorn
+
 
 
 
