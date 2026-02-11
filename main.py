@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject # ДОБАВИЛИ CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- ФИКС SSL ---
@@ -96,7 +96,17 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 # --- ТЕЛЕГРАМ БОТ ---
 
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, command: CommandObject):
+    # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
+    if command.args == "donate":
+        kb = InlineKeyboardBuilder()
+        kb.row(types.InlineKeyboardButton(text="Поддержать (Stars ⭐️)", url="https://t.me/speechclonebot?start=donate")) # Тут можно заменить на инвойс
+        return await message.answer(
+            "💎 **Поддержка проекта Telegram Stars**\n\n"
+            "Звезды помогают нам оплачивать сервера и развивать Open Source.\n"
+            "Вы можете отправить любую сумму через меню бота (скоро будет доступно напрямую)."
+        )
+
     await message.answer(
         "👋 Привет! Пришли текст для озвучки.\n"
         "💡 Используй **+** перед гласной для ударения (например, з+амок)."
@@ -184,12 +194,10 @@ Host: https://speechclone.online"""
 # РОУТ ДЛЯ SITEMAP.XML
 @app.get("/sitemap.xml")
 async def sitemap_xml():
-    # Если файлов sitemap.xml нет в папке, генерируем его "на лету"
     path = os.path.join(BASE_DIR, "sitemap.xml")
     if os.path.exists(path):
         return FileResponse(path, media_type="application/xml")
     
-    # Резервный вариант: генерация базового XML, если файла нет
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://speechclone.online/</loc><priority>1.0</priority></url>
@@ -234,6 +242,11 @@ async def privacy(request: Request): return templates.TemplateResponse("privacy.
 @app.get("/disclaimer")
 async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
 
+# ДОБАВЛЕННЫЙ РОУТ ДЛЯ ПОДДЕРЖКИ
+@app.get("/contribute")
+async def contribute(request: Request): 
+    return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "support"})
+
 # Блог
 @app.get("/blog")
 async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
@@ -255,6 +268,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
