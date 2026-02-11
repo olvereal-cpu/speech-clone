@@ -59,7 +59,9 @@
 </main>
 
 <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
+    // Запускаем пуш рекламы через try, чтобы ошибка не стопала скрипт
+    try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e) { console.log("AdSense error caught"); }
+    try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e) { console.log("AdSense error caught"); }
 
     let timeLeft = 30;
     const countdownEl = document.getElementById('countdown');
@@ -74,20 +76,21 @@
     const timer = setInterval(() => {
         timeLeft--;
         if (timeLeft >= 0) {
-            countdownEl.innerText = timeLeft;
-            secsEl.innerText = timeLeft;
+            if (countdownEl) countdownEl.innerText = timeLeft;
+            if (secsEl) secsEl.innerText = timeLeft;
             const offset = circumference - ( (30 - timeLeft) / 30) * circumference;
-            progressBar.style.strokeDashoffset = offset;
+            if (progressBar) progressBar.style.strokeDashoffset = offset;
         }
 
         if (timeLeft <= 0) {
             clearInterval(timer);
-            timerContainer.classList.add('hidden');
-            waitText.classList.add('hidden');
-            mainTitle.innerText = "Ссылка создана!";
-            downloadBlock.classList.remove('hidden');
-            // Принудительная перезагрузка рекламы при появлении кнопки
-            (adsbygoogle = window.adsbygoogle || []).push({});
+            if (timerContainer) timerContainer.classList.add('hidden');
+            if (waitText) waitText.classList.add('hidden');
+            if (mainTitle) mainTitle.innerText = "Ссылка создана!";
+            if (downloadBlock) downloadBlock.classList.remove('hidden');
+            
+            // Принудительная загрузка нижнего блока при появлении кнопки
+            try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e) {}
         }
     }, 1000);
 </script>
@@ -97,5 +100,6 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 {% endblock %}
+
 
 
