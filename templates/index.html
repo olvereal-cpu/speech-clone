@@ -179,7 +179,6 @@ function copyToVoice(text) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         textInput.focus();
         // Визуальный эффект
-        textInput.style.ringColor = "#2563eb";
         textInput.classList.add('ring-4', 'ring-blue-100');
         setTimeout(() => textInput.classList.remove('ring-4', 'ring-blue-100'), 2000);
     }
@@ -207,16 +206,23 @@ document.addEventListener('DOMContentLoaded', () => {
         msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700 mb-2" 
                                : "self-end bg-blue-600 p-3 rounded-2xl rounded-br-none text-white max-w-[85%] text-sm font-medium shadow-md shadow-blue-100 mb-2";
         
+        // Экранируем кавычки для безопасности в атрибуте onclick
+        const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
         if (isBot) {
-            // Для бота добавляем текст и кнопку переброса
             msg.innerHTML = `
                 <div>${text}</div>
-                <button onclick="copyToVoice(this.previousElementSibling.innerText)" class="mt-2 text-[9px] font-black uppercase text-blue-600 hover:text-black transition-all block">
+                <button onclick="copyToVoice('${safeText}')" class="mt-2 text-[9px] font-black uppercase text-blue-600 hover:text-black transition-all block">
                     ⚡ Озвучить этот текст
                 </button>
             `;
         } else {
-            msg.innerText = text;
+            msg.innerHTML = `
+                <div>${text}</div>
+                <button onclick="copyToVoice('${safeText}')" class="mt-2 text-[9px] font-black uppercase text-blue-100 hover:text-white transition-all block text-right w-full">
+                    ⚡ Озвучить мой текст
+                </button>
+            `;
         }
         
         chatMessages.appendChild(msg);
