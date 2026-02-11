@@ -99,22 +99,29 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 async def cmd_start(message: types.Message, command: CommandObject):
     # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
     if command.args == "donate":
-        # Выставляем счет на 50 звезд (XTR). Поле provider_token остается пустым для Stars.
-        return await message.answer_invoice(
-            title="Поддержать SpeechClone AI",
-            description="Добровольный донат на развитие Open Source проекта и оплату серверов.",
-            payload="donate_stars_50",
-            currency="XTR",
-            prices=[types.LabeledPrice(label="Донат 50 ⭐️", amount=50)],
-            provider_token="" 
-        )
+        try:
+            # Отправляем инвойс. Для Stars (XTR) provider_token ВСЕГДА пустая строка.
+            return await message.answer_invoice(
+                title="Поддержать SpeechClone AI",
+                description="Добровольный донат 50 Stars на развитие Open Source проекта.",
+                payload="donate_stars_50",
+                currency="XTR",
+                prices=[types.LabeledPrice(label="Донат 50 ⭐️", amount=50)],
+                provider_token="",
+                start_parameter="donate_redirect", # Обязательный параметр для диплинков
+                protect_content=True
+            )
+        except Exception as e:
+            # Если не сработало, бот напишет ошибку в консоль и отправит текст пользователю
+            print(f"ОШИБКА ИНВОЙСА: {e}")
+            return await message.answer("💎 Для поддержки проекта отправьте Stars через меню или воспользуйтесь картой на сайте.")
 
     await message.answer(
         "👋 Привет! Пришли текст для озвучки.\n"
         "💡 Используй **+** перед гласной для ударения (например, з+амок)."
     )
 
-# Подтверждение готовности принять платеж
+# Подтверждение готовности принять платеж (обязательно!)
 @dp.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout_query: types.Pre_checkout_query):
     await pre_checkout_query.answer(ok=True)
@@ -278,23 +285,6 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
