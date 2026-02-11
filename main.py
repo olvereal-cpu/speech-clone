@@ -66,7 +66,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BOT_TOKEN = "8337208157:AAEPSueD83LmT96Yr1ThAkX3V7HxvHWdh9U"
+BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -360,6 +360,7 @@ async def startup_event():
         print("🚀 Starting Telegram Bot (Clean Instance)...")
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
