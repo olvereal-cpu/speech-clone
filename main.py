@@ -99,17 +99,32 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 async def cmd_start(message: types.Message, command: CommandObject):
     # ПРОВЕРКА НА ДИПЛИНК ДОНАТА (из кнопки на сайте)
     if command.args == "donate":
-        kb = InlineKeyboardBuilder()
-        kb.row(types.InlineKeyboardButton(text="Поддержать (Stars ⭐️)", url="https://t.me/speechclonebot?start=donate")) # Тут можно заменить на инвойс
-        return await message.answer(
-            "💎 **Поддержка проекта Telegram Stars**\n\n"
-            "Звезды помогают нам оплачивать сервера и развивать Open Source.\n"
-            "Вы можете отправить любую сумму через меню бота (скоро будет доступно напрямую)."
+        # Выставляем счет на 50 звезд (XTR). Поле provider_token остается пустым для Stars.
+        return await message.answer_invoice(
+            title="Поддержать SpeechClone AI",
+            description="Добровольный донат на развитие Open Source проекта и оплату серверов.",
+            payload="donate_stars_50",
+            currency="XTR",
+            prices=[types.LabeledPrice(label="Донат 50 ⭐️", amount=50)],
+            provider_token="" 
         )
 
     await message.answer(
         "👋 Привет! Пришли текст для озвучки.\n"
         "💡 Используй **+** перед гласной для ударения (например, з+амок)."
+    )
+
+# Подтверждение готовности принять платеж
+@dp.pre_checkout_query()
+async def pre_checkout_handler(pre_checkout_query: types.Pre_checkout_query):
+    await pre_checkout_query.answer(ok=True)
+
+# Уведомление об успешной оплате
+@dp.message(F.successful_payment)
+async def success_payment_handler(message: types.Message):
+    await message.answer(
+        "💎 **Оплата получена!**\n\n"
+        "Огромное спасибо за поддержку. Вы помогаете проекту оставаться бесплатным и развиваться! ❤️"
     )
 
 @dp.callback_query(F.data == "main_menu")
@@ -179,7 +194,6 @@ async def select_mode(callback: types.CallbackQuery):
 
 # --- МАРШРУТЫ САЙТА ---
 
-# РОУТ ДЛЯ ROBOTS.TXT
 @app.get("/robots.txt")
 async def robots_txt():
     content = """User-agent: *
@@ -191,7 +205,6 @@ Sitemap: https://speechclone.online/sitemap.xml
 Host: https://speechclone.online"""
     return Response(content=content, media_type="text/plain")
 
-# РОУТ ДЛЯ SITEMAP.XML
 @app.get("/sitemap.xml")
 async def sitemap_xml():
     path = os.path.join(BASE_DIR, "sitemap.xml")
@@ -230,7 +243,6 @@ async def download_page(request: Request, file: str):
         "request": request, "file_name": file, "download_link": f"/get-audio/{file}"
     })
 
-# Инфо-страницы
 @app.get("/voices")
 async def voices(request: Request): return templates.TemplateResponse("voices.html", {"request": request})
 @app.get("/about")
@@ -242,12 +254,10 @@ async def privacy(request: Request): return templates.TemplateResponse("privacy.
 @app.get("/disclaimer")
 async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
 
-# ДОБАВЛЕННЫЙ РОУТ ДЛЯ ПОДДЕРЖКИ
 @app.get("/contribute")
 async def contribute(request: Request): 
     return templates.TemplateResponse("index.html", {"request": request, "scroll_to": "support"})
 
-# Блог
 @app.get("/blog")
 async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
 
@@ -268,6 +278,7 @@ async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
