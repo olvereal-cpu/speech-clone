@@ -121,9 +121,9 @@ async def cmd_start(message: types.Message, command: CommandObject):
         "💡 Используй **+** перед гласной для ударения (например, з+амок)."
     )
 
-# Подтверждение готовности принять платеж (обязательно!)
+# Исправлено: название класса PreCheckoutQuery
 @dp.pre_checkout_query()
-async def pre_checkout_handler(pre_checkout_query: types.Pre_checkout_query):
+async def pre_checkout_handler(pre_checkout_query: types.PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True)
 
 # Уведомление об успешной оплате
