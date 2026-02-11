@@ -16,13 +16,12 @@ from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- НАСТРОЙКА GEMINI AI ---
-# Сначала пробуем взять из настроек Render (Key: GEMINI_KEY)
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 
 if GOOGLE_API_KEY:
     print("✅ GEMINI_KEY найден в переменных окружения.")
 else:
-    # Запасной ключ, если в Render не настроено
+    # Запасной ключ
     GOOGLE_API_KEY = "AIzaSyCan2xgWdPa_qvR4cKBvf9dk8sZcgGr-4M"
     print("⚠️ GEMINI_KEY не найден в Render, использую запасной ключ из кода.")
 
@@ -68,6 +67,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Гарантируем наличие всех папок
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
+
+# Авто-создание ads.txt если его нет
+ads_txt_path = os.path.join(BASE_DIR, "ads.txt")
+if not os.path.exists(ads_txt_path):
+    with open(ads_txt_path, "w") as f:
+        f.write("google.com, pub-2792779022553212, DIRECT, f08c47fec0942fa0")
 
 def clean_audio():
     audio_dir = os.path.join(BASE_DIR, "static/audio")
@@ -125,12 +130,21 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
-        # Запускаем генерацию в отдельном потоке, чтобы не блокировать сервер
+        # Проверка на пустой запрос
+        if not request.message.strip():
+            return {"reply": "Бро, напиши что-нибудь, я не умею читать мысли... пока что! 😉"}
+
+        # Запускаем генерацию в отдельном потоке
         response = await asyncio.to_thread(model_ai.generate_content, request.message)
-        return {"reply": response.text}
+        
+        if response and response.text:
+            return {"reply": response.text}
+        else:
+            return {"reply": "Хм, я задумался и забыл, что хотел сказать. Спроси еще раз! 🤖"}
+            
     except Exception as e:
         print(f"🛑 Gemini Error: {e}")
-        return {"reply": "Бро, я на секунду потерял связь с космосом... Спроси еще раз! 🤖"}
+        return {"reply": "Бро, кажется мой ИИ-мозг немного перегрелся. Попробуй через минуту! 🔌"}
 
 # --- ТЕЛЕГРАМ БОТ ---
 async def send_donation_invoice(message: types.Message):
@@ -256,10 +270,6 @@ Host: https://speechclone.online"""
 
 @app.get("/sitemap.xml")
 async def sitemap_xml():
-    path = os.path.join(BASE_DIR, "sitemap.xml")
-    if os.path.exists(path):
-        return FileResponse(path, media_type="application/xml")
-    
     xml_content = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://speechclone.online/</loc><priority>1.0</priority></url>
@@ -319,14 +329,17 @@ async def get_blog_post(request: Request, post_name: str):
 
 @app.get("/ads.txt")
 async def get_ads_txt():
-    path = os.path.join(BASE_DIR, "ads.txt")
-    return FileResponse(path) if os.path.exists(path) else HTTPException(404)
+    if os.path.exists(ads_txt_path):
+        return FileResponse(ads_txt_path)
+    return HTTPException(404)
 
 @app.on_event("startup")
 async def startup_event():
     if not os.environ.get("GUNICORN_STARTED"):
         os.environ["GUNICORN_STARTED"] = "true"
+        # Запускаем бота фоновой задачей
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
