@@ -50,10 +50,11 @@ def get_all_users():
 
 init_db()
 
-# --- НАСТРОЙКА GEMINI AI ---
+# --- НАСТРОЙКА GEMINI AI (МОДЕЛЬ 2.5 FLASH) ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
+    # Используем v1beta, так как 2.5 точно пока в бете
     client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
 
 # --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
@@ -113,38 +114,32 @@ async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
-# --- ВОССТАНОВЛЕННАЯ АДМИНКА ---
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        users = get_all_users()
-        await message.answer(f"📊 **Статистика проекта**\n\nВсего пользователей: `{len(users)}`", parse_mode="Markdown")
+        await message.answer(f"📊 Всего пользователей: {len(get_all_users())}")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
     if message.from_user.id != ADMIN_ID or not command.args: return
     users = get_all_users()
-    count = 0
     for uid in users:
         try:
             await bot.send_message(uid, command.args)
-            count += 1
             await asyncio.sleep(0.05)
         except: pass
-    await message.answer(f"✅ Рассылка завершена!\nПолучили: {count} пользователей.")
+    await message.answer("✅ Рассылка завершена")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
-    
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
         return await message.answer("⚠️ Подпишись на канал для доступа!", reply_markup=kb.as_markup())
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
-    # ПОЛНЫЙ ПАКЕТ ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
@@ -155,7 +150,7 @@ async def handle_text(message: types.Message):
     builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
-                types.InlineKeyboardButton(text="🇯пония Nanami", callback_data="v_ja-JP-NanamiNeural"))
+                types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
@@ -182,34 +177,34 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- ВСЕ РОУТЫ САЙТА ---
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
-
+# --- API ЭНДПОИНТЫ (ПРИОРИТЕТ 2.5 FLASH) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
-    if not client_ai: return {"reply": "🤖 Ошибка ключа."}
-    try:
-        response = client_ai.models.generate_content(model="gemini-1.5-flash", contents=request.message)
-        return {"reply": response.text}
-    except:
+    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
+    
+    # Тот самый список, который "подставил" гугл
+    model_variants = ["gemini-2.5-flash", "gemini-2.0-flash", "models/gemini-2.5-flash"]
+    
+    for model_name in model_variants:
         try:
-            response = client_ai.models.generate_content(model="models/gemini-1.5-flash", contents=request.message)
+            response = client_ai.models.generate_content(
+                model=model_name, 
+                contents=request.message
+            )
             return {"reply": response.text}
         except Exception as e:
-            return {"reply": f"🤖 Ошибка ИИ: {str(e)[:50]}"}
+            print(f"Пропуск {model_name}: {e}")
+            continue
+            
+    return {"reply": "🤖 Ошибка: Модель 2.5 Flash не ответила. Проверьте ключ."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     fid = await generate_speech_logic(request.text, request.voice, request.mode)
     return {"audio_url": f"/static/audio/{fid}"}
 
-@app.get("/get-audio/{f}")
-async def get_audio(f: str): return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
-
-@app.get("/download-page", response_class=HTMLResponse)
-async def download_page(request: Request, file: str):
-    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
