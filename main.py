@@ -16,8 +16,8 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- КОНФИГУРАЦИЯ ---
-ADMIN_ID = 430747895  
+# --- КОНФИГУРАЦИЯ (ID ПЕРЕПЕЧАТАНЫ ВРУЧНУЮ) ---
+ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
@@ -29,7 +29,6 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # status: 1 - активен, 0 - заблокировал
     cursor.execute('''CREATE TABLE IF NOT EXISTS users 
                       (user_id INTEGER PRIMARY KEY, status INTEGER DEFAULT 1)''')
     conn.commit()
@@ -77,6 +76,7 @@ else: ssl._create_default_https_context = _create_unverified_https_context
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Создаем необходимые папки
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -148,9 +148,10 @@ async def admin_callbacks(callback: types.CallbackQuery):
         conn = sqlite3.connect(DB_PATH)
         users = conn.execute('SELECT user_id FROM users WHERE status = 1').fetchall()
         conn.close()
-        with open("alive_users.txt", "w") as f:
+        file_name = "alive_users.txt"
+        with open(file_name, "w") as f:
             for u in users: f.write(f"{u[0]}\n")
-        await callback.message.answer_document(types.FSInputFile("alive_users.txt"), caption="📄 Список ID живых юзеров")
+        await callback.message.answer_document(types.FSInputFile(file_name), caption="📄 Список ID живых юзеров")
     elif callback.data == "admin_broadcast_start":
         admin_state[callback.from_user.id] = "wait_text"
         await callback.message.answer("📝 Введи текст рассылки (или 'отмена'):")
@@ -165,20 +166,24 @@ async def cmd_start(message: types.Message):
 async def handle_all_messages(message: types.Message):
     uid = message.from_user.id
     
-    # Логика рассылки
     if uid == ADMIN_ID and admin_state.get(uid) == "wait_text":
         if message.text.lower() == "отмена":
-            admin_state.pop(uid); return await message.answer("Отменено.")
+            admin_state.pop(uid)
+            return await message.answer("Отменено.")
         admin_state.pop(uid)
-        conn = sqlite3.connect(DB_PATH); all_u = conn.execute('SELECT user_id FROM users').fetchall(); conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        all_u = conn.execute('SELECT user_id FROM users').fetchall()
+        conn.close()
         st_msg = await message.answer("🚀 Рассылка пошла...")
         done = 0
         for (u_id,) in all_u:
             try:
                 await bot.send_message(u_id, message.text)
-                set_user_status(u_id, 1); done += 1
+                set_user_status(u_id, 1)
+                done += 1
                 await asyncio.sleep(0.05)
-            except: set_user_status(u_id, 0)
+            except:
+                set_user_status(u_id, 0)
         return await st_msg.edit_text(f"✅ Готово. Получили: {done}")
 
     if message.text.startswith("/"): return
@@ -250,6 +255,7 @@ async def other_p(request: Request, p: str):
 async def startup_event():
     if not os.environ.get("BOT_RUNNING"):
         os.environ["BOT_RUNNING"] = "true"
+        # Удаляем вебхук и запускаем поллинг в фоне
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
 
