@@ -16,7 +16,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- КОНФИГУРАЦИЯ (ID ПЕРЕПЕЧАТАНЫ ВРУЧНУЮ) ---
+# --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
@@ -29,6 +29,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # status: 1 - активен, 0 - заблокировал
     cursor.execute('''CREATE TABLE IF NOT EXISTS users 
                       (user_id INTEGER PRIMARY KEY, status INTEGER DEFAULT 1)''')
     conn.commit()
@@ -76,7 +77,6 @@ else: ssl._create_default_https_context = _create_unverified_https_context
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Создаем необходимые папки
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -151,7 +151,7 @@ async def admin_callbacks(callback: types.CallbackQuery):
         file_name = "alive_users.txt"
         with open(file_name, "w") as f:
             for u in users: f.write(f"{u[0]}\n")
-        await callback.message.answer_document(types.FSInputFile(file_name), caption="📄 Список ID живых юзеров")
+        await callback.message.answer_document(types.FSInputFile(file_name), caption="📄 Список ID активных юзеров")
     elif callback.data == "admin_broadcast_start":
         admin_state[callback.from_user.id] = "wait_text"
         await callback.message.answer("📝 Введи текст рассылки (или 'отмена'):")
@@ -166,38 +166,46 @@ async def cmd_start(message: types.Message):
 async def handle_all_messages(message: types.Message):
     uid = message.from_user.id
     
+    # Логика рассылки
     if uid == ADMIN_ID and admin_state.get(uid) == "wait_text":
         if message.text.lower() == "отмена":
-            admin_state.pop(uid)
-            return await message.answer("Отменено.")
+            admin_state.pop(uid); return await message.answer("Отменено.")
         admin_state.pop(uid)
-        conn = sqlite3.connect(DB_PATH)
-        all_u = conn.execute('SELECT user_id FROM users').fetchall()
-        conn.close()
+        conn = sqlite3.connect(DB_PATH); all_u = conn.execute('SELECT user_id FROM users').fetchall(); conn.close()
         st_msg = await message.answer("🚀 Рассылка пошла...")
         done = 0
         for (u_id,) in all_u:
             try:
                 await bot.send_message(u_id, message.text)
-                set_user_status(u_id, 1)
-                done += 1
+                set_user_status(u_id, 1); done += 1
                 await asyncio.sleep(0.05)
-            except:
-                set_user_status(u_id, 0)
+            except: set_user_status(u_id, 0)
         return await st_msg.edit_text(f"✅ Готово. Получили: {done}")
 
     if message.text.startswith("/"): return
-    if not await check_sub(uid):
-        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="Подписаться", url=CHANNEL_URL))
-        return await message.answer("❌ Подпишись на канал!", reply_markup=kb.as_markup())
+
+    # ПРОВЕРКА ПОДПИСКИ (ПРОЕКТ БЕСПЛАТНЫЙ)
+    if uid != ADMIN_ID and not await check_sub(uid):
+        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
+        text_sub = (
+            "⚠️ **Доступ ограничен**\n\n"
+            "Наш проект **полностью бесплатный**, и мы хотим сохранить его таким для всех! 🎁\n\n"
+            "Единственное условие использования — подписка на наш основной канал. "
+            "Это помогает проекту развиваться и покрывать расходы на сервера.\n\n"
+            "Подпишись, и все нейро-голоса станут доступны тебе сразу!"
+        )
+        return await message.answer(text_sub, reply_markup=kb.as_markup(), parse_mode="Markdown")
 
     add_user(uid)
     user_sessions[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
+    # ВСЕ ГОЛОСА НА МЕСТЕ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"),
+                types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
-    await message.answer("Выбери голос:", reply_markup=builder.as_markup())
+    await message.answer("Выбери голос для бесплатной озвучки:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
 async def select_voice(callback: types.CallbackQuery):
@@ -206,7 +214,7 @@ async def select_voice(callback: types.CallbackQuery):
     kb.row(types.InlineKeyboardButton(text="Обычный", callback_data="m_natural"),
            types.InlineKeyboardButton(text="Медленно", callback_data="m_slow"),
            types.InlineKeyboardButton(text="Быстро", callback_data="m_fast"))
-    await callback.message.edit_text("Скорость:", reply_markup=kb.as_markup())
+    await callback.message.edit_text("Выбери скорость чтения:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data.startswith("m_"))
 async def select_mode(callback: types.CallbackQuery):
@@ -214,20 +222,23 @@ async def select_mode(callback: types.CallbackQuery):
     uid = callback.from_user.id
     if uid not in user_sessions: return
     data = user_sessions[uid]
-    status = await callback.message.edit_text("⌛ Озвучиваю...")
+    status = await callback.message.edit_text("⌛ Нейросеть бесплатно озвучивает текст...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        await callback.message.answer_audio(types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)))
+        await callback.message.answer_audio(
+            types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
+            caption="✅ Готово! Бесплатная озвучка в @SpeechCloneBot"
+        )
         await status.delete()
-    except Exception as e: await callback.message.answer(f"❌ Ошибка: {e}")
+    except Exception as e: await callback.message.answer(f"❌ Ошибка озвучки: {e}")
 
 # --- САЙТ МАРШРУТЫ ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
         res = await asyncio.wait_for(asyncio.to_thread(model_ai.generate_content, request.message), timeout=10.0)
-        return {"reply": res.text if res else "..."}
-    except: return {"reply": "Ошибка."}
+        return {"reply": res.text if res else "Я задумался, попробуй еще раз..."}
+    except: return {"reply": "Ошибка связи с ИИ."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -255,7 +266,6 @@ async def other_p(request: Request, p: str):
 async def startup_event():
     if not os.environ.get("BOT_RUNNING"):
         os.environ["BOT_RUNNING"] = "true"
-        # Удаляем вебхук и запускаем поллинг в фоне
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
 
