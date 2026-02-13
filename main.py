@@ -5,7 +5,8 @@ import asyncio
 import ssl
 import sqlite3
 import edge_tts
-import google.generativeai as genai
+# Новый пакет
+from google import genai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -50,11 +51,14 @@ def get_all_users():
 
 init_db()
 
-# --- НАСТРОЙКА GEMINI AI ---
+# --- НАСТРОЙКА НОВОГО GEMINI AI SDK (ФИКС 404) ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
+client_ai = None
 if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-    model_ai = genai.GenerativeModel('gemini-1.5-flash')
+    # Явно указываем версию API и ключ
+    client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
+else:
+    print("⚠️ API KEY NOT FOUND")
 
 # --- SSL ФИКС ---
 try:
@@ -62,11 +66,10 @@ try:
 except AttributeError: pass
 else: ssl._create_default_https_context = _create_unverified_https_context
 
-# --- ИНИЦИАЛИЗАЦИЯ FastAPI (ИНТЕГРАЦИЯ С САЙТОМ) ---
+# --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Создаем папки если нет
 for path in ["static", "static/audio", "static/images/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -81,7 +84,7 @@ class TTSRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
-# --- ОБЩАЯ ЛОГИКА ОЗВУЧКИ ---
+# --- ЛОГИКА ОЗВУЧКИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
@@ -118,12 +121,12 @@ async def check_sub(user_id):
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
-    await message.answer("👋 Привет! Пришли текст для бесплатной озвучки.\n💡 Используй **+** для ударения.")
+    await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        await message.answer(f"📊 Пользователей в базе: {len(get_all_users())}")
+        await message.answer(f"📊 Пользователей: {len(get_all_users())}")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
@@ -134,7 +137,7 @@ async def cmd_broadcast(message: types.Message, command: CommandObject):
             await bot.send_message(uid, command.args)
             await asyncio.sleep(0.05)
         except: pass
-    await message.answer("✅ Рассылка завершена")
+    await message.answer("✅ Готово")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
@@ -145,18 +148,19 @@ async def handle_text(message: types.Message):
         kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
         return await message.answer(
             "⚠️ **Доступ ограничен**\n\nНаш проект **полностью бесплатный**! 🎁\n"
-            "Подпишись на канал, чтобы использовать все международные голоса.",
+            "Подпишись на канал, чтобы открыть доступ к нейро-голосам.",
             reply_markup=kb.as_markup(), parse_mode="Markdown"
         )
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
+    # ПОЛНЫЙ ПАКЕТ ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
-                types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"))
+                types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
@@ -190,24 +194,23 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- API ЭНДПОИНТЫ ДЛЯ САЙТА ---
+# --- API ЭНДПОИНТЫ (ФИКС ГЕМИНИ) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
-    if not GOOGLE_API_KEY: return {"reply": "🤖 API ключ не настроен."}
+    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
     try:
-        # Интеграция с чатом на сайте
-        response = await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(None, lambda: model_ai.generate_content(request.message)),
-            timeout=15.0
+        # Исправленный вызов для версии v1beta
+        response = client_ai.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=request.message
         )
         return {"reply": response.text}
     except Exception as e:
         print(f"SITE AI ERROR: {e}")
-        return {"reply": "🤖 Ошибка связи с ИИ на сайте. Попробуй позже."}
+        return {"reply": f"🤖 Ошибка API: {str(e)[:50]}..."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
-    # Интеграция с кнопкой озвучки на сайте
     fid = await generate_speech_logic(request.text, request.voice, request.mode)
     return {"audio_url": f"/static/audio/{fid}"}
 
@@ -223,11 +226,6 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
-
-
-
-
-
 
 
 
