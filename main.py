@@ -5,7 +5,6 @@ import asyncio
 import ssl
 import sqlite3
 import edge_tts
-# Новый пакет
 from google import genai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
@@ -51,14 +50,11 @@ def get_all_users():
 
 init_db()
 
-# --- НАСТРОЙКА НОВОГО GEMINI AI SDK (ФИКС 404) ---
+# --- НАСТРОЙКА GEMINI AI (NEW SDK + v1beta) ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
-    # Явно указываем версию API и ключ
     client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
-else:
-    print("⚠️ API KEY NOT FOUND")
 
 # --- SSL ФИКС ---
 try:
@@ -123,47 +119,21 @@ async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
-@dp.message(Command("stats"))
-async def cmd_stats(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        await message.answer(f"📊 Пользователей: {len(get_all_users())}")
-
-@dp.message(Command("broadcast"))
-async def cmd_broadcast(message: types.Message, command: CommandObject):
-    if message.from_user.id != ADMIN_ID or not command.args: return
-    users = get_all_users()
-    for uid in users:
-        try:
-            await bot.send_message(uid, command.args)
-            await asyncio.sleep(0.05)
-        except: pass
-    await message.answer("✅ Готово")
-
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
-    
     if uid != ADMIN_ID and not await check_sub(uid):
-        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
-        return await message.answer(
-            "⚠️ **Доступ ограничен**\n\nНаш проект **полностью бесплатный**! 🎁\n"
-            "Подпишись на канал, чтобы открыть доступ к нейро-голосам.",
-            reply_markup=kb.as_markup(), parse_mode="Markdown"
-        )
+        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
+        return await message.answer("⚠️ Подпишись на канал для доступа!", reply_markup=kb.as_markup())
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
-    # ПОЛНЫЙ ПАКЕТ ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
-                types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
-    builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
-                types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
-    builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
@@ -186,28 +156,19 @@ async def select_mode(callback: types.CallbackQuery):
     status_msg = await callback.message.edit_text("⌛ Генерация...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        await callback.message.answer_audio(
-            types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
-            caption="✅ Готово! @SpeechCloneBot"
-        )
+        await callback.message.answer_audio(types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), caption="✅ Готово!")
         await status_msg.delete()
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- API ЭНДПОИНТЫ (ФИКС ГЕМИНИ) ---
+# --- ВСЕ РОУТЫ САЙТА (ВОССТАНОВЛЕНО) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
-    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
+    if not client_ai: return {"reply": "🤖 Ошибка ключа."}
     try:
-        # Исправленный вызов для версии v1beta
-        response = client_ai.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=request.message
-        )
+        response = client_ai.models.generate_content(model="gemini-1.5-flash", contents=request.message)
         return {"reply": response.text}
-    except Exception as e:
-        print(f"SITE AI ERROR: {e}")
-        return {"reply": f"🤖 Ошибка API: {str(e)[:50]}..."}
+    except Exception as e: return {"reply": f"🤖 Ошибка API: {str(e)[:50]}"}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -215,10 +176,31 @@ async def generate(request: TTSRequest):
     return {"audio_url": f"/static/audio/{fid}"}
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
+async def home(request: Request): 
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/get-audio/{f}")
-async def get_audio(f: str): return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
+async def get_audio(f: str): 
+    return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
+
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request, file: str):
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
+
+@app.get("/blog")
+async def blog_index(request: Request): 
+    return templates.TemplateResponse("blog_index.html", {"request": request})
+
+@app.get("/blog/{p}")
+async def blog_post(request: Request, p: str): 
+    return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+
+@app.get("/{p}")
+async def other_pages(request: Request, p: str):
+    try: 
+        return templates.TemplateResponse(f"{p}.html", {"request": request})
+    except: 
+        return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
 async def startup_event():
@@ -226,6 +208,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
