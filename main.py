@@ -50,17 +50,11 @@ def get_all_users():
 
 init_db()
 
-# --- НАСТРОЙКА GEMINI AI (NEW SDK + v1beta) ---
+# --- НАСТРОЙКА GEMINI AI ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
     client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
-
-# --- SSL ФИКС ---
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError: pass
-else: ssl._create_default_https_context = _create_unverified_https_context
 
 # --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
 app = FastAPI(redirect_slashes=True)
@@ -119,22 +113,49 @@ async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
+# --- ВОССТАНОВЛЕННАЯ АДМИНКА ---
+@dp.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    if message.from_user.id == ADMIN_ID:
+        users = get_all_users()
+        await message.answer(f"📊 **Статистика проекта**\n\nВсего пользователей: `{len(users)}`", parse_mode="Markdown")
+
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: types.Message, command: CommandObject):
+    if message.from_user.id != ADMIN_ID or not command.args: return
+    users = get_all_users()
+    count = 0
+    for uid in users:
+        try:
+            await bot.send_message(uid, command.args)
+            count += 1
+            await asyncio.sleep(0.05)
+        except: pass
+    await message.answer(f"✅ Рассылка завершена!\nПолучили: {count} пользователей.")
+
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
+    
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
         return await message.answer("⚠️ Подпишись на канал для доступа!", reply_markup=kb.as_markup())
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
+    # ПОЛНЫЙ ПАКЕТ ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
                 types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
-                types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
+                types.InlineKeyboardButton(text="🇺🇸 Guy", callback_data="v_en-US-GuyNeural"),
+                types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
+                types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
+                types.InlineKeyboardButton(text="🇯пония Nanami", callback_data="v_ja-JP-NanamiNeural"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
@@ -161,56 +182,48 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- ВСЕ РОУТЫ САЙТА (ВОССТАНОВЛЕНО) ---
+# --- ВСЕ РОУТЫ САЙТА ---
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
+
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     if not client_ai: return {"reply": "🤖 Ошибка ключа."}
     try:
         response = client_ai.models.generate_content(model="gemini-1.5-flash", contents=request.message)
         return {"reply": response.text}
-    except Exception as e: return {"reply": f"🤖 Ошибка API: {str(e)[:50]}"}
+    except:
+        try:
+            response = client_ai.models.generate_content(model="models/gemini-1.5-flash", contents=request.message)
+            return {"reply": response.text}
+        except Exception as e:
+            return {"reply": f"🤖 Ошибка ИИ: {str(e)[:50]}"}
 
-@app.post("/api/chat")
-async def chat_ai(request: ChatRequest):
-    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
-    try:
-        # В новом SDK модель пишется просто строкой "gemini-1.5-flash"
-        response = client_ai.models.generate_content(
-            model="gemini-1.5-flash", 
-            contents=request.message
-        )
-        return {"reply": response.text}
-    except Exception as e:
-        print(f"SITE AI ERROR: {e}")
-        # Если 404 повторяется, пробуем версию с префиксом или v1beta явно
-        return {"reply": "🤖 Ошибка связи. Попробуй еще раз!"}
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request): 
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.post("/api/generate")
+async def generate(request: TTSRequest):
+    fid = await generate_speech_logic(request.text, request.voice, request.mode)
+    return {"audio_url": f"/static/audio/{fid}"}
 
 @app.get("/get-audio/{f}")
-async def get_audio(f: str): 
-    return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
+async def get_audio(f: str): return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
 
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_page(request: Request, file: str):
     return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
 
-@app.get("/blog")
-async def blog_index(request: Request): 
-    return templates.TemplateResponse("blog_index.html", {"request": request})
+@app.get("/blog", response_class=HTMLResponse)
+async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
 
-@app.get("/blog/{p}")
-async def blog_post(request: Request, p: str): 
-    return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+@app.get("/blog/{p}", response_class=HTMLResponse)
+async def blog_post(request: Request, p: str):
+    try: return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+    except: raise HTTPException(status_code=404)
 
-@app.get("/{p}")
+@app.get("/{p}", response_class=HTMLResponse)
 async def other_pages(request: Request, p: str):
-    try: 
-        return templates.TemplateResponse(f"{p}.html", {"request": request})
-    except: 
-        return templates.TemplateResponse("index.html", {"request": request})
+    if p.endswith(".html"): p = p[:-5]
+    try: return templates.TemplateResponse(f"{p}.html", {"request": request})
+    except: return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
 async def startup_event():
@@ -218,6 +231,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
