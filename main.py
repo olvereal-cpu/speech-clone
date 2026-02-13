@@ -50,13 +50,13 @@ def get_all_users():
 
 init_db()
 
-# --- НАСТРОЙКА GEMINI AI (МОДЕЛЬ 2.5 FLASH) ---
+# --- GEMINI AI (2.5 FLASH) ---
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
     client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
 
-# --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
+# --- FastAPI ---
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -108,16 +108,11 @@ async def check_sub(user_id):
         return member.status not in ["left", "kicked"]
     except: return False
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    add_user(message.from_user.id)
-    await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
-
-# --- ВАЖНО: АДМИНКА ПЕРЕД ОБРАБОТКОЙ ТЕКСТА ---
+# 1. Сначала админка
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        await message.answer(f"📊 Всего пользователей в базе: {len(get_all_users())}")
+        await message.answer(f"📊 Всего пользователей: {len(get_all_users())}")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
@@ -130,25 +125,26 @@ async def cmd_broadcast(message: types.Message, command: CommandObject):
         except: pass
     await message.answer("✅ Рассылка завершена")
 
-# --- ОБРАБОТКА ТЕКСТА И ПОДПИСКА ---
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
+    add_user(message.from_user.id)
+    await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
+
+# 2. Обработка текста
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
     
-    # Проверка подписки с новым текстом
     if uid != ADMIN_ID and not await check_sub(uid):
-        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться на канал", url=CHANNEL_URL))
+        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
         sub_text = (
-            "⚠️ **Доступ ограничен**\n\n"
-            "Наш проект **Speech Clone** — полностью бесплатный! 🎁\n"
-            "Мы не берем оплату за генерацию, чтобы каждый мог создавать качественную озвучку.\n\n"
-            "Чтобы проект жил и развивался без рекламы и платных подписок, "
-            "нам очень важна ваша поддержка в виде подписки на наш канал.\n\n"
-            "**После подписки вам станут доступны:**\n"
-            "✅ Все 11 нейро-голосов\n"
-            "✅ Безлимитная генерация\n"
-            "✅ Самые быстрые модели (Gemini 2.5 Flash)\n\n"
+            "⚠️ **Проект Speech Clone — бесплатный!** 🎁\n\n"
+            "Мы не берем денег за озвучку, чтобы каждый мог пользоваться нейросетями.\n"
+            "Для поддержки серверов нам важна ваша подписка на канал.\n\n"
+            "**Подписка открывает:**\n"
+            "✅ 11 нейро-голосов и Gemini 2.5 Flash\n"
+            "✅ Отсутствие лимитов\n\n"
             "👇 Подпишитесь и пришлите текст снова!"
         )
         return await message.answer(sub_text, reply_markup=kb.as_markup(), parse_mode="Markdown")
@@ -187,12 +183,18 @@ async def select_mode(callback: types.CallbackQuery):
     status_msg = await callback.message.edit_text("⌛ Генерация...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        await callback.message.answer_audio(types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), caption="✅ Готово!")
+        # ВЕРНУЛ ПОДПИСЬ К АУДИО
+        caption = f"✅ **Готово!**\n\n💡 *Используйте '+' перед гласной для ударения.*"
+        await callback.message.answer_audio(
+            types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
+            caption=caption, 
+            parse_mode="Markdown"
+        )
         await status_msg.delete()
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- API ЭНДПОИНТЫ (ПРИОРИТЕТ 2.5 FLASH) ---
+# --- API (САЙТ) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     if not client_ai: return {"reply": "🤖 API ключ не настроен."}
@@ -202,14 +204,14 @@ async def chat_ai(request: ChatRequest):
             response = client_ai.models.generate_content(model=model_name, contents=request.message)
             return {"reply": response.text}
         except Exception as e:
-            print(f"Пропуск {model_name}: {e}")
             continue
-    return {"reply": "🤖 Ошибка: Модель 2.5 Flash не ответила. Проверьте ключ."}
+    return {"reply": "🤖 Ошибка: Модель 2.5 Flash не ответила."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     fid = await generate_speech_logic(request.text, request.voice, request.mode)
-    return {"audio_url": f"/static/audio/{fid}"}
+    # Возвращаем и URL, и текст для корректного отображения в окне
+    return {"audio_url": f"/static/audio/{fid}", "text": request.text}
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
