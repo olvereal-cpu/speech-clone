@@ -54,7 +54,6 @@ init_db()
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
-    # Используем v1beta, так как 2.5 точно пока в бете
     client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
 
 # --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
@@ -114,10 +113,11 @@ async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
+# --- ВАЖНО: АДМИНКА ПЕРЕД ОБРАБОТКОЙ ТЕКСТА ---
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        await message.answer(f"📊 Всего пользователей: {len(get_all_users())}")
+        await message.answer(f"📊 Всего пользователей в базе: {len(get_all_users())}")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
@@ -130,13 +130,28 @@ async def cmd_broadcast(message: types.Message, command: CommandObject):
         except: pass
     await message.answer("✅ Рассылка завершена")
 
+# --- ОБРАБОТКА ТЕКСТА И ПОДПИСКА ---
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
+    
+    # Проверка подписки с новым текстом
     if uid != ADMIN_ID and not await check_sub(uid):
-        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишись на канал для доступа!", reply_markup=kb.as_markup())
+        kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться на канал", url=CHANNEL_URL))
+        sub_text = (
+            "⚠️ **Доступ ограничен**\n\n"
+            "Наш проект **Speech Clone** — полностью бесплатный! 🎁\n"
+            "Мы не берем оплату за генерацию, чтобы каждый мог создавать качественную озвучку.\n\n"
+            "Чтобы проект жил и развивался без рекламы и платных подписок, "
+            "нам очень важна ваша поддержка в виде подписки на наш канал.\n\n"
+            "**После подписки вам станут доступны:**\n"
+            "✅ Все 11 нейро-голосов\n"
+            "✅ Безлимитная генерация\n"
+            "✅ Самые быстрые модели (Gemini 2.5 Flash)\n\n"
+            "👇 Подпишитесь и пришлите текст снова!"
+        )
+        return await message.answer(sub_text, reply_markup=kb.as_markup(), parse_mode="Markdown")
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
@@ -181,21 +196,14 @@ async def select_mode(callback: types.CallbackQuery):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     if not client_ai: return {"reply": "🤖 API ключ не настроен."}
-    
-    # Тот самый список, который "подставил" гугл
     model_variants = ["gemini-2.5-flash", "gemini-2.0-flash", "models/gemini-2.5-flash"]
-    
     for model_name in model_variants:
         try:
-            response = client_ai.models.generate_content(
-                model=model_name, 
-                contents=request.message
-            )
+            response = client_ai.models.generate_content(model=model_name, contents=request.message)
             return {"reply": response.text}
         except Exception as e:
             print(f"Пропуск {model_name}: {e}")
             continue
-            
     return {"reply": "🤖 Ошибка: Модель 2.5 Flash не ответила. Проверьте ключ."}
 
 @app.post("/api/generate")
@@ -226,6 +234,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
