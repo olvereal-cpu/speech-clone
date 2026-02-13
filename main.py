@@ -170,10 +170,20 @@ async def chat_ai(request: ChatRequest):
         return {"reply": response.text}
     except Exception as e: return {"reply": f"🤖 Ошибка API: {str(e)[:50]}"}
 
-@app.post("/api/generate")
-async def generate(request: TTSRequest):
-    fid = await generate_speech_logic(request.text, request.voice, request.mode)
-    return {"audio_url": f"/static/audio/{fid}"}
+@app.post("/api/chat")
+async def chat_ai(request: ChatRequest):
+    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
+    try:
+        # В новом SDK модель пишется просто строкой "gemini-1.5-flash"
+        response = client_ai.models.generate_content(
+            model="gemini-1.5-flash", 
+            contents=request.message
+        )
+        return {"reply": response.text}
+    except Exception as e:
+        print(f"SITE AI ERROR: {e}")
+        # Если 404 повторяется, пробуем версию с префиксом или v1beta явно
+        return {"reply": "🤖 Ошибка связи. Попробуй еще раз!"}
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): 
@@ -208,6 +218,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
