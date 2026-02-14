@@ -23,7 +23,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
 
 # КЛЮЧ GEMINI
-GOOGLE_API_KEY = os.getenv("GEMINI_KEY") or "ТВОЙ_КЛЮЧ_GEMINI_ЗДЕСЬ"
+GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 
 # --- БАЗА ДАННЫХ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -53,13 +53,17 @@ def get_all_users():
 
 init_db()
 
-# --- GEMINI AI (2.5 FLASH) ---
+# --- GEMINI AI ИНИЦИАЛИЗАЦИЯ ---
 client_ai = None
-if GOOGLE_API_KEY and GOOGLE_API_KEY != "ТВОЙ_КЛЮЧ_GEMINI_ЗДЕСЬ":
-    try:
-        client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
-    except Exception as e:
-        print(f"Ошибка инициализации Gemini: {e}")
+def get_ai():
+    global client_ai
+    api_key = os.getenv("GEMINI_KEY")
+    if api_key and not client_ai:
+        try:
+            client_ai = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
+        except Exception as e:
+            print(f"Ошибка Gemini: {e}")
+    return client_ai
 
 # --- FastAPI ---
 app = FastAPI(redirect_slashes=True)
@@ -143,10 +147,9 @@ async def handle_text(message: types.Message):
         kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
         sub_text = (
             "⚠️ **Проект Speech Clone — бесплатный!** 🎁\n\n"
-            "Мы не берем денег за озвучку, чтобы каждый мог пользоваться нейросетями.\n"
             "Для поддержки серверов нам важна ваша подписка на канал.\n\n"
             "**Подписка открывает:**\n"
-            "✅ 11 нейро-голосов и Gemini 2.5 Flash\n"
+            "✅ 11 нейро-голосов и Gemini 2.0 Flash\n"
             "✅ Отсутствие лимитов\n\n"
             "👇 Подпишитесь и пришлите текст снова!"
         )
@@ -154,6 +157,7 @@ async def handle_text(message: types.Message):
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
+    # ВОЗВРАЩАЕМ ПОЛНЫЙ СПИСОК ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
@@ -165,7 +169,8 @@ async def handle_text(message: types.Message):
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
-    # СВЯЗЬ С АДМИНОМ И ДОНАТ
+    
+    # СВЯЗЬ И ДОНАТ
     builder.row(types.InlineKeyboardButton(text="🆘 Связь с админом", url="https://t.me/speechclone_admin"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
     
@@ -189,119 +194,70 @@ async def select_mode(callback: types.CallbackQuery):
     status_msg = await callback.message.edit_text("⌛ Генерация...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        caption = f"✅ **Готово!**\n\nМожешь присылать новый текст для озвучки прямо сейчас!"
+        caption = f"✅ **Готово!**\n\nМожешь присылать новый текст прямо сейчас!"
         await callback.message.answer_audio(
             types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
-            caption=caption, 
-            parse_mode="Markdown"
+            caption=caption, parse_mode="Markdown"
         )
         await status_msg.delete()
-        # Автосброс: удаляем старый текст, чтобы бот ждал новый ввод
-        user_data.pop(uid, None)
+        user_data.pop(uid, None) # Чистим данные для нового круга
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
-# --- API (ЧАТ - СТРОГО 2.5/2.0) ---
+
+# --- API (ЧАТ - СТРОГО 2.0 FLASH) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     ai = get_ai()
-    if not ai:
-        return {"reply": "🤖 Ошибка: Ключ GEMINI_KEY не найден."}
-    
-    # Пытаемся вызвать конкретно 2.0-flash (это и есть текущий 2.5 в API)
+    if not ai: return {"reply": "🤖 Ошибка: Проверь GEMINI_KEY."}
     try:
-        response = ai.models.generate_content(
-            model="gemini-2.0-flash", 
-            contents=request.message
-        )
-        if response and response.text:
-            return {"reply": response.text}
+        response = ai.models.generate_content(model="gemini-2.0-flash", contents=request.message)
+        if response.text: return {"reply": response.text}
     except Exception as e:
-        return {"reply": f"🤖 Ошибка API: {str(e)}"}
-    
+        return {"reply": f"🤖 Ошибка API: {str(e)[:100]}"}
     return {"reply": "🤖 Модель не ответила."}
-
-# --- API (САЙТ) ---
-@app.post("/api/chat")
-async def chat_ai(request: ChatRequest):
-    global client_ai
-    
-    # Попытка подгрузить ключ, если его нет
-    if not client_ai:
-        api_key = os.getenv("GEMINI_KEY")
-        if api_key:
-            client_ai = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
-        else:
-            return {"reply": "🤖 Ошибка: Ключ GEMINI_KEY не найден в настройках сервера."}
-    
-    # Список моделей
-    model_variants = ["gemini-2.0-flash", "gemini-1.5-flash"]
-    last_error = ""
-    
-    for model_name in model_variants:
-        try:
-            response = client_ai.models.generate_content(model=model_name, contents=request.message)
-            if response and response.text:
-                return {"reply": response.text}
-        except Exception as e:
-            last_error = str(e)
-            continue
-            
-    return {"reply": f"🤖 Ошибка API: {last_error[:100]}..."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     fid = await generate_speech_logic(request.text, request.voice, request.mode)
     return {"audio_url": f"/static/audio/{fid}", "text": request.text}
 
-# --- СТРАНИЦЫ САЙТА ---
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request): 
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/blog", response_class=HTMLResponse)
-async def blog_index(request: Request): 
-    return templates.TemplateResponse("blog_index.html", {"request": request})
-
-@app.get("/blog/{p}", response_class=HTMLResponse)
-async def blog_post(request: Request, p: str):
-    if p.endswith(".html"): p = p[:-5]
-    try: 
-        return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
-    except: 
-        raise HTTPException(status_code=404, detail="Статья не найдена")
-
-@app.get("/download-page", response_class=HTMLResponse)
-async def download_page(request: Request):
-    file_name = request.query_params.get('file')
-    if not file_name:
-        raise HTTPException(status_code=404, detail="Файл не указан")
-    return templates.TemplateResponse("download.html", {"request": request, "file_name": file_name})
-
-@app.get("/{p}", response_class=HTMLResponse)
-async def other_pages(request: Request, p: str):
-    if p in ["static", "api", "templates"]:
-         raise HTTPException(status_code=403)
-    if p.endswith(".html"): p = p[:-5]
-    try: 
-        return templates.TemplateResponse(f"{p}.html", {"request": request})
-    except: 
-        return templates.TemplateResponse("index.html", {"request": request})
-# --- SEO ФАЙЛЫ (SITEMAP И ROBOTS) ---
+# --- SEO ---
 @app.get("/robots.txt")
 async def get_robots():
-# Ищем robots.txt в корне или в static
-    paths = [os.path.join(BASE_DIR, "robots.txt"), os.path.join(BASE_DIR, "static/robots.txt")]
-    for p in paths:
-        if os.path.exists(p): return FileResponse(p)
+    p = os.path.join(BASE_DIR, "robots.txt")
+    if os.path.exists(p): return FileResponse(p)
     return Response(content="User-agent: *\nAllow: /", media_type="text/plain")
 
 @app.get("/sitemap.xml")
 async def get_sitemap():
-# Ищем sitemap.xml в корне или в static
-    paths = [os.path.join(BASE_DIR, "sitemap.xml"), os.path.join(BASE_DIR, "static/sitemap.xml")]
-    for p in paths:
-        if os.path.exists(p): return FileResponse(p, media_type="application/xml")
-    raise HTTPException(status_code=404, detail="Sitemap not found")
+    p = os.path.join(BASE_DIR, "sitemap.xml")
+    if os.path.exists(p): return FileResponse(p, media_type="application/xml")
+    raise HTTPException(status_code=404)
+
+# --- СТРАНИЦЫ ---
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/blog", response_class=HTMLResponse)
+async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
+
+@app.get("/blog/{p}", response_class=HTMLResponse)
+async def blog_post(request: Request, p: str):
+    if p.endswith(".html"): p = p[:-5]
+    try: return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+    except: raise HTTPException(status_code=404)
+
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request):
+    file_name = request.query_params.get('file')
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file_name})
+
+@app.get("/{p}", response_class=HTMLResponse)
+async def other_pages(request: Request, p: str):
+    if p in ["static", "api", "templates", "robots.txt", "sitemap.xml"]: return
+    if p.endswith(".html"): p = p[:-5]
+    try: return templates.TemplateResponse(f"{p}.html", {"request": request})
+    except: return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
 async def startup_event():
