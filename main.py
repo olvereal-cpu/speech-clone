@@ -200,6 +200,25 @@ async def select_mode(callback: types.CallbackQuery):
         user_data.pop(uid, None)
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
+# --- API (ЧАТ - СТРОГО 2.5/2.0) ---
+@app.post("/api/chat")
+async def chat_ai(request: ChatRequest):
+    ai = get_ai()
+    if not ai:
+        return {"reply": "🤖 Ошибка: Ключ GEMINI_KEY не найден."}
+    
+    # Пытаемся вызвать конкретно 2.0-flash (это и есть текущий 2.5 в API)
+    try:
+        response = ai.models.generate_content(
+            model="gemini-2.0-flash", 
+            contents=request.message
+        )
+        if response and response.text:
+            return {"reply": response.text}
+    except Exception as e:
+        return {"reply": f"🤖 Ошибка API: {str(e)}"}
+    
+    return {"reply": "🤖 Модель не ответила."}
 
 # --- API (САЙТ) ---
 @app.post("/api/chat")
@@ -290,6 +309,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
