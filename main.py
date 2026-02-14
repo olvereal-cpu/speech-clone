@@ -227,9 +227,16 @@ async def blog_post(request: Request, p: str):
     except: 
         raise HTTPException(status_code=404, detail="Статья не найдена")
 
+# РОУТ ДЛЯ СТРАНИЦЫ ЗАГРУЗКИ
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request):
+    file_name = request.query_params.get('file')
+    if not file_name:
+        raise HTTPException(status_code=404, detail="Файл не указан")
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file_name})
+
 @app.get("/{p}", response_class=HTMLResponse)
 async def other_pages(request: Request, p: str):
-    # Защита от попыток открыть системные папки через URL
     if p in ["static", "api", "templates"]:
          raise HTTPException(status_code=403)
     if p.endswith(".html"): p = p[:-5]
