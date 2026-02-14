@@ -267,6 +267,22 @@ async def other_pages(request: Request, p: str):
         return templates.TemplateResponse(f"{p}.html", {"request": request})
     except: 
         return templates.TemplateResponse("index.html", {"request": request})
+# --- SEO ФАЙЛЫ (SITEMAP И ROBOTS) ---
+@app.get("/robots.txt")
+async def get_robots():
+# Ищем robots.txt в корне или в static
+    paths = [os.path.join(BASE_DIR, "robots.txt"), os.path.join(BASE_DIR, "static/robots.txt")]
+    for p in paths:
+        if os.path.exists(p): return FileResponse(p)
+    return Response(content="User-agent: *\nAllow: /", media_type="text/plain")
+
+@app.get("/sitemap.xml")
+async def get_sitemap():
+# Ищем sitemap.xml в корне или в static
+    paths = [os.path.join(BASE_DIR, "sitemap.xml"), os.path.join(BASE_DIR, "static/sitemap.xml")]
+    for p in paths:
+        if os.path.exists(p): return FileResponse(p, media_type="application/xml")
+    raise HTTPException(status_code=404, detail="Sitemap not found")
 
 @app.on_event("startup")
 async def startup_event():
@@ -274,6 +290,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
