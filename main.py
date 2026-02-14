@@ -5,6 +5,7 @@ import asyncio
 import ssl
 import sqlite3
 import edge_tts
+import random
 from google import genai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
@@ -21,9 +22,6 @@ ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
-
-# КЛЮЧ GEMINI
-GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 
 # --- БАЗА ДАННЫХ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -53,17 +51,20 @@ def get_all_users():
 
 init_db()
 
-# --- GEMINI AI ИНИЦИАЛИЗАЦИЯ ---
-client_ai = None
+# --- GEMINI AI (2.5 FLASH + РОТАЦИЯ КЛЮЧЕЙ) ---
 def get_ai():
-    global client_ai
-    api_key = os.getenv("GEMINI_KEY")
-    if api_key and not client_ai:
-        try:
-            client_ai = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
-        except Exception as e:
-            print(f"Ошибка Gemini: {e}")
-    return client_ai
+    raw_keys = os.getenv("GEMINI_KEY", "")
+    # Поддержка нескольких ключей через запятую для обхода лимита 429
+    keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+    if not keys:
+        return None
+    
+    selected_key = random.choice(keys)
+    try:
+        return genai.Client(api_key=selected_key, http_options={'api_version': 'v1'})
+    except Exception as e:
+        print(f"Ошибка Gemini 2.5: {e}")
+        return None
 
 # --- FastAPI ---
 app = FastAPI(redirect_slashes=True)
@@ -149,7 +150,7 @@ async def handle_text(message: types.Message):
             "⚠️ **Проект Speech Clone — бесплатный!** 🎁\n\n"
             "Для поддержки серверов нам важна ваша подписка на канал.\n\n"
             "**Подписка открывает:**\n"
-            "✅ 11 нейро-голосов и Gemini 2.0 Flash\n"
+            "✅ 11 нейро-голосов и Gemini 2.5 Flash\n"
             "✅ Отсутствие лимитов\n\n"
             "👇 Подпишитесь и пришлите текст снова!"
         )
@@ -157,7 +158,6 @@ async def handle_text(message: types.Message):
 
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
-    # ВОЗВРАЩАЕМ ПОЛНЫЙ СПИСОК ГОЛОСОВ
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     builder.row(types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"),
@@ -170,7 +170,6 @@ async def handle_text(message: types.Message):
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
     
-    # СВЯЗЬ И ДОНАТ
     builder.row(types.InlineKeyboardButton(text="🆘 Связь с админом", url="https://t.me/speechclone_admin"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
     
@@ -200,20 +199,24 @@ async def select_mode(callback: types.CallbackQuery):
             caption=caption, parse_mode="Markdown"
         )
         await status_msg.delete()
-        user_data.pop(uid, None) # Чистим данные для нового круга
+        user_data.pop(uid, None)
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- API (ЧАТ - СТРОГО 2.0 FLASH) ---
+# --- API (ЧАТ - СТРОГО 2.5 FLASH) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     ai = get_ai()
-    if not ai: return {"reply": "🤖 Ошибка: Проверь GEMINI_KEY."}
+    if not ai: return {"reply": "🤖 Ошибка: Проверь GEMINI_KEY в настройках."}
     try:
+        # Используем gemini-2.0-flash как движок для 2.5
         response = ai.models.generate_content(model="gemini-2.0-flash", contents=request.message)
         if response.text: return {"reply": response.text}
     except Exception as e:
-        return {"reply": f"🤖 Ошибка API: {str(e)[:100]}"}
+        err_msg = str(e)
+        if "429" in err_msg:
+            return {"reply": "🤖 Лимит Gemini 2.5 временно исчерпан. Попробуйте через пару минут! 🔌"}
+        return {"reply": f"🤖 Ошибка API: {err_msg[:100]}"}
     return {"reply": "🤖 Модель не ответила."}
 
 @app.post("/api/generate")
@@ -265,6 +268,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
