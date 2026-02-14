@@ -60,7 +60,8 @@ if GOOGLE_API_KEY:
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-for path in ["static", "static/audio", "static/images/blog"]:
+# Создаем структуру папок для работы сайта
+for path in ["static", "static/audio", "static/images/blog", "templates/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -108,7 +109,6 @@ async def check_sub(user_id):
         return member.status not in ["left", "kicked"]
     except: return False
 
-# 1. Сначала админка
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
@@ -130,7 +130,6 @@ async def cmd_start(message: types.Message):
     add_user(message.from_user.id)
     await message.answer("👋 Привет! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
-# 2. Обработка текста
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
@@ -183,7 +182,6 @@ async def select_mode(callback: types.CallbackQuery):
     status_msg = await callback.message.edit_text("⌛ Генерация...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        # ВЕРНУЛ ПОДПИСЬ К АУДИО
         caption = f"✅ **Готово!**\n\n💡 *Используйте '+' перед гласной для ударения.*"
         await callback.message.answer_audio(
             types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
@@ -198,37 +196,47 @@ async def select_mode(callback: types.CallbackQuery):
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     if not client_ai: return {"reply": "🤖 API ключ не настроен."}
-    model_variants = ["gemini-2.5-flash", "gemini-2.0-flash", "models/gemini-2.5-flash"]
+    model_variants = ["gemini-2.0-flash", "gemini-1.5-flash"]
     for model_name in model_variants:
         try:
             response = client_ai.models.generate_content(model=model_name, contents=request.message)
             return {"reply": response.text}
-        except Exception as e:
+        except:
             continue
-    return {"reply": "🤖 Ошибка: Модель 2.5 Flash не ответила."}
+    return {"reply": "🤖 Ошибка: Нейросеть временно недоступна."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     fid = await generate_speech_logic(request.text, request.voice, request.mode)
-    # Возвращаем и URL, и текст для корректного отображения в окне
     return {"audio_url": f"/static/audio/{fid}", "text": request.text}
 
+# --- СТРАНИЦЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
+async def home(request: Request): 
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/blog", response_class=HTMLResponse)
-async def blog_index(request: Request): return templates.TemplateResponse("blog_index.html", {"request": request})
+async def blog_index(request: Request): 
+    return templates.TemplateResponse("blog_index.html", {"request": request})
 
 @app.get("/blog/{p}", response_class=HTMLResponse)
 async def blog_post(request: Request, p: str):
-    try: return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
-    except: raise HTTPException(status_code=404)
+    if p.endswith(".html"): p = p[:-5]
+    try: 
+        return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+    except: 
+        raise HTTPException(status_code=404, detail="Статья не найдена")
 
 @app.get("/{p}", response_class=HTMLResponse)
 async def other_pages(request: Request, p: str):
+    # Защита от попыток открыть системные папки через URL
+    if p in ["static", "api", "templates"]:
+         raise HTTPException(status_code=403)
     if p.endswith(".html"): p = p[:-5]
-    try: return templates.TemplateResponse(f"{p}.html", {"request": request})
-    except: return templates.TemplateResponse("index.html", {"request": request})
+    try: 
+        return templates.TemplateResponse(f"{p}.html", {"request": request})
+    except: 
+        return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
 async def startup_event():
@@ -236,6 +244,7 @@ async def startup_event():
         os.environ["BOT_RUNNING"] = "true"
         await bot.delete_webhook(drop_pending_updates=True)
         asyncio.create_task(dp.start_polling(bot))
+
 
 
 
