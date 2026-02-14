@@ -91,6 +91,24 @@
         </div>
     </section>
 
+    <section class="mt-20">
+        <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter mb-10 italic text-center">SpeechClone AI — Будущее синтеза речи</h2>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm">
+                <h3 class="text-xl font-bold mb-4 text-blue-600">Натуральные голоса</h3>
+                <p class="text-gray-500 leading-relaxed italic">Наш сервис использует продвинутые нейронные сети для преобразования текста в речь (TTS). В отличие от старых систем, наши голоса передают эмоции, умеют делать паузы и правильно расставлять акценты в предложениях.</p>
+            </div>
+            <div class="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm">
+                <h3 class="text-xl font-bold mb-4 text-purple-600">Для кого этот сервис?</h3>
+                <ul class="text-gray-500 space-y-2">
+                    <li>• <b>Блогеры:</b> озвучка видео для YouTube, Shorts и TikTok.</li>
+                    <li>• <b>Студенты:</b> перевод учебных текстов в аудиоформат.</li>
+                    <li>• <b>Бизнес:</b> создание голосовых меню и презентаций.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
     <section class="mt-20 px-4">
         <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 italic">Популярные вопросы</h2>
         <div class="grid gap-4">
@@ -116,6 +134,34 @@
                     После генерации нажмите кнопку "Скачать файл". Система перенаправит вас на страницу загрузки, где через 30 секунд ожидания вы получите прямую ссылку на MP3.
                 </p>
             </details>
+            
+            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all">
+                <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
+                    Какие языки поддерживаются?
+                    <span class="transition group-open:rotate-180">▼</span>
+                </summary>
+                <p class="px-6 pb-6 text-gray-500 text-sm leading-relaxed">
+                    На данный момент SpeechClone поддерживает русский, украинский, казахский, английский (US/UK), немецкий, французский, китайский и японский языки. Мы постоянно добавляем новые нейронные модели.
+                </p>
+            </details>
+        </div>
+    </section>
+
+    <section class="mt-20 px-4">
+        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 italic">Полезные статьи</h2>
+        <div class="grid md:grid-cols-3 gap-6">
+            <a href="/blog" class="bg-gray-50 p-6 rounded-[30px] hover:bg-blue-50 transition-all border border-gray-100">
+                <h4 class="font-bold text-sm mb-2">Как создать идеальную озвучку?</h4>
+                <p class="text-[10px] text-gray-400 uppercase font-black">Читать статью →</p>
+            </a>
+            <a href="/blog" class="bg-gray-50 p-6 rounded-[30px] hover:bg-blue-50 transition-all border border-gray-100">
+                <h4 class="font-bold text-sm mb-2">Использование ИИ в подкастах</h4>
+                <p class="text-[10px] text-gray-400 uppercase font-black">Читать статью →</p>
+            </a>
+            <a href="/blog" class="bg-gray-50 p-6 rounded-[30px] hover:bg-blue-50 transition-all border border-gray-100">
+                <h4 class="font-bold text-sm mb-2">Обзор голосов SpeechClone</h4>
+                <p class="text-[10px] text-gray-400 uppercase font-black">Читать статью →</p>
+            </a>
         </div>
     </section>
 
@@ -128,11 +174,11 @@
                         <span>PayPal</span>
                         <span class="opacity-60 font-normal italic">Global</span>
                     </a>
-                    <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" class="bg-[#8b3ffd] px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                    <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" class="bg-[#8b3ffd] px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2 text-white">
                         <span>ЮMoney</span>
                         <span class="opacity-90 font-normal italic">РФ 🇷🇺</span>
                     </a>
-                    <a href="https://kaspi.kz/pay/ТУТ_ID" class="bg-red-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                    <a href="https://kaspi.kz/pay/ТУТ_ID" class="bg-red-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2 text-white">
                         <span>Kaspi</span>
                         <span class="opacity-90 font-normal italic">KZ 🇰🇿</span>
                     </a>
@@ -180,7 +226,6 @@ function copyToVoice(text) {
     const textInput = document.getElementById('text');
     if (textInput) {
         textInput.value = text;
-        // Обновляем счетчик при копировании текста из чата
         const charCount = document.getElementById('charCount');
         if (charCount) charCount.innerText = `${text.length} / 2000`;
         
@@ -265,7 +310,6 @@ async function handleChat() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ЛОГИКА СЧЕТЧИКА СИМВОЛОВ
     const textInput = document.getElementById('text');
     const charCount = document.getElementById('charCount');
 
@@ -273,13 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
         textInput.addEventListener('input', () => {
             const length = textInput.value.length;
             charCount.innerText = `${length} / 2000`;
-            
             if (length >= 1900) {
-                charCount.classList.remove('text-gray-400');
-                charCount.classList.add('text-red-500');
+                charCount.classList.replace('text-gray-400', 'text-red-500');
             } else {
-                charCount.classList.remove('text-red-500');
-                charCount.classList.add('text-gray-400');
+                charCount.classList.replace('text-red-500', 'text-gray-400');
             }
         });
     }
@@ -340,6 +381,7 @@ async function generateAudio() {
 }
 </script>
 {% endblock %}
+
 
 
 
