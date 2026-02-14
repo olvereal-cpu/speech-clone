@@ -21,6 +21,8 @@ ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
+# СЮДА Я ДОБАВИЛ ТВОЙ КЛЮЧ (Вставь его вместо кавычек, если os.getenv не работает)
+GOOGLE_API_KEY = os.getenv("GEMINI_KEY") or "ТВОЙ_КЛЮЧ_GEMINI_ЗДЕСЬ"
 
 # --- БАЗА ДАННЫХ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,10 +53,12 @@ def get_all_users():
 init_db()
 
 # --- GEMINI AI (2.5 FLASH) ---
-GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 client_ai = None
 if GOOGLE_API_KEY:
-    client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
+    try:
+        client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
+    except Exception as e:
+        print(f"Ошибка инициализации Gemini: {e}")
 
 # --- FastAPI ---
 app = FastAPI(redirect_slashes=True)
@@ -195,15 +199,24 @@ async def select_mode(callback: types.CallbackQuery):
 # --- API (САЙТ) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
-    if not client_ai: return {"reply": "🤖 API ключ не настроен."}
+    # Если ключ не подгрузился, пробуем инициализировать еще раз
+    global client_ai
+    if not client_ai:
+        return {"reply": "🤖 Бро, API ключ Gemini не найден. Проверь настройки сервера!"}
+    
+    # Список моделей (flash 2.0 сейчас в приоритете)
     model_variants = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    
     for model_name in model_variants:
         try:
             response = client_ai.models.generate_content(model=model_name, contents=request.message)
-            return {"reply": response.text}
-        except:
+            if response and response.text:
+                return {"reply": response.text}
+        except Exception as e:
+            print(f"Ошибка модели {model_name}: {e}")
             continue
-    return {"reply": "🤖 Ошибка: Нейросеть временно недоступна."}
+            
+    return {"reply": "🤖 Упс! Все модели Gemini сейчас заняты. Попробуй через минуту."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
