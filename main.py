@@ -21,7 +21,8 @@ ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
-# СЮДА Я ДОБАВИЛ ТВОЙ КЛЮЧ (Вставь его вместо кавычек, если os.getenv не работает)
+
+# КЛЮЧ GEMINI
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY") or "ТВОЙ_КЛЮЧ_GEMINI_ЗДЕСЬ"
 
 # --- БАЗА ДАННЫХ ---
@@ -54,7 +55,7 @@ init_db()
 
 # --- GEMINI AI (2.5 FLASH) ---
 client_ai = None
-if GOOGLE_API_KEY:
+if GOOGLE_API_KEY and GOOGLE_API_KEY != "ТВОЙ_КЛЮЧ_GEMINI_ЗДЕСЬ":
     try:
         client_ai = genai.Client(api_key=GOOGLE_API_KEY, http_options={'api_version': 'v1beta'})
     except Exception as e:
@@ -64,7 +65,6 @@ if GOOGLE_API_KEY:
 app = FastAPI(redirect_slashes=True)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Создаем структуру папок для работы сайта
 for path in ["static", "static/audio", "static/images/blog", "templates/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -165,7 +165,10 @@ async def handle_text(message: types.Message):
                 types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
     builder.row(types.InlineKeyboardButton(text="🇨🇳 Yunxi", callback_data="v_zh-CN-YunxiNeural"),
                 types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
+    # СВЯЗЬ С АДМИНОМ И ДОНАТ
+    builder.row(types.InlineKeyboardButton(text="🆘 Связь с админом", url="https://t.me/speechclone_admin"))
     builder.row(types.InlineKeyboardButton(text="Поддержать ⭐️", callback_data="donate_menu"))
+    
     await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
@@ -186,26 +189,34 @@ async def select_mode(callback: types.CallbackQuery):
     status_msg = await callback.message.edit_text("⌛ Генерация...")
     try:
         fid = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
-        caption = f"✅ **Готово!**\n\n💡 *Используйте '+' перед гласной для ударения.*"
+        caption = f"✅ **Готово!**\n\nМожешь присылать новый текст для озвучки прямо сейчас!"
         await callback.message.answer_audio(
             types.FSInputFile(os.path.join(BASE_DIR, "static/audio", fid)), 
             caption=caption, 
             parse_mode="Markdown"
         )
         await status_msg.delete()
+        # Автосброс: удаляем старый текст, чтобы бот ждал новый ввод
+        user_data.pop(uid, None)
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
 # --- API (САЙТ) ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
-    # Если ключ не подгрузился, пробуем инициализировать еще раз
     global client_ai
-    if not client_ai:
-        return {"reply": "🤖 Бро, API ключ Gemini не найден. Проверь настройки сервера!"}
     
-    # Список моделей (flash 2.0 сейчас в приоритете)
+    # Попытка подгрузить ключ, если его нет
+    if not client_ai:
+        api_key = os.getenv("GEMINI_KEY")
+        if api_key:
+            client_ai = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
+        else:
+            return {"reply": "🤖 Ошибка: Ключ GEMINI_KEY не найден в настройках сервера."}
+    
+    # Список моделей
     model_variants = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    last_error = ""
     
     for model_name in model_variants:
         try:
@@ -213,10 +224,10 @@ async def chat_ai(request: ChatRequest):
             if response and response.text:
                 return {"reply": response.text}
         except Exception as e:
-            print(f"Ошибка модели {model_name}: {e}")
+            last_error = str(e)
             continue
             
-    return {"reply": "🤖 Упс! Все модели Gemini сейчас заняты. Попробуй через минуту."}
+    return {"reply": f"🤖 Ошибка API: {last_error[:100]}..."}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -240,7 +251,6 @@ async def blog_post(request: Request, p: str):
     except: 
         raise HTTPException(status_code=404, detail="Статья не найдена")
 
-# РОУТ ДЛЯ СТРАНИЦЫ ЗАГРУЗКИ
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_page(request: Request):
     file_name = request.query_params.get('file')
