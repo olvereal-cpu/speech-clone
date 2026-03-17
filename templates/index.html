@@ -2,39 +2,37 @@
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
     <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50">
-        <textarea id="text" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none text-lg resize-none transition-all font-medium" placeholder="Введите ваш текст..."></textarea>
+        <textarea id="text" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none text-lg resize-none font-medium" placeholder="Введите текст..."></textarea>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <select id="voiceSelect" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-gray-700">
-                <option value="ru-RU-DmitryNeural">Дмитрий (Мужской)</option>
-                <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
+            <select id="voiceSelect" class="w-full p-5 bg-gray-50 border rounded-2xl outline-none font-bold text-gray-700">
+                <option value="ru-RU-DmitryNeural">Русский — Дмитрий</option>
+                <option value="ru-RU-SvetlanaNeural">Русский — Светлана</option>
             </select>
-            <button onclick="generateAudio()" id="genBtn" class="w-full h-[62px] bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-black transition-all uppercase tracking-widest">
-                Озвучить текст
-            </button>
+            <div class="grid grid-cols-3 gap-2">
+                <label class="cursor-pointer"><input type="radio" name="mode" value="natural" class="peer hidden" checked><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Normal</div></label>
+                <label class="cursor-pointer"><input type="radio" name="mode" value="slow" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Slow</div></label>
+                <label class="cursor-pointer"><input type="radio" name="mode" value="fast" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Fast</div></label>
+            </div>
         </div>
 
-        <div id="resultSection" class="mt-12 hidden p-8 bg-blue-50 rounded-[40px] border border-blue-100">
-            <div class="flex flex-col items-center">
-                <audio id="audioPlayer" controls class="w-full mb-8"></audio>
-                <button id="downloadBtn" class="w-full md:w-auto px-16 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black shadow-2xl transition-all uppercase tracking-widest text-sm">
-                    Скачать результат
-                </button>
-            </div>
+        <button onclick="generateAudio()" id="mainBtn" class="w-full mt-8 py-6 bg-blue-600 text-white rounded-[25px] font-black uppercase tracking-widest hover:bg-black transition-all">Озвучить</button>
+
+        <div id="resultSection" class="hidden mt-10 p-8 bg-blue-50 rounded-[40px] border border-blue-100 text-center">
+            <audio id="audioPlayer" controls class="w-full mb-8"></audio>
+            <button id="downloadBtn" class="px-12 py-5 bg-green-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">Скачать файл →</button>
         </div>
     </section>
 </main>
 
 <script>
 async function generateAudio() {
-    const btn = document.getElementById('genBtn');
-    const textInput = document.getElementById('text');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const resultSection = document.getElementById('resultSection');
-    const audioPlayer = document.getElementById('audioPlayer');
-    const downloadBtn = document.getElementById('downloadBtn');
+    const btn = document.getElementById('mainBtn');
+    const text = document.getElementById('text').value;
+    const voice = document.getElementById('voiceSelect').value;
+    const mode = document.querySelector('input[name="mode"]:checked').value;
 
-    if(!textInput.value.trim()) return alert("Введите текст");
+    if(!text.trim()) return alert("Введите текст");
 
     btn.disabled = true;
     btn.innerText = "Генерируем...";
@@ -43,22 +41,17 @@ async function generateAudio() {
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: textInput.value, voice: voiceSelect.value })
+            body: JSON.stringify({ text: text, voice: voice, mode: mode })
         });
         const data = await response.json();
         if(data.audio_url) {
-            audioPlayer.src = data.audio_url;
-            resultSection.classList.remove('hidden');
+            document.getElementById('audioPlayer').src = data.audio_url;
+            document.getElementById('resultSection').classList.remove('hidden');
             const fileName = data.audio_url.split('/').pop();
-            // Исправленная ссылка на скачивание
-            downloadBtn.onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
+            document.getElementById('downloadBtn').onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
         }
-    } catch (e) {
-        alert("Ошибка API");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Озвучить текст";
-    }
+    } catch (e) { alert("Ошибка сервера"); }
+    finally { btn.disabled = false; btn.innerText = "Озвучить"; }
 }
 </script>
 {% endblock %}
