@@ -6,42 +6,40 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <select id="voiceSelect" class="w-full p-5 bg-gray-50 border rounded-2xl outline-none font-bold text-gray-700">
-                <option value="ru-RU-DmitryNeural">Русский — Дмитрий</option>
-                <option value="ru-RU-SvetlanaNeural">Русский — Светлана</option>
+                <option value="ru-RU-DmitryNeural">Дмитрий (Мужской)</option>
+                <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
             </select>
-            <div class="grid grid-cols-3 gap-2">
-                <label class="cursor-pointer"><input type="radio" name="mode" value="natural" class="peer hidden" checked><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Normal</div></label>
-                <label class="cursor-pointer"><input type="radio" name="mode" value="slow" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Slow</div></label>
-                <label class="cursor-pointer"><input type="radio" name="mode" value="fast" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 p-3 rounded-xl text-center text-[10px] font-black uppercase">Fast</div></label>
-            </div>
+            <select id="modeSelect" class="w-full p-5 bg-gray-50 border rounded-2xl outline-none font-bold text-gray-700">
+                <option value="natural">Обычный темп</option>
+                <option value="slow">Медленно</option>
+                <option value="fast">Быстро</option>
+            </select>
         </div>
 
-        <button onclick="generateAudio()" id="mainBtn" class="w-full mt-8 py-6 bg-blue-600 text-white rounded-[25px] font-black uppercase tracking-widest hover:bg-black transition-all">Озвучить</button>
+        <button onclick="generateAudio()" id="genBtn" class="w-full mt-8 h-[62px] bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all">Озвучить</button>
 
-        <div id="resultSection" class="hidden mt-10 p-8 bg-blue-50 rounded-[40px] border border-blue-100 text-center">
+        <div id="resultSection" class="mt-12 hidden p-8 bg-blue-50 rounded-[40px] border border-blue-100 text-center">
             <audio id="audioPlayer" controls class="w-full mb-8"></audio>
-            <button id="downloadBtn" class="px-12 py-5 bg-green-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">Скачать файл →</button>
+            <button id="downloadBtn" class="px-16 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all uppercase tracking-widest text-sm">Скачать MP3</button>
         </div>
     </section>
 </main>
 
 <script>
 async function generateAudio() {
-    const btn = document.getElementById('mainBtn');
+    const btn = document.getElementById('genBtn');
     const text = document.getElementById('text').value;
     const voice = document.getElementById('voiceSelect').value;
-    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const mode = document.getElementById('modeSelect').value;
 
     if(!text.trim()) return alert("Введите текст");
-
-    btn.disabled = true;
-    btn.innerText = "Генерируем...";
+    btn.disabled = true; btn.innerText = "Генерируем...";
 
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, voice: voice, mode: mode })
+            body: JSON.stringify({ text, voice, mode })
         });
         const data = await response.json();
         if(data.audio_url) {
