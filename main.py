@@ -10,7 +10,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (
@@ -18,22 +17,28 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, PreCheckoutQuery
 )
 
-# Настройка логов для Open Source мониторинга
+# Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- КОНФИГУРАЦИЯ (Используй переменные окружения для безопасности) ---
-ADMIN_ID = int(os.environ.get("ADMIN_ID", 430747895))
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw")
+# --- КОНФИГУРАЦИЯ ---
+ADMIN_ID = 430747895  
+BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "AIzaSyAZ71DeMfVZf9w6-mUWH7WO0oxG8kgA1MA")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-# --- БАЗА ДАННЫХ ---
+# --- ОБНОВЛЕННАЯ БАЗА ДАННЫХ ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural", stars INTEGER DEFAULT 0)')
+    # Таблица пользователей с поддержкой баланса Звёзд (stars)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users 
+                      (user_id INTEGER PRIMARY KEY, 
+                       voice TEXT DEFAULT "ru-RU-DmitryNeural", 
+                       stars INTEGER DEFAULT 0,
+                       is_vip INTEGER DEFAULT 0)''')
+    # Таблица каналов для обязательной подписки
     cursor.execute('CREATE TABLE IF NOT EXISTS channels (chat_id TEXT PRIMARY KEY, link TEXT)')
     conn.commit()
     conn.close()
@@ -47,14 +52,11 @@ def db_query(query, params=(), fetch=False):
     return res
 
 # --- FASTAPI ---
-app = FastAPI(title="SpeechClone Open Source")
+app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-@app.get("/health")
-async def health(): return {"status": "alive", "project": "SpeechClone"}
-
-# --- РОУТЫ ВСЕХ СТРАНИЦ (Полное меню) ---
+# Все 8 роутов меню + Блог
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
 
@@ -73,23 +75,12 @@ async def faq(request: Request): return templates.TemplateResponse("faq.html", {
 @app.get("/api-docs", response_class=HTMLResponse)
 async def api_docs(request: Request): return templates.TemplateResponse("api.html", {"request": request})
 
+@app.get("/donate", response_class=HTMLResponse)
+async def donate(request: Request): return templates.TemplateResponse("donate.html", {"request": request})
+
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy(request: Request): return templates.TemplateResponse("privacy.html", {"request": request})
 
-@app.get("/disclaimer", response_class=HTMLResponse)
-async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
-
-# 4 ПУНКТА ДОНАТА
-@app.get("/donate", response_class=HTMLResponse)
-async def donate(request: Request): 
-    return templates.TemplateResponse("donate.html", {"request": request})
-
-@app.get("/download-page", response_class=HTMLResponse)
-async def download_pg(request: Request):
-    f = request.query_params.get('file')
-    return templates.TemplateResponse("download.html", {"request": request, "file_url": f"/static/audio/{f}" if f else "#"})
-
-# БЛОГ (Авто-обработка всех 15+ статей)
 @app.get("/blog/{post_name}", response_class=HTMLResponse)
 async def blog_post(request: Request, post_name: str):
     f = post_name if post_name.endswith(".html") else f"{post_name}.html"
@@ -101,106 +92,54 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 VOICES = {
-    "Дмитрий 🇷🇺": "ru-RU-DmitryNeural", "Светлана 🇷🇺": "ru-RU-SvetlanaNeural", "Никита 🇷🇺": "ru-RU-NikitaNeural",
-    "Даулет 🇰🇿": "kk-KZ-DauletNeural", "Айгуль 🇰🇿": "kk-KZ-AigulNeural", "Ava 🇺🇸": "en-US-AvaNeural",
-    "Andrew 🇺🇸": "en-US-AndrewNeural", "Sonia 🇬🇧": "en-GB-SoniaNeural", "Katja 🇩🇪": "de-DE-KatjaNeural",
-    "Denise 🇫🇷": "fr-FR-DeniseNeural", "Nanami 🇯🇵": "ja-JP-NanamiNeural", "Keita 🇯🇵": "ja-JP-KeitaNeural",
-    "Xiaoxiao 🇨🇳": "zh-CN-XiaoxiaoNeural", "Gul 🇹🇷": "tr-TR-GulNeural", "Zariyah 🇦🇪": "ar-EG-SalmaNeural"
+    "Дмитрий 🇷🇺": "ru-RU-DmitryNeural", "Светлана 🇷🇺": "ru-RU-SvetlanaNeural",
+    "Даулет 🇰🇿": "kk-KZ-DauletNeural", "Айгуль 🇰🇿": "kk-KZ-AigulNeural", 
+    "Ava 🇺🇸": "en-US-AvaNeural", "Sonia 🇬🇧": "en-GB-SoniaNeural", 
+    "Katja 🇩🇪": "de-DE-KatjaNeural", "Denise 🇫🇷": "fr-FR-DeniseNeural", 
+    "Nanami 🇯🇵": "ja-JP-NanamiNeural", "Gul 🇹🇷": "tr-TR-GulNeural"
 }
 
 def m_kb(u_id):
-    v_keys = list(VOICES.keys())
-    btns = [[KeyboardButton(text=v_keys[i]), KeyboardButton(text=v_keys[i+1]), KeyboardButton(text=v_keys[i+2])] for i in range(0, 9, 3)]
-    btns.append([KeyboardButton(text="⭐ Купить Звезды"), KeyboardButton(text="💎 VIP Доступ")])
-    if u_id == ADMIN_ID:
-        btns.append([KeyboardButton(text="📊 Статистика"), KeyboardButton(text="⚙️ Каналы"), KeyboardButton(text="📢 Рассылка")])
+    btns = [[KeyboardButton(text=k)] for k in VOICES.keys()]
+    btns.append([KeyboardButton(text="⭐ Купить Звезды"), KeyboardButton(text="💎 VIP Статус")])
+    if u_id == ADMIN_ID: btns.append([KeyboardButton(text="📊 Стат"), KeyboardButton(text="📢 Рассылка")])
     return ReplyKeyboardMarkup(keyboard=btns, resize_keyboard=True)
 
-# ПЛАТЕЖИ STARS (XTR)
+# Платежи Stars
 @dp.message(F.text == "⭐ Купить Звезды")
 async def buy_stars(m: types.Message):
-    await m.answer_invoice(
-        title="100 Звезд SpeechClone",
-        description="Пополнение баланса для снятия лимитов и VIP функций.",
-        payload="stars_100",
-        currency="XTR",
-        prices=[LabeledPrice(label="100 Stars", amount=100)]
-    )
+    await m.answer_invoice(title="100 Stars", description="Пополнение баланса", payload="stars_100", currency="XTR", prices=[LabeledPrice(label="XTR", amount=100)])
 
 @dp.pre_checkout_query()
-async def pre_checkout(q: PreCheckoutQuery):
-    await q.answer(ok=True)
+async def pre_checkout(q: PreCheckoutQuery): await q.answer(ok=True)
 
 @dp.message(F.successful_payment)
 async def success_pay(m: types.Message):
     db_query("UPDATE users SET stars = stars + 100 WHERE user_id = ?", (m.from_user.id,))
-    await m.answer("✅ Спасибо за поддержку! 100 Звезд добавлены на ваш баланс.")
+    await m.answer("✅ Баланс пополнен!")
 
-# ОСНОВНАЯ ЛОГИКА
 @dp.message(Command("start"))
 async def st(m: types.Message):
     db_query("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (m.from_user.id,))
-    await m.answer("🎙 **SpeechClone Open Source**\nВыбери голос и пришли текст.", reply_markup=m_kb(m.from_user.id))
-
-@dp.message(F.text.in_(VOICES.keys()))
-async def sv(m: types.Message):
-    db_query("UPDATE users SET voice = ? WHERE user_id = ?", (VOICES[m.text], m.from_user.id))
-    await m.answer(f"✅ Голос: {m.text}")
+    await m.answer("🎙 SpeechClone: Пришли текст для озвучки.", reply_markup=m_kb(m.from_user.id))
 
 @dp.message(F.text)
-async def tts_logic(m: types.Message):
-    if m.text in VOICES or m.text in ["📊 Статистика", "⚙️ Каналы", "📢 Рассылка", "⭐ Купить Звезды", "💎 VIP Доступ"]: return
+async def handle_msg(m: types.Message):
+    if m.text in VOICES:
+        db_query("UPDATE users SET voice = ? WHERE user_id = ?", (VOICES[m.text], m.from_user.id))
+        return await m.answer(f"✅ Голос: {m.text}")
     
-    # ОП (Обязательная подписка)
-    ch = db_query("SELECT chat_id, link FROM channels", fetch=True)
-    unsub = [link for cid, link in ch if (await bot.get_chat_member(cid, m.from_user.id)).status in ["left", "kicked"]]
-    
-    if unsub:
-        ikb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔔 Подписаться", url=l)] for l in unsub])
-        return await m.answer("❌ Подпишитесь на каналы для доступа:", reply_markup=ikb)
-
-    w = await m.answer("⏳ Генерация...")
-    try:
-        res = db_query("SELECT voice FROM users WHERE user_id = ?", (m.from_user.id,), fetch=True)
-        v = res[0][0] if res else "ru-RU-DmitryNeural"
-        f_id = f"{uuid.uuid4()}.mp3"
-        f_path = os.path.join(BASE_DIR, "static/audio", f_id)
-        await edge_tts.Communicate(m.text, v).save(f_path)
-        await m.answer_voice(FSInputFile(f_path), caption="🎙 @speechclone")
-        await w.delete()
-    except: await m.answer("Ошибка озвучки")
-
-# АДМИНКА
-@dp.message(F.text == "📊 Статистика")
-async def stats(m: types.Message):
-    if m.from_user.id == ADMIN_ID:
-        r = db_query("SELECT COUNT(*) FROM users", fetch=True)
-        await m.answer(f"👥 Пользователей: {r[0][0]}")
-
-@dp.message(Command("send"))
-async def broadcast(m: types.Message, command: CommandObject):
-    if m.from_user.id == ADMIN_ID and command.args:
-        users = db_query("SELECT user_id FROM users", fetch=True)
-        for u in users:
-            try: await bot.send_message(u[0], command.args)
-            except: pass
-        await m.answer("✅ Рассылка выполнена.")
-
-# ЗАЩИТА ОТ СНА
-async def keep_alive():
-    url = "https://speechclone.online/health"
-    async with httpx.AsyncClient() as client:
-        while True:
-            try: await client.get(url)
-            except: pass
-            await asyncio.sleep(600)
+    # Озвучка (упрощенно)
+    res = db_query("SELECT voice FROM users WHERE user_id = ?", (m.from_user.id,), fetch=True)
+    v = res[0][0] if res else "ru-RU-DmitryNeural"
+    f_path = f"static/audio/{uuid.uuid4()}.mp3"
+    await edge_tts.Communicate(m.text, v).save(f_path)
+    await m.answer_voice(FSInputFile(f_path))
 
 @app.on_event("startup")
 async def on_start():
     init_db()
     asyncio.create_task(dp.start_polling(bot))
-    asyncio.create_task(keep_alive())
-
 
 
 
