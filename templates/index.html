@@ -1,104 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
 <main class="max-w-5xl mx-auto px-6 py-12">
+    <div class="mb-10 text-center"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2792779022553212" data-ad-slot="54321" data-ad-format="horizontal"></ins></div>
 
-    <div class="mb-12 text-center min-h-[90px] relative">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-2792779022553212"
-             data-ad-slot="123456789"
-             data-ad-format="horizontal"
-             data-full-width-responsive="true"></ins>
-        <span class="text-[9px] uppercase tracking-widest text-gray-300 absolute -top-4 left-1/2 -translate-x-1/2">Рекламная интеграция</span>
-    </div>
-
-    <section class="bg-white rounded-[50px] shadow-2xl p-8 md:p-16 border border-gray-50 mb-20">
-        <div class="max-w-3xl mx-auto text-center">
-            <h1 class="text-4xl md:text-5xl font-black mb-6 uppercase tracking-tighter">Нейросеть для озвучки текста онлайн</h1>
-            <p class="text-gray-400 font-medium mb-10 text-sm">Профессиональный синтез речи SpeechClone: 2000 символов бесплатно, живые голоса, мгновенный результат.</p>
-            
-            <textarea id="text" maxlength="2000" class="w-full h-64 p-8 bg-gray-50 border border-gray-100 rounded-[35px] outline-none text-xl resize-none font-medium placeholder-gray-300 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all" placeholder="Введите ваш текст здесь..."></textarea>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                <div class="text-left">
-                    <label class="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-4 mb-2 block">Выбор ИИ-голоса (11+ вариантов)</label>
-                    <select id="voiceSelect" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-gray-700 hover:bg-white transition-all appearance-none cursor-pointer">
-                        <option value="ru-RU-DmitryNeural">🇷🇺 Дмитрий (Мужской)</option>
-                        <option value="ru-RU-SvetlanaNeural">🇷🇺 Светлана (Женский)</option>
-                        <option value="kk-KZ-DauletNeural">🇰🇿 Даулет (Казахстан)</option>
-                        <option value="kk-KZ-AigulNeural">🇰🇿 Айгуль (Казахстан)</option>
-                        <option value="en-US-AvaNeural">🇺🇸 Ava (USA)</option>
-                        <option value="en-US-GuyNeural">🇺🇸 Guy (USA)</option>
-                        <option value="en-GB-SoniaNeural">🇬🇧 Sonia (UK)</option>
-                        <option value="de-DE-KatjaNeural">🇩🇪 Katja (Germany)</option>
-                        <option value="fr-FR-DeniseNeural">🇫🇷 Denise (France)</option>
-                        <option value="zh-CN-YunxiNeural">🇨🇳 Yunxi (China)</option>
-                        <option value="ja-JP-NanamiNeural">🇯🇵 Nanami (Japan)</option>
-                        <option value="ru-RU-YuryNeural">🇷🇺 Юрий (Глубокий)</option>
-                        <option value="uk-UA-OstapNeural">🇺🇦 Остап (Украина)</option>
-                    </select>
-                </div>
-                <div class="text-left">
-                    <label class="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-4 mb-2 block">Темп и скорость</label>
-                    <select id="modeSelect" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-gray-700 hover:bg-white transition-all appearance-none cursor-pointer">
-                        <option value="natural">Естественный</option>
-                        <option value="slow">Медленно (-15%)</option>
-                        <option value="fast">Быстро (+15%)</option>
-                    </select>
-                </div>
-            </div>
-
-            <button onclick="generateAudio()" id="genBtn" class="w-full mt-10 h-20 bg-blue-600 text-white rounded-[25px] font-black uppercase tracking-widest text-lg hover:bg-black hover:shadow-2xl transform active:scale-95 transition-all shadow-xl shadow-blue-100">
-                Озвучить текст прямо сейчас
-            </button>
-
-            <div id="resultSection" class="mt-12 hidden p-10 bg-blue-50 rounded-[40px] border border-blue-100 animate-fade-in">
-                <audio id="audioPlayer" controls class="w-full mb-8"></audio>
-                <button id="downloadBtn" class="px-20 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all uppercase tracking-widest text-sm shadow-xl">
-                    Получить файл (MP3)
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <section>
-        <div class="flex items-center justify-between mb-10 px-4">
-            <h2 class="text-2xl font-black uppercase tracking-tighter">Наши статьи и руководства</h2>
-            <a href="/blog" class="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">Читать всё →</a>
-        </div>
+    <section class="bg-white rounded-[50px] shadow-2xl p-8 md:p-16 border mb-20">
+        <h1 class="text-5xl font-black text-center mb-10 uppercase tracking-tighter">SpeechClone <span class="text-blue-600">AI</span></h1>
+        <textarea id="text" maxlength="2000" class="w-full h-64 p-8 bg-gray-50 border rounded-[35px] outline-none text-xl resize-none font-medium focus:ring-4 focus:ring-blue-50 transition-all" placeholder="Ваш текст для озвучки..."></textarea>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <article class="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                <a href="/blog/kak-озвучить-текст" class="block">
-                    <div class="w-full h-44 bg-gray-100 rounded-3xl mb-6 overflow-hidden">
-                        <img src="/static/images/blog/img1.jpg" alt="Озвучка текста ИИ" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
-                    </div>
-                    <h3 class="font-black text-lg leading-tight group-hover:text-blue-600 transition-colors">Бесплатная озвучка текста нейросетью: Полное руководство</h3>
-                    <p class="text-gray-400 text-xs mt-3 line-clamp-2">Узнайте, как использовать современные технологии TTS для создания аудио контента.</p>
-                </a>
-            </article>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <select id="voiceSelect" class="p-5 bg-gray-50 border rounded-2xl font-bold text-gray-700">
+                <optgroup label="Русские">
+                    <option value="ru-RU-DmitryNeural">Дмитрий 🇷🇺</option>
+                    <option value="ru-RU-SvetlanaNeural">Светлана 🇷🇺</option>
+                    <option value="ru-RU-YuryNeural">Юрий 🇷🇺</option>
+                </optgroup>
+                <optgroup label="Иностранные (Premium)">
+                    <option value="en-US-AvaNeural">Ava 🇺🇸</option>
+                    <option value="en-US-GuyNeural">Guy 🇺🇸</option>
+                    <option value="en-GB-SoniaNeural">Sonia 🇬🇧</option>
+                    <option value="de-DE-KatjaNeural">Katja 🇩🇪</option>
+                    <option value="fr-FR-DeniseNeural">Denise 🇫🇷</option>
+                    <option value="zh-CN-YunxiNeural">Yunxi 🇨🇳</option>
+                    <option value="ja-JP-NanamiNeural">Nanami 🇯🇵</option>
+                    <option value="kk-KZ-DauletNeural">Даулет 🇰🇿</option>
+                </optgroup>
+            </select>
+            <select id="modeSelect" class="p-5 bg-gray-50 border rounded-2xl font-bold text-gray-700">
+                <option value="natural">Естественный</option>
+                <option value="slow">Медленно</option>
+                <option value="fast">Быстро</option>
+            </select>
+        </div>
 
-            <article class="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                <a href="/blog/ai-voices-review" class="block">
-                    <div class="w-full h-44 bg-gray-100 rounded-3xl mb-6 overflow-hidden">
-                        <img src="/static/images/blog/img2.jpg" alt="Голоса ИИ" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
-                    </div>
-                    <h3 class="font-black text-lg leading-tight group-hover:text-blue-600 transition-colors">Топ-5 лучших голосов для видео на YouTube в 2026 году</h3>
-                    <p class="text-gray-400 text-xs mt-3 line-clamp-2">Тестируем самых реалистичных дикторов для ваших проектов.</p>
-                </a>
-            </article>
+        <button onclick="generateAudio()" id="genBtn" class="w-full mt-10 h-20 bg-blue-600 text-white rounded-[25px] font-black uppercase text-lg shadow-xl hover:bg-black transition-all">Сгенерировать MP3</button>
 
-            <article class="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                <a href="/blog/automation-youtube" class="block">
-                    <div class="w-full h-44 bg-gray-100 rounded-3xl mb-6 overflow-hidden">
-                        <img src="/static/images/blog/img3.jpg" alt="Автоматизация YouTube" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
-                    </div>
-                    <h3 class="font-black text-lg leading-tight group-hover:text-blue-600 transition-colors">Как создать YouTube канал без микрофона и диктора</h3>
-                    <p class="text-gray-400 text-xs mt-3 line-clamp-2">Инструкция по автоматизации контента с помощью SpeechClone.</p>
-                </a>
-            </article>
+        <div id="resultSection" class="mt-12 hidden p-10 bg-blue-50 rounded-[40px] border border-blue-100 animate-fade-in text-center">
+            <audio id="audioPlayer" controls class="w-full mb-8"></audio>
+            <button id="downloadBtn" class="px-20 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all">СКАЧАТЬ ФАЙЛ</button>
         </div>
     </section>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <a href="/blog/kak-озвучить-текст" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
+            <div class="h-2 w-10 bg-blue-600 mb-4 rounded-full"></div>
+            <h3 class="font-black text-xl mb-4 leading-tight">Как озвучить текст бесплатно?</h3>
+            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Читать гайд →</p>
+        </a>
+        <a href="/blog/ai-voices-review" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
+            <div class="h-2 w-10 bg-green-500 mb-4 rounded-full"></div>
+            <h3 class="font-black text-xl mb-4 leading-tight">Обзор голосов Microsoft Edge</h3>
+            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Читать обзор →</p>
+        </a>
+        <a href="/blog/automation-youtube" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
+            <div class="h-2 w-10 bg-red-500 mb-4 rounded-full"></div>
+            <h3 class="font-black text-xl mb-4 leading-tight">Автоматизация YouTube каналов</h3>
+            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Стратегия 2026 →</p>
+        </a>
+    </div>
 </main>
 
 <script>
@@ -107,28 +65,16 @@ async function generateAudio() {
     const text = document.getElementById('text').value;
     const voice = document.getElementById('voiceSelect').value;
     const mode = document.getElementById('modeSelect').value;
-
-    if(!text.trim()) return alert("Пожалуйста, введите текст!");
-    btn.disabled = true; btn.innerText = "Магия нейросетей в процессе...";
-
-    try {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, voice, mode })
-        });
-        const data = await response.json();
-        if(data.audio_url) {
-            document.getElementById('audioPlayer').src = data.audio_url;
-            document.getElementById('resultSection').classList.remove('hidden');
-            const fileName = data.audio_url.split('/').pop();
-            document.getElementById('downloadBtn').onclick = () => { 
-                window.location.href = `/download-page?file=${fileName}`; 
-            };
-            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
-        }
-    } catch (e) { alert("Ошибка при генерации аудио."); }
-    finally { btn.disabled = false; btn.innerText = "Озвучить текст прямо сейчас"; }
+    if(!text.trim()) return alert("Введите текст");
+    btn.disabled = true; btn.innerText = "ГЕНЕРАЦИЯ...";
+    const res = await fetch('/api/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, voice, mode})});
+    const data = await res.json();
+    if(data.audio_url) {
+        document.getElementById('audioPlayer').src = data.audio_url;
+        document.getElementById('resultSection').classList.remove('hidden');
+        document.getElementById('downloadBtn').onclick = () => { window.location.href = `/download-page?file=${data.audio_url.split('/').pop()}`; };
+    }
+    btn.disabled = false; btn.innerText = "Сгенерировать MP3";
 }
 </script>
 {% endblock %}
