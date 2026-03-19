@@ -1,101 +1,60 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>SpeechClone | Open Source AI</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root { --p: #6366f1; --bg: #0f172a; --g: rgba(255,255,255,0.05); }
-        body { margin: 0; font-family: sans-serif; background: var(--bg); color: white; line-height: 1.6; }
-        
-        /* Навигация (8 пунктов) */
-        nav { display: flex; justify-content: space-between; padding: 20px 5%; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); sticky; top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .menu a { color: #94a3b8; text-decoration: none; margin-left: 20px; font-size: 0.9rem; transition: 0.3s; }
-        .menu a:hover { color: white; }
+{% extends "base.html" %}
 
-        .hero { text-align: center; padding: 100px 20px; background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%); }
-        .hero h1 { font-size: 3rem; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        /* Сетка контента */
-        .container { max-width: 1200px; margin: 0 auto; padding: 50px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-        .card { background: var(--g); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; text-align: center; }
-        .card:hover { border-color: var(--p); transform: translateY(-5px); }
-        .card i { font-size: 2rem; color: var(--p); margin-bottom: 15px; }
-
-        /* Донат (4 пункта) */
-        .donate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 40px; }
-        .price-card { background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)); padding: 20px; border-radius: 15px; border: 1px solid var(--p); }
-        .btn { background: var(--p); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 10px; }
-    </style>
-</head>
-<body>
-
-<nav>
-    <div style="font-weight: bold; font-size: 1.2rem;">SpeechClone</div>
-    <div class="menu">
-        <a href="/">Главная</a>
-        <a href="/about">О проекте</a>
-        <a href="/services">Услуги</a>
-        <a href="/blog/main">Блог</a>
-        <a href="/faq">FAQ</a>
-        <a href="/api-docs">API</a>
-        <a href="/contacts">Контакты</a>
-        <a href="/donate" style="color: #fbbf24;">❤ Донат</a>
-    </div>
-</nav>
-
-<section class="hero">
-    <h1>Голос вашего проекта</h1>
-    <p>Open Source клонирование голоса. Быстро. Качественно. Бесплатно.</p>
+{% block content %}
+<section style="text-align: center; padding: 80px 20px; background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);">
+    <h1 style="font-size: 3rem; margin-bottom: 10px; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Голос вашего проекта</h1>
+    <p style="color: #94a3b8;">Open Source клонирование голоса. Быстро. Качественно. Бесплатно.</p>
 </section>
 
 <div class="container">
-    <div class="card">
-        <i class="fas fa-bolt"></i>
-        <h3>Мгновенно</h3>
-        <p>Генерация аудио за доли секунды через Edge TTS.</p>
+    <!-- Сетка преимуществ -->
+    <div class="grid" style="margin-bottom: 80px;">
+        <div class="card">
+            <i class="fas fa-bolt" style="font-size: 2rem; color: var(--p); margin-bottom: 15px; display: block;"></i>
+            <h3>Мгновенно</h3>
+            <p>Генерация аудио за доли секунды через Edge TTS.</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-globe" style="font-size: 2rem; color: var(--p); margin-bottom: 15px; display: block;"></i>
+            <h3>25+ Голосов</h3>
+            <p>Поддержка русского, казахского и мировых языков.</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-code-branch" style="font-size: 2rem; color: var(--p); margin-bottom: 15px; display: block;"></i>
+            <h3>Open Source</h3>
+            <p>Код доступен для всех. Форкай и улучшай под свои задачи.</p>
+        </div>
     </div>
-    <div class="card">
-        <i class="fas fa-globe"></i>
-        <h3>25+ Голосов</h3>
-        <p>Поддержка русского, казахского и мировых языков.</p>
-    </div>
-    <div class="card">
-        <i class="fas fa-code-branch"></i>
-        <h3>Open Source</h3>
-        <p>Код доступен для всех. Форкай и улучшай.</p>
+
+    <!-- Блок донатов (4 штуки как на скрине) -->
+    <h2 style="text-align: center; margin-bottom: 40px;">Поддержать развитие</h2>
+    <div class="grid">
+        <div class="price-card">
+            <h4>Coffee</h4>
+            <p>Просто поддержка проекта</p>
+            <a href="/donate" class="btn">100 ₽</a>
+        </div>
+        
+        <div class="price-card">
+            <h4>Stars Pack</h4>
+            <p>100 Звёзд в боте</p>
+            <a href="https://t.me/speechclone_bot" class="btn" style="background: #fbbf24; color: black;">50 XTR</a>
+        </div>
+        
+        <div class="price-card">
+            <h4>VIP Access</h4>
+            <p>Без ограничений по знакам</p>
+            <a href="/donate" class="btn">500 ₽</a>
+        </div>
+        
+        <div class="price-card">
+            <h4>Developer</h4>
+            <p>Доступ к API Pro версии</p>
+            <a href="/api-docs" class="btn">1000 ₽</a>
+        </div>
     </div>
 </div>
-
-<div class="container" id="donations">
-    <h2 style="grid-column: 1/-1; text-align: center;">Поддержать развитие</h2>
-    <div class="price-card">
-        <h4>Coffee</h4>
-        <p>Просто поддержка</p>
-        <a href="/donate" class="btn">100 ₽</a>
-    </div>
-    <div class="price-card">
-        <h4>Stars Pack</h4>
-        <p>100 Звёзд в боте</p>
-        <a href="/donate" class="btn">50 XTR</a>
-    </div>
-    <div class="price-card">
-        <h4>VIP Access</h4>
-        <p>Без ограничений</p>
-        <a href="/donate" class="btn">500 ₽</a>
-    </div>
-    <div class="price-card">
-        <h4>Developer</h4>
-        <p>Доступ к API Pro</p>
-        <a href="/donate" class="btn">1000 ₽</a>
-    </div>
-</div>
-
-<footer style="text-align: center; padding: 50px; color: #475569;">
-    &copy; 2026 SpeechClone Online. Open Source Initiative.
-</footer>
-
-</body>
+{% endblock %}
 </html>
 
 
