@@ -2,6 +2,8 @@ import os
 import uuid
 import asyncio
 import sqlite3
+import logging
+import httpx
 import edge_tts
 from google import genai
 from fastapi import FastAPI, Request
@@ -16,6 +18,10 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton
 )
 
+# Логи для мониторинга в панели Render
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
@@ -23,7 +29,7 @@ GEMINI_KEY = os.environ.get("GEMINI_KEY", "AIzaSyAZ71DeMfVZf9w6-mUWH7WO0oxG8kgA1
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-# --- СИСТЕМА БАЗЫ ДАННЫХ ---
+# --- БАЗА ДАННЫХ (БЕЗ КОНФЛИКТОВ ПОТОКОВ) ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -33,14 +39,14 @@ def init_db():
     conn.close()
 
 def db_query(query, params=(), fetch=False):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.execute(query, params)
     res = cursor.fetchall() if fetch else None
     conn.commit()
     conn.close()
     return res
 
-# --- FASTAPI ПРИЛОЖЕНИЕ ---
+# --- FASTAPI ---
 app = FastAPI()
 
 for folder in ["static", "static/audio", "templates/blog"]:
@@ -49,9 +55,24 @@ for folder in ["static", "static/audio", "templates/blog"]:
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+# Роут для Крона и Рендера
 @app.get("/health")
-async def health(): return {"status": "alive", "msg": "Working for Oleg"}
+async def health(): 
+    return {"status": "alive", "msg": "Ready for ads"}
 
+# Внутренний "будильник" (самопинг)
+async def keep_alive_task():
+    url = "https://speechclone.online/health"
+    async with httpx.AsyncClient() as client:
+        while True:
+            try:
+                await client.get(url)
+                logger.info("Self-ping: Service is awake.")
+            except Exception as e:
+                logger.error(f"Self-ping failed: {e}")
+            await asyncio.sleep(600) # 10 минут
+
+# API
 class ChatMsg(BaseModel): message: str
 class TTSReq(BaseModel): text: str; voice: str
 
@@ -68,57 +89,32 @@ async def api_gen(r: TTSReq):
     await edge_tts.Communicate(r.text, r.voice).save(f_path)
     return {"audio_url": f"/static/audio/{f_id}"}
 
-# --- РОУТЫ САЙТА (БЕЗ УДАЛЕНИЙ) ---
+# Роуты сайта (7+ страниц)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/about", response_class=HTMLResponse)
-async def about(request: Request): return templates.TemplateResponse("about.html", {"request": request})
-
-@app.get("/privacy", response_class=HTMLResponse)
-async def privacy(request: Request): return templates.TemplateResponse("privacy.html", {"request": request})
-
-@app.get("/donate", response_class=HTMLResponse)
-async def donate(request: Request): return templates.TemplateResponse("donate.html", {"request": request})
-
-@app.get("/disclaimer", response_class=HTMLResponse)
-async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
-
-@app.get("/contacts", response_class=HTMLResponse)
-async def contacts(request: Request): return templates.TemplateResponse("contacts.html", {"request": request})
-
-@app.get("/download-page", response_class=HTMLResponse)
-async def dl_pg(request: Request):
-    f = request.query_params.get('file')
-    return templates.TemplateResponse("download.html", {"request": request, "file_url": f"/static/audio/{f}" if f else "#"})
-
-@app.get("/blog/{p}", response_class=HTMLResponse)
-async def blog_posts(request: Request, p: str):
-    f = f"blog/{p if p.endswith('.html') else p + '.html'}"
-    return templates.TemplateResponse(f, {"request": request})
+@app.get("/{page}", response_class=HTMLResponse)
+async def all_pages(request: Request, page: str):
+    if page == "favicon.ico": return JSONResponse({"status": "skip"})
+    f = page if page.endswith(".html") else f"{page}.html"
+    try: return templates.TemplateResponse(f, {"request": request})
+    except: return templates.TemplateResponse("index.html", {"request": request})
 
 # --- ТЕЛЕГРАМ БОТ ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# МАКСИМАЛЬНЫЙ СПИСОК ГОЛОСОВ
 VOICES = {
     "Дмитрий 🇷🇺": "ru-RU-DmitryNeural", "Светлана 🇷🇺": "ru-RU-SvetlanaNeural", "Никита 🇷🇺": "ru-RU-NikitaNeural",
     "Даулет 🇰🇿": "kk-KZ-DauletNeural", "Айгуль 🇰🇿": "kk-KZ-AigulNeural", "Ava 🇺🇸": "en-US-AvaNeural",
-    "Andrew 🇺🇸": "en-US-AndrewNeural", "Emma 🇺🇸": "en-US-EmmaNeural", "Brian 🇺🇸": "en-US-BrianNeural",
-    "Sonia 🇬🇧": "en-GB-SoniaNeural", "Ryan 🇬🇧": "en-GB-RyanNeural", "Katja 🇩🇪": "de-DE-KatjaNeural",
-    "Conrad 🇩🇪": "de-DE-ConradNeural", "Denise 🇫🇷": "fr-FR-DeniseNeural", "Henri 🇫🇷": "fr-FR-HenriNeural",
-    "Elsa 🇮🇹": "it-IT-ElsaNeural", "Diego 🇮🇹": "it-IT-DiegoNeural", "Alvaro 🇪🇸": "es-ES-AlvaroNeural",
-    "Nanami 🇯🇵": "ja-JP-NanamiNeural", "Keita 🇯🇵": "ja-JP-KeitaNeural", "Xiaoxiao 🇨🇳": "zh-CN-XiaoxiaoNeural",
-    "Yunxi 🇨🇳": "zh-CN-YunxiNeural", "SunHi 🇰🇷": "ko-KR-SunHiNeural", "Gul 🇹🇷": "tr-TR-GulNeural",
-    "Zariyah 🇦🇪": "ar-EG-SalmaNeural"
+    "Andrew 🇺🇸": "en-US-AndrewNeural", "Sonia 🇬🇧": "en-GB-SoniaNeural", "Katja 🇩🇪": "de-DE-KatjaNeural",
+    "Denise 🇫🇷": "fr-FR-DeniseNeural", "Nanami 🇯🇵": "ja-JP-NanamiNeural", "Keita 🇯🇵": "ja-JP-KeitaNeural",
+    "Xiaoxiao 🇨🇳": "zh-CN-XiaoxiaoNeural", "Gul 🇹🇷": "tr-TR-GulNeural"
 }
 
 def m_kb(u_id):
-    # Формируем кнопки голосов (первые 12 для удобства)
     v_keys = list(VOICES.keys())
-    btns = [[KeyboardButton(text=v_keys[i]), KeyboardButton(text=v_keys[i+1]), KeyboardButton(text=v_keys[i+2])] for i in range(0, 12, 3)]
-    # Кнопки управления
+    btns = [[KeyboardButton(text=v_keys[i]), KeyboardButton(text=v_keys[i+1]), KeyboardButton(text=v_keys[i+2])] for i in range(0, 9, 3)]
     btns.append([KeyboardButton(text="Даулет 🇰🇿"), KeyboardButton(text="Айгуль 🇰🇿")])
     if u_id == ADMIN_ID:
         btns.append([KeyboardButton(text="📊 Статистика"), KeyboardButton(text="⚙️ Каналы"), KeyboardButton(text="📢 Рассылка")])
@@ -139,32 +135,25 @@ async def st(m: types.Message):
     db_query("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (m.from_user.id,))
     await m.answer("🎙 **SpeechClone Системa**\nВыбери голос и пришли текст.", reply_markup=m_kb(m.from_user.id))
 
-# --- АДМИН-ЛОГИКА ---
+# Админка
 @dp.message(F.text == "📊 Статистика")
 async def stats(m: types.Message):
     if m.from_user.id == ADMIN_ID:
         r = db_query("SELECT COUNT(*) FROM users", fetch=True)
-        await m.answer(f"👥 Пользователей в базе: {r[0][0]}")
-
-@dp.message(F.text == "⚙️ Каналы")
-async def chan_adm(m: types.Message):
-    if m.from_user.id == ADMIN_ID:
-        c = db_query("SELECT chat_id, link FROM channels", fetch=True)
-        txt = "Каналы ОП:\n" + "\n".join([f"{i[0]} -> {i[1]}" for i in c])
-        await m.answer(f"{txt}\n\n`/add_chan ID LINK` - добавить\n`/clear_chan` - очистить")
+        await m.answer(f"👥 Пользователей: {r[0][0]}")
 
 @dp.message(Command("send"))
 async def broadcast(m: types.Message, command: CommandObject):
     if m.from_user.id == ADMIN_ID and command.args:
         users = db_query("SELECT user_id FROM users", fetch=True)
-        count = 0
+        c = 0
         for u in users:
             try:
                 await bot.send_message(u[0], command.args)
-                count += 1
+                c += 1
                 await asyncio.sleep(0.05)
             except: pass
-        await m.answer(f"✅ Рассылка завершена. Получили: {count}")
+        await m.answer(f"✅ Разослано: {c}")
 
 @dp.message(Command("add_chan"))
 async def add_c(m: types.Message):
@@ -180,48 +169,36 @@ async def cl_c(m: types.Message):
         db_query("DELETE FROM channels")
         await m.answer("🗑 Каналы очищены")
 
-# --- ОСНОВНОЙ ФУНКЦИОНАЛ ---
+# Озвучка
 @dp.message(F.text.in_(VOICES.keys()))
 async def sv(m: types.Message):
     db_query("UPDATE users SET voice = ? WHERE user_id = ?", (VOICES[m.text], m.from_user.id))
-    await m.answer(f"✅ Голос изменен на: {m.text}")
+    await m.answer(f"✅ Голос: {m.text}")
 
 @dp.message(F.text)
 async def tts_logic(m: types.Message):
     if m.text in VOICES or (m.from_user.id == ADMIN_ID and m.text in ["📊 Статистика", "⚙️ Каналы", "📢 Рассылка"]): return
-    
     unsub = await check_sub(m.from_user.id)
     if unsub:
         ikb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔔 Подписаться", url=l)] for l in unsub])
-        ikb.inline_keyboard.append([InlineKeyboardButton(text="✅ Проверить подписку", callback_data="check")])
-        return await m.answer("❌ Сначала подпишись на каналы:", reply_markup=ikb)
-
-    w = await m.answer("⏳ Магия озвучки...")
+        return await m.answer("❌ Подпишись для доступа:", reply_markup=ikb)
+    w = await m.answer("⏳ Генерирую...")
     try:
         res = db_query("SELECT voice FROM users WHERE user_id = ?", (m.from_user.id,), fetch=True)
         v = res[0][0] if res else "ru-RU-DmitryNeural"
         f_id = f"{uuid.uuid4()}.mp3"
-        f_path = os.path.join(BASE_DIR, f"static/audio/{f_id}")
+        f_path = os.path.join(BASE_DIR, "static/audio", f_id)
         await edge_tts.Communicate(m.text, v).save(f_path)
-        
-        skb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🚀 Поделиться с друзьями", switch_inline_query="Зацени бота!")]])
+        skb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🚀 Поделиться", switch_inline_query="Зацени бота!")]])
         await m.answer_voice(FSInputFile(f_path), caption="🎙 @speechclone", reply_markup=skb)
         await w.delete()
     except: await m.answer("Ошибка озвучки")
-
-@dp.callback_query(F.data == "check")
-async def check_cb(call: types.CallbackQuery):
-    unsub = await check_sub(call.from_user.id)
-    if not unsub:
-        await call.message.answer("✅ Спасибо! Доступ открыт.")
-    else:
-        await call.answer("❌ Ты еще не подписан на всё!", show_alert=True)
 
 @app.on_event("startup")
 async def on_start():
     init_db()
     asyncio.create_task(dp.start_polling(bot))
-
+    asyncio.create_task(keep_alive_task()) # Защита от сна
 
 
 
