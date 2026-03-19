@@ -18,13 +18,13 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, PreCheckoutQuery
 )
 
-# Логирование
+# Настройка логов для Open Source мониторинга
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- КОНФИГУРАЦИЯ ---
-ADMIN_ID = 430747895  
-BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
+# --- КОНФИГУРАЦИЯ (Используй переменные окружения для безопасности) ---
+ADMIN_ID = int(os.environ.get("ADMIN_ID", 430747895))
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw")
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "AIzaSyAZ71DeMfVZf9w6-mUWH7WO0oxG8kgA1MA")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
@@ -47,14 +47,14 @@ def db_query(query, params=(), fetch=False):
     return res
 
 # --- FASTAPI ---
-app = FastAPI()
+app = FastAPI(title="SpeechClone Open Source")
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.get("/health")
-async def health(): return {"status": "alive"}
+async def health(): return {"status": "alive", "project": "SpeechClone"}
 
-# --- РОУТЫ ВСЕХ СТРАНИЦ МЕНЮ ---
+# --- РОУТЫ ВСЕХ СТРАНИЦ (Полное меню) ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): return templates.TemplateResponse("index.html", {"request": request})
 
@@ -79,31 +79,24 @@ async def privacy(request: Request): return templates.TemplateResponse("privacy.
 @app.get("/disclaimer", response_class=HTMLResponse)
 async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
 
-# 4 ПУНКТА ДОНАТА (Звезды и обычные)
+# 4 ПУНКТА ДОНАТА
 @app.get("/donate", response_class=HTMLResponse)
 async def donate(request: Request): 
-    return templates.TemplateResponse("donate.html", {
-        "request": request,
-        "items": [
-            {"id": "support", "name": "Поддержка проекта", "price": "Любая сумма"},
-            {"id": "vip", "name": "VIP-статус (Без ОП)", "price": "500 Stars"},
-            {"id": "limits", "name": "Снятие лимитов", "price": "200 Stars"},
-            {"id": "stars_pack", "name": "Пакет Звезд (100 шт)", "price": "150 Stars"}
-        ]
-    })
+    return templates.TemplateResponse("donate.html", {"request": request})
 
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_pg(request: Request):
     f = request.query_params.get('file')
     return templates.TemplateResponse("download.html", {"request": request, "file_url": f"/static/audio/{f}" if f else "#"})
 
+# БЛОГ (Авто-обработка всех 15+ статей)
 @app.get("/blog/{post_name}", response_class=HTMLResponse)
 async def blog_post(request: Request, post_name: str):
-    file_path = post_name if post_name.endswith(".html") else f"{post_name}.html"
-    try: return templates.TemplateResponse(f"blog/{file_path}", {"request": request})
+    f = post_name if post_name.endswith(".html") else f"{post_name}.html"
+    try: return templates.TemplateResponse(f"blog/{f}", {"request": request})
     except: return templates.TemplateResponse("index.html", {"request": request})
 
-# --- ТЕЛЕГРАМ БОТ (СО ЗВЕЗДАМИ) ---
+# --- ТЕЛЕГРАМ БОТ ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -123,31 +116,31 @@ def m_kb(u_id):
         btns.append([KeyboardButton(text="📊 Статистика"), KeyboardButton(text="⚙️ Каналы"), KeyboardButton(text="📢 Рассылка")])
     return ReplyKeyboardMarkup(keyboard=btns, resize_keyboard=True)
 
-# Обработка платежа (Звезды)
+# ПЛАТЕЖИ STARS (XTR)
 @dp.message(F.text == "⭐ Купить Звезды")
 async def buy_stars(m: types.Message):
     await m.answer_invoice(
-        title="Пополнение баланса (Звезды)",
-        description="100 Звезд для использования расширенных функций бота.",
-        payload="stars_pack_100",
-        currency="XTR", # Код для Telegram Stars
+        title="100 Звезд SpeechClone",
+        description="Пополнение баланса для снятия лимитов и VIP функций.",
+        payload="stars_100",
+        currency="XTR",
         prices=[LabeledPrice(label="100 Stars", amount=100)]
     )
 
 @dp.pre_checkout_query()
-async def pre_checkout(query: PreCheckoutQuery):
-    await query.answer(ok=True)
+async def pre_checkout(q: PreCheckoutQuery):
+    await q.answer(ok=True)
 
 @dp.message(F.successful_payment)
 async def success_pay(m: types.Message):
     db_query("UPDATE users SET stars = stars + 100 WHERE user_id = ?", (m.from_user.id,))
-    await m.answer("✅ Оплата прошла успешно! 100 Звезд зачислены.")
+    await m.answer("✅ Спасибо за поддержку! 100 Звезд добавлены на ваш баланс.")
 
-# Остальная логика (Старт, ОП, Озвучка)
+# ОСНОВНАЯ ЛОГИКА
 @dp.message(Command("start"))
 async def st(m: types.Message):
     db_query("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (m.from_user.id,))
-    await m.answer("🎙 **SpeechClone Системa**\nВыбери голос и пришли текст.", reply_markup=m_kb(m.from_user.id))
+    await m.answer("🎙 **SpeechClone Open Source**\nВыбери голос и пришли текст.", reply_markup=m_kb(m.from_user.id))
 
 @dp.message(F.text.in_(VOICES.keys()))
 async def sv(m: types.Message):
@@ -158,20 +151,15 @@ async def sv(m: types.Message):
 async def tts_logic(m: types.Message):
     if m.text in VOICES or m.text in ["📊 Статистика", "⚙️ Каналы", "📢 Рассылка", "⭐ Купить Звезды", "💎 VIP Доступ"]: return
     
-    # Проверка подписки (ОП)
+    # ОП (Обязательная подписка)
     ch = db_query("SELECT chat_id, link FROM channels", fetch=True)
-    unsub = []
-    for cid, link in ch:
-        try:
-            member = await bot.get_chat_member(cid, m.from_user.id)
-            if member.status in ["left", "kicked"]: unsub.append(link)
-        except: unsub.append(link)
+    unsub = [link for cid, link in ch if (await bot.get_chat_member(cid, m.from_user.id)).status in ["left", "kicked"]]
     
     if unsub:
         ikb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔔 Подписаться", url=l)] for l in unsub])
-        return await m.answer("❌ Подпишись для доступа:", reply_markup=ikb)
+        return await m.answer("❌ Подпишитесь на каналы для доступа:", reply_markup=ikb)
 
-    w = await m.answer("⏳ Генерирую...")
+    w = await m.answer("⏳ Генерация...")
     try:
         res = db_query("SELECT voice FROM users WHERE user_id = ?", (m.from_user.id,), fetch=True)
         v = res[0][0] if res else "ru-RU-DmitryNeural"
@@ -182,7 +170,7 @@ async def tts_logic(m: types.Message):
         await w.delete()
     except: await m.answer("Ошибка озвучки")
 
-# --- АДМИНКА ---
+# АДМИНКА
 @dp.message(F.text == "📊 Статистика")
 async def stats(m: types.Message):
     if m.from_user.id == ADMIN_ID:
@@ -196,9 +184,9 @@ async def broadcast(m: types.Message, command: CommandObject):
         for u in users:
             try: await bot.send_message(u[0], command.args)
             except: pass
-        await m.answer("✅ Разослано")
+        await m.answer("✅ Рассылка выполнена.")
 
-# --- ЗАПУСК ---
+# ЗАЩИТА ОТ СНА
 async def keep_alive():
     url = "https://speechclone.online/health"
     async with httpx.AsyncClient() as client:
