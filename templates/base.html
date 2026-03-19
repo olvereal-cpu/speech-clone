@@ -3,76 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeechClone — Озвучка текста ИИ бесплатно</title>
-    <meta name="description" content="Лучший сервис для синтеза речи онлайн. Реалистичные нейросетевые голоса для YouTube и презентаций.">
-    <meta name="keywords" content="озвучка текста, нейросеть голос, синтез речи, текст в mp3">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
-
+    <title>{% block title %}SpeechClone{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        :root { --primary: #6366f1; --bg: #0f172a; --text: #f8fafc; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+        
+        header { 
+            background: rgba(15, 23, 42, 0.9); 
+            backdrop-filter: blur(10px); 
+            padding: 1rem 5%; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky; top: 0; z-index: 1000;
+        }
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); text-decoration: none; }
+        nav { display: flex; gap: 20px; }
+        nav a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
+        nav a:hover { color: white; }
+        nav a.active { color: var(--primary); }
+        .stars-btn { color: #fbbf24 !important; font-weight: bold; }
+
+        footer { text-align: center; padding: 3rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 50px; color: #64748b; }
+        
+        {% block style %}{% endblock %}
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col min-h-screen">
+<body>
 
-    <header class="bg-white border-b h-20 flex items-center sticky top-0 z-50 shadow-sm">
-        <div class="max-w-6xl mx-auto w-full px-6 flex justify-between items-center">
-            <a href="/" class="text-2xl font-black text-blue-600 tracking-tighter">SPEECHCLONE</a>
-            <nav class="hidden md:flex gap-8 font-bold text-[11px] uppercase tracking-widest text-gray-400">
-                <a href="/" class="hover:text-blue-600">Главная</a>
-                <a href="/blog/kak-озвучить-текст" class="hover:text-blue-600">Гайды</a>
-                <a href="/about" class="hover:text-blue-600">О нас</a>
-                <a href="/donate" class="text-red-500 font-black">Донат ❤️</a>
-            </nav>
-        </div>
-    </header>
+<header>
+    <a href="/" class="logo">SpeechClone</a>
+    <nav>
+        <a href="/">Главная</a>
+        <a href="/about">О нас</a>
+        <a href="/services">Услуги</a>
+        <a href="/blog/index">Блог</a>
+        <a href="/faq">FAQ</a>
+        <a href="/api-docs">API</a>
+        <a href="/contacts">Контакты</a>
+        <a href="/donate" class="stars-btn">⭐ Донат</a>
+    </nav>
+</header>
 
-    <div class="flex-grow">
-        {% block content %}{% endblock %}
-    </div>
+<main>
+    {% block content %}{% endblock %}
+</main>
 
-    <footer class="bg-white border-t py-12 mt-20 text-center">
-        <div class="flex justify-center gap-6 text-[10px] font-black uppercase text-gray-400 mb-8">
-            <a href="/privacy" class="hover:text-blue-600">Конфиденциальность</a>
-            <a href="/disclaimer" class="hover:text-blue-600">Отказ</a>
-            <a href="/contacts" class="hover:text-blue-600">Контакты</a>
-        </div>
-        <div class="text-[9px] font-bold text-gray-300">
-            ПОЛЬЗОВАТЕЛЕЙ ОНЛАЙН: <span class="text-green-500">143</span> | ВСЕГО ОЗВУЧЕНО: 12,420
-        </div>
-    </footer>
+<footer>
+    &copy; 2026 SpeechClone Open Source Project. Все права защищены.
+</footer>
 
-    <div id="chat-widget" class="fixed bottom-6 right-6 z-50">
-        <div id="chat-box" class="hidden w-80 md:w-96 h-[480px] bg-white rounded-[30px] shadow-2xl border flex flex-col overflow-hidden mb-4 animate-fade-in">
-            <div class="bg-blue-600 p-5 text-white flex justify-between items-center font-black text-xs uppercase">Спич-Бро <button onclick="document.getElementById('chat-box').classList.add('hidden')">&times;</button></div>
-            <div id="chat-messages" class="flex-1 p-5 overflow-y-auto space-y-3 text-sm bg-gray-50"></div>
-            <div class="p-4 bg-white border-t flex gap-2">
-                <input id="chat-input" type="text" class="flex-1 p-2 bg-gray-50 rounded-xl outline-none text-xs" placeholder="Спроси меня...">
-                <button onclick="handleChat()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-[10px]">OK</button>
-            </div>
-        </div>
-        <button onclick="document.getElementById('chat-box').classList.toggle('hidden')" class="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center font-black">ЧАТ</button>
-    </div>
-
-    <script>
-    async function handleChat() {
-        const i = document.getElementById('chat-input'), b = document.getElementById('chat-messages'), txt = i.value;
-        if(!txt) return;
-        b.innerHTML += `<div class="bg-blue-100 p-3 rounded-2xl ml-auto max-w-[80%] text-xs font-bold">${txt}</div>`;
-        i.value = '';
-        const res = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:txt})});
-        const data = await res.json();
-        b.innerHTML += `<div class="bg-white p-3 rounded-2xl border max-w-[80%] text-xs shadow-sm">${data.reply}</div>`;
-        b.scrollTop = b.scrollHeight;
-    }
-    </script>
 </body>
-</html>
 </html>
 
 
