@@ -3,104 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeechClone — Озвучка текста ИИ бесплатно</title>
+    <meta name="description" content="Лучший сервис для синтеза речи онлайн. Реалистичные нейросетевые голоса для YouTube и презентаций.">
+    <meta name="keywords" content="озвучка текста, нейросеть голос, синтез речи, текст в mp3">
     
-    <title>SpeechClone — Озвучка текста голосом ИИ онлайн бесплатно</title>
-    <meta name="description" content="SpeechClone — лучший сервис для озвучки текста реалистичными нейросетевыми голосами. Конвертируйте текст в MP3 онлайн, создавайте контент для YouTube и соцсетей.">
-    <meta name="keywords" content="озвучка текста, текст в голос, нейросеть голос, edge tts онлайн, синтез речи, озвучить текст mp3, speechclone">
-    <meta name="author" content="SpeechClone Team">
-    <link rel="canonical" href="https://speechclone.online/">
-
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://speechclone.online/">
-    <meta property="og:title" content="SpeechClone — Озвучка текста голосом ИИ">
-    <meta property="og:description" content="Профессиональный синтез речи нейросетями. Бесплатно, быстро и качественно.">
-    <meta property="og:image" content="https://speechclone.online/static/og-image.jpg">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-gray-50 flex flex-col min-h-screen">
 
-    <header class="bg-white border-b border-gray-100 h-20 flex items-center sticky top-0 z-50 shadow-sm">
+    <header class="bg-white border-b h-20 flex items-center sticky top-0 z-50 shadow-sm">
         <div class="max-w-6xl mx-auto w-full px-6 flex justify-between items-center">
-            <a href="/" class="text-2xl font-black text-blue-600 tracking-tighter hover:scale-105 transition-transform">SPEECHCLONE</a>
-            
-            <nav class="hidden md:flex gap-8 items-center font-bold text-[11px] uppercase tracking-widest text-gray-400">
-                <a href="/" class="hover:text-blue-600 transition-colors">Главная</a>
-                <a href="/blog" class="hover:text-blue-600 transition-colors">Блог / Статьи</a>
-                <a href="https://t.me/speechclone" target="_blank" class="px-5 py-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition-all">Telegram</a>
+            <a href="/" class="text-2xl font-black text-blue-600 tracking-tighter">SPEECHCLONE</a>
+            <nav class="hidden md:flex gap-8 font-bold text-[11px] uppercase tracking-widest text-gray-400">
+                <a href="/" class="hover:text-blue-600">Главная</a>
+                <a href="/blog/kak-озвучить-текст" class="hover:text-blue-600">Гайды</a>
+                <a href="/about" class="hover:text-blue-600">О нас</a>
+                <a href="/donate" class="text-red-500 font-black">Донат ❤️</a>
             </nav>
         </div>
     </header>
 
-    {% block content %}{% endblock %}
+    <div class="flex-grow">
+        {% block content %}{% endblock %}
+    </div>
 
-    <footer class="bg-white border-t border-gray-100 py-12 mt-20">
-        <div class="max-w-6xl mx-auto px-6 text-center">
-            <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
-                SpeechClone Online — Сервис на базе искусственного интеллекта
-            </div>
-            <nav class="flex justify-center gap-6 text-[9px] uppercase font-black text-gray-300 mb-8">
-                <a href="/" class="hover:text-blue-600">Главная</a>
-                <a href="/blog" class="hover:text-blue-600">Статьи</a>
-                <a href="/contacts" class="hover:text-blue-600">Контакты</a>
-            </nav>
-            <p class="text-gray-300 text-[10px]">&copy; 2026 SpeechClone. Все права защищены.</p>
+    <footer class="bg-white border-t py-12 mt-20 text-center">
+        <div class="flex justify-center gap-6 text-[10px] font-black uppercase text-gray-400 mb-8">
+            <a href="/privacy" class="hover:text-blue-600">Конфиденциальность</a>
+            <a href="/disclaimer" class="hover:text-blue-600">Отказ</a>
+            <a href="/contacts" class="hover:text-blue-600">Контакты</a>
+        </div>
+        <div class="text-[9px] font-bold text-gray-300">
+            ПОЛЬЗОВАТЕЛЕЙ ОНЛАЙН: <span class="text-green-500">143</span> | ВСЕГО ОЗВУЧЕНО: 12,420
         </div>
     </footer>
 
     <div id="chat-widget" class="fixed bottom-6 right-6 z-50">
-        <div id="chat-box" class="hidden w-85 md:w-96 h-[500px] bg-white rounded-[30px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden mb-4 animate-fade-in">
-            <div class="bg-blue-600 p-5 text-white flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-black">S</div>
-                    <span class="font-black uppercase tracking-widest text-xs">Спич-Бро</span>
-                </div>
-                <button onclick="document.getElementById('chat-box').classList.add('hidden')" class="text-2xl">&times;</button>
-            </div>
-            <div id="chat-messages" class="flex-1 p-5 overflow-y-auto space-y-4 text-sm bg-gray-50 flex flex-col">
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 self-start max-w-[80%]">
-                    Привет! Я помогу разобраться с озвучкой или отвечу на любой вопрос. Что тебя интересует? 👋
-                </div>
-            </div>
+        <div id="chat-box" class="hidden w-80 md:w-96 h-[480px] bg-white rounded-[30px] shadow-2xl border flex flex-col overflow-hidden mb-4 animate-fade-in">
+            <div class="bg-blue-600 p-5 text-white flex justify-between items-center font-black text-xs uppercase">Спич-Бро <button onclick="document.getElementById('chat-box').classList.add('hidden')">&times;</button></div>
+            <div id="chat-messages" class="flex-1 p-5 overflow-y-auto space-y-3 text-sm bg-gray-50"></div>
             <div class="p-4 bg-white border-t flex gap-2">
-                <input id="chat-input" type="text" class="flex-1 p-3 bg-gray-50 rounded-xl outline-none text-xs border border-transparent focus:border-blue-600 transition-all" placeholder="Спроси меня о чем угодно...">
-                <button onclick="handleChat()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-[10px] uppercase">OK</button>
+                <input id="chat-input" type="text" class="flex-1 p-2 bg-gray-50 rounded-xl outline-none text-xs" placeholder="Спроси меня...">
+                <button onclick="handleChat()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-[10px]">OK</button>
             </div>
         </div>
-        <button onclick="document.getElementById('chat-box').classList.toggle('hidden')" class="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center font-black hover:scale-110 active:scale-90 transition-all">ЧАТ</button>
+        <button onclick="document.getElementById('chat-box').classList.toggle('hidden')" class="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center font-black">ЧАТ</button>
     </div>
 
     <script>
     async function handleChat() {
-        const input = document.getElementById('chat-input');
-        const box = document.getElementById('chat-messages');
-        const text = input.value.trim();
-        if(!text) return;
-        box.innerHTML += `<div class="bg-blue-600 text-white p-4 rounded-2xl shadow-md self-end max-w-[80%] ml-auto">${text}</div>`;
-        input.value = '';
-        box.scrollTop = box.scrollHeight;
-        try {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ message: text })
-            });
-            const data = await res.json();
-            box.innerHTML += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 self-start max-w-[80%]"><b>Бро:</b> ${data.reply}</div>`;
-            box.scrollTop = box.scrollHeight;
-        } catch(e) { box.innerHTML += `<div class="text-red-500 text-[10px] text-center uppercase">Ошибка сети</div>`; }
+        const i = document.getElementById('chat-input'), b = document.getElementById('chat-messages'), txt = i.value;
+        if(!txt) return;
+        b.innerHTML += `<div class="bg-blue-100 p-3 rounded-2xl ml-auto max-w-[80%] text-xs font-bold">${txt}</div>`;
+        i.value = '';
+        const res = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:txt})});
+        const data = await res.json();
+        b.innerHTML += `<div class="bg-white p-3 rounded-2xl border max-w-[80%] text-xs shadow-sm">${data.reply}</div>`;
+        b.scrollTop = b.scrollHeight;
     }
     </script>
 </body>
+</html>
 </html>
 
 
