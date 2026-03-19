@@ -1,83 +1,102 @@
-{% extends "base.html" %}
-{% block content %}
-<main class="max-w-5xl mx-auto px-6 py-12">
-    <div class="mb-10 text-center"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-2792779022553212" data-ad-slot="54321" data-ad-format="horizontal"></ins></div>
-
-    <section class="bg-white rounded-[50px] shadow-2xl p-8 md:p-16 border mb-20">
-        <h1 class="text-5xl font-black text-center mb-10 uppercase tracking-tighter">SpeechClone <span class="text-blue-600">AI</span></h1>
-        <textarea id="text" maxlength="2000" class="w-full h-64 p-8 bg-gray-50 border rounded-[35px] outline-none text-xl resize-none font-medium focus:ring-4 focus:ring-blue-50 transition-all" placeholder="Ваш текст для озвучки..."></textarea>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>SpeechClone | Open Source AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --p: #6366f1; --bg: #0f172a; --g: rgba(255,255,255,0.05); }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: white; line-height: 1.6; }
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <select id="voiceSelect" class="p-5 bg-gray-50 border rounded-2xl font-bold text-gray-700">
-                <optgroup label="Русские">
-                    <option value="ru-RU-DmitryNeural">Дмитрий 🇷🇺</option>
-                    <option value="ru-RU-SvetlanaNeural">Светлана 🇷🇺</option>
-                    <option value="ru-RU-YuryNeural">Юрий 🇷🇺</option>
-                </optgroup>
-                <optgroup label="Иностранные (Premium)">
-                    <option value="en-US-AvaNeural">Ava 🇺🇸</option>
-                    <option value="en-US-GuyNeural">Guy 🇺🇸</option>
-                    <option value="en-GB-SoniaNeural">Sonia 🇬🇧</option>
-                    <option value="de-DE-KatjaNeural">Katja 🇩🇪</option>
-                    <option value="fr-FR-DeniseNeural">Denise 🇫🇷</option>
-                    <option value="zh-CN-YunxiNeural">Yunxi 🇨🇳</option>
-                    <option value="ja-JP-NanamiNeural">Nanami 🇯🇵</option>
-                    <option value="kk-KZ-DauletNeural">Даулет 🇰🇿</option>
-                </optgroup>
-            </select>
-            <select id="modeSelect" class="p-5 bg-gray-50 border rounded-2xl font-bold text-gray-700">
-                <option value="natural">Естественный</option>
-                <option value="slow">Медленно</option>
-                <option value="fast">Быстро</option>
-            </select>
-        </div>
+        /* Навигация (8 пунктов) */
+        nav { display: flex; justify-content: space-between; padding: 20px 5%; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); sticky; top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .menu a { color: #94a3b8; text-decoration: none; margin-left: 20px; font-size: 0.9rem; transition: 0.3s; }
+        .menu a:hover { color: white; }
 
-        <button onclick="generateAudio()" id="genBtn" class="w-full mt-10 h-20 bg-blue-600 text-white rounded-[25px] font-black uppercase text-lg shadow-xl hover:bg-black transition-all">Сгенерировать MP3</button>
+        .hero { text-align: center; padding: 100px 20px; background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%); }
+        .hero h1 { font-size: 3rem; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        <div id="resultSection" class="mt-12 hidden p-10 bg-blue-50 rounded-[40px] border border-blue-100 animate-fade-in text-center">
-            <audio id="audioPlayer" controls class="w-full mb-8"></audio>
-            <button id="downloadBtn" class="px-20 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all">СКАЧАТЬ ФАЙЛ</button>
-        </div>
-    </section>
+        /* Сетка контента */
+        .container { max-width: 1200px; margin: 0 auto; padding: 50px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: var(--g); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; text-align: center; }
+        .card:hover { border-color: var(--p); transform: translateY(-5px); }
+        .card i { font-size: 2rem; color: var(--p); margin-bottom: 15px; }
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <a href="/blog/kak-озвучить-текст" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
-            <div class="h-2 w-10 bg-blue-600 mb-4 rounded-full"></div>
-            <h3 class="font-black text-xl mb-4 leading-tight">Как озвучить текст бесплатно?</h3>
-            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Читать гайд →</p>
-        </a>
-        <a href="/blog/ai-voices-review" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
-            <div class="h-2 w-10 bg-green-500 mb-4 rounded-full"></div>
-            <h3 class="font-black text-xl mb-4 leading-tight">Обзор голосов Microsoft Edge</h3>
-            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Читать обзор →</p>
-        </a>
-        <a href="/blog/automation-youtube" class="bg-white p-8 rounded-[40px] border shadow-sm hover:shadow-xl transition-all">
-            <div class="h-2 w-10 bg-red-500 mb-4 rounded-full"></div>
-            <h3 class="font-black text-xl mb-4 leading-tight">Автоматизация YouTube каналов</h3>
-            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Стратегия 2026 →</p>
-        </a>
+        /* Донат (4 пункта) */
+        .donate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 40px; }
+        .price-card { background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)); padding: 20px; border-radius: 15px; border: 1px solid var(--p); }
+        .btn { background: var(--p); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div style="font-weight: bold; font-size: 1.2rem;">SpeechClone</div>
+    <div class="menu">
+        <a href="/">Главная</a>
+        <a href="/about">О проекте</a>
+        <a href="/services">Услуги</a>
+        <a href="/blog/main">Блог</a>
+        <a href="/faq">FAQ</a>
+        <a href="/api-docs">API</a>
+        <a href="/contacts">Контакты</a>
+        <a href="/donate" style="color: #fbbf24;">❤ Донат</a>
     </div>
-</main>
+</nav>
 
-<script>
-async function generateAudio() {
-    const btn = document.getElementById('genBtn');
-    const text = document.getElementById('text').value;
-    const voice = document.getElementById('voiceSelect').value;
-    const mode = document.getElementById('modeSelect').value;
-    if(!text.trim()) return alert("Введите текст");
-    btn.disabled = true; btn.innerText = "ГЕНЕРАЦИЯ...";
-    const res = await fetch('/api/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, voice, mode})});
-    const data = await res.json();
-    if(data.audio_url) {
-        document.getElementById('audioPlayer').src = data.audio_url;
-        document.getElementById('resultSection').classList.remove('hidden');
-        document.getElementById('downloadBtn').onclick = () => { window.location.href = `/download-page?file=${data.audio_url.split('/').pop()}`; };
-    }
-    btn.disabled = false; btn.innerText = "Сгенерировать MP3";
-}
-</script>
-{% endblock %}
+<section class="hero">
+    <h1>Голос вашего проекта</h1>
+    <p>Open Source клонирование голоса. Быстро. Качественно. Бесплатно.</p>
+</section>
+
+<div class="container">
+    <div class="card">
+        <i class="fas fa-bolt"></i>
+        <h3>Мгновенно</h3>
+        <p>Генерация аудио за доли секунды через Edge TTS.</p>
+    </div>
+    <div class="card">
+        <i class="fas fa-globe"></i>
+        <h3>25+ Голосов</h3>
+        <p>Поддержка русского, казахского и мировых языков.</p>
+    </div>
+    <div class="card">
+        <i class="fas fa-code-branch"></i>
+        <h3>Open Source</h3>
+        <p>Код доступен для всех. Форкай и улучшай.</p>
+    </div>
+</div>
+
+<div class="container" id="donations">
+    <h2 style="grid-column: 1/-1; text-align: center;">Поддержать развитие</h2>
+    <div class="price-card">
+        <h4>Coffee</h4>
+        <p>Просто поддержка</p>
+        <a href="/donate" class="btn">100 ₽</a>
+    </div>
+    <div class="price-card">
+        <h4>Stars Pack</h4>
+        <p>100 Звёзд в боте</p>
+        <a href="/donate" class="btn">50 XTR</a>
+    </div>
+    <div class="price-card">
+        <h4>VIP Access</h4>
+        <p>Без ограничений</p>
+        <a href="/donate" class="btn">500 ₽</a>
+    </div>
+    <div class="price-card">
+        <h4>Developer</h4>
+        <p>Доступ к API Pro</p>
+        <a href="/donate" class="btn">1000 ₽</a>
+    </div>
+</div>
+
+<footer style="text-align: center; padding: 50px; color: #475569;">
+    &copy; 2026 SpeechClone Online. Open Source Initiative.
+</footer>
+
+</body>
+</html>
 
 
 
