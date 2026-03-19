@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section style="text-align: center; padding: 80px 20px; background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);">
-    <h1 style="font-size: 3rem; margin-bottom: 10px; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Голос вашего проекта</h1>
-    <p style="color: #94a3b8;">Open Source клонирование голоса. Быстро. Качественно. Бесплатно.</p>
+<!-- Секция Hero -->
+<section style="text-align: center; padding: 100px 20px; background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);">
+    <h1 style="font-size: 3.2rem; margin-bottom: 15px; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">Голос вашего проекта</h1>
+    <p style="color: #94a3b8; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Open Source клонирование голоса. Быстро. Качественно. Бесплатно.</p>
 </section>
 
 <div class="container">
@@ -26,27 +27,31 @@
         </div>
     </div>
 
-    <!-- Блок донатов (4 штуки как на скрине) -->
-    <h2 style="text-align: center; margin-bottom: 40px;">Поддержать развитие</h2>
-    <div class="grid">
+    <!-- Блок донатов (4 карточки как на скриншоте) -->
+    <h2 style="text-align: center; margin-bottom: 40px; font-size: 1.8rem;">Поддержать развитие</h2>
+    <div class="grid" id="donations">
+        <!-- 1 -->
         <div class="price-card">
             <h4>Coffee</h4>
             <p>Просто поддержка проекта</p>
             <a href="/donate" class="btn">100 ₽</a>
         </div>
         
+        <!-- 2 -->
         <div class="price-card">
             <h4>Stars Pack</h4>
             <p>100 Звёзд в боте</p>
-            <a href="https://t.me/speechclone_bot" class="btn" style="background: #fbbf24; color: black;">50 XTR</a>
+            <a href="https://t.me/speechclonebot" class="btn" style="background: #fbbf24; color: black;">50 XTR</a>
         </div>
         
+        <!-- 3 -->
         <div class="price-card">
             <h4>VIP Access</h4>
             <p>Без ограничений по знакам</p>
             <a href="/donate" class="btn">500 ₽</a>
         </div>
         
+        <!-- 4 -->
         <div class="price-card">
             <h4>Developer</h4>
             <p>Доступ к API Pro версии</p>
@@ -55,7 +60,6 @@
     </div>
 </div>
 {% endblock %}
-</html>
 
 
 
