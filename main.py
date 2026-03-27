@@ -23,7 +23,7 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 
 # --- НАСТРОЙКИ ---
-ADMIN_ID = 430747895  
+ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
@@ -37,6 +37,7 @@ for p in [STATIC_DIR, AUDIO_DIR, TEMPLATES_DIR, os.path.join(TEMPLATES_DIR, "blo
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)')
+    conn.commit()
     conn.close()
 
 def add_user(uid):
@@ -44,6 +45,12 @@ def add_user(uid):
     conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (uid,))
     conn.commit()
     conn.close()
+
+def get_all_users():
+    conn = sqlite3.connect(DB_PATH)
+    users = [row[0] for row in conn.execute('SELECT user_id FROM users').fetchall()]
+    conn.close()
+    return users
 
 init_db()
 
@@ -72,7 +79,6 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(AUDIO_DIR, file_id)
     
-    # Обработка ударений (символ +)
     def fix_stress(t):
         vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
         return re.sub(r'\+([%s])' % vowels, r'\1' + chr(769), t)
@@ -104,10 +110,9 @@ async def start(m: types.Message):
 @dp.message(Command("stats"))
 async def stats(m: types.Message):
     if m.from_user.id == ADMIN_ID:
-        conn = sqlite3.connect(DB_PATH)
-        count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        conn.close()
+        count = len(get_all_users())
         await m.answer(f"📊 Пользователей: {count}")
+
 @dp.message(Command("export"))
 async def cmd_export(message: types.Message):
     if message.from_user.id != ADMIN_ID:
@@ -120,12 +125,10 @@ async def cmd_export(message: types.Message):
     file_path = os.path.join(BASE_DIR, "users_export.txt")
     
     try:
-        # Создаем текстовый файл со списком ID
         with open(file_path, "w", encoding="utf-8") as f:
             for user_id in users:
                 f.write(f"{user_id}\n")
 
-        # Отправляем файл тебе в личку
         document = types.FSInputFile(file_path)
         await message.answer_document(
             document, 
@@ -134,7 +137,6 @@ async def cmd_export(message: types.Message):
     except Exception as e:
         await message.answer(f"Ошибка при экспорте: {e}")
     finally:
-        # Удаляем файл с сервера после отправки
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -198,7 +200,9 @@ async def on_startup():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Для Render лучше использовать динамический порт
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 
