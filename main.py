@@ -108,6 +108,35 @@ async def stats(m: types.Message):
         count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
         conn.close()
         await m.answer(f"📊 Пользователей: {count}")
+@dp.message(Command("export"))
+async def cmd_export(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = get_all_users()
+    if not users:
+        return await message.answer("База пуста. Пользователей не найдено.")
+
+    file_path = os.path.join(BASE_DIR, "users_export.txt")
+    
+    try:
+        # Создаем текстовый файл со списком ID
+        with open(file_path, "w", encoding="utf-8") as f:
+            for user_id in users:
+                f.write(f"{user_id}\n")
+
+        # Отправляем файл тебе в личку
+        document = types.FSInputFile(file_path)
+        await message.answer_document(
+            document, 
+            caption=f"✅ Выгрузка базы\n👥 Всего: {len(users)} чел."
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка при экспорте: {e}")
+    finally:
+        # Удаляем файл с сервера после отправки
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 @dp.message(F.text)
 async def handle_msg(m: types.Message):
