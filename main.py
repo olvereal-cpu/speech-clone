@@ -17,7 +17,7 @@ from datetime import datetime
 ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 # ВСТАВЬ СВОЙ НОВЫЙ КЛЮЧ ТУТ:
-GEMINI_API_KEY = "AIzaSyC5ILwiXzltMnAPjlGad12zZhKH2CQd2kk"
+GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 
 # --- ИНИЦИАЛИЗАЦИЯ ИИ (МОДЕЛЬ 2.5 FLASH) ---
 if GEMINI_API_KEY:
