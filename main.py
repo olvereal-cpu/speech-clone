@@ -35,11 +35,13 @@ def init_db():
     conn.close()
 
 def add_user(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
+        conn.commit()
+        conn.close()
+    except: pass
 
 def get_all_users():
     conn = sqlite3.connect(DB_PATH)
@@ -50,14 +52,6 @@ def get_all_users():
     return users
 
 init_db()
-
-# --- FASTAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-os.makedirs(os.path.join(BASE_DIR, "static/audio"), exist_ok=True)
-app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # --- ИНИЦИАЛИЗАЦИЯ ИИ ---
 if GEMINI_API_KEY:
@@ -84,30 +78,42 @@ async def cmd_start(message: types.Message):
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id == ADMIN_ID:
-        await message.answer(f"📊 Юзеров: {len(get_all_users())}")
+        await message.answer(f"📊 Юзеров в базе: {len(get_all_users())}")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
     if message.from_user.id != ADMIN_ID or not command.args: return
     users = get_all_users()
+    success = 0
     for uid in users:
-        try: await bot.send_message(uid, command.args); await asyncio.sleep(0.05)
+        try: 
+            await bot.send_message(uid, command.args)
+            success += 1
+            await asyncio.sleep(0.05)
         except: pass
-    await message.answer("✅ Готово")
+    await message.answer(f"✅ Рассылка: {success}/{len(users)}")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
-    if message.text.startswith("/") or uid == ADMIN_ID: pass
-    elif not await check_sub(uid):
+    if message.text.startswith("/") or uid == ADMIN_ID: return
+    
+    if not await check_sub(uid):
         kb = InlineKeyboardBuilder()
-        kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишись на канал, чтобы пользоваться ботом!", reply_markup=kb.as_markup())
+        kb.row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
+        return await message.answer("⚠️ **Доступ ограничен**\n\nПодпишись на наш канал, чтобы пользоваться ботом бесплатно!", reply_markup=kb.as_markup())
     
     add_user(uid)
-    await message.answer("Текст принят! Озвучка доступна на SpeechClone.online")
+    await message.answer("Текст принят! Озвучка доступна на сайте SpeechClone.online")
 
-# --- РОУТЫ ---
+# --- FASTAPI ---
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+os.makedirs(os.path.join(BASE_DIR, "static/audio"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
@@ -130,22 +136,33 @@ async def generate(request: TTSRequest):
 @app.post("/api/chat")
 async def chat_api(request: ChatRequest):
     if not model_ai: return {"reply": "ИИ оффлайн"}
-    res = await asyncio.to_thread(model_ai.generate_content, request.message)
-    return {"reply": res.text}
+    try:
+        res = await asyncio.to_thread(model_ai.generate_content, request.message)
+        return {"reply": res.text}
+    except: return {"reply": "Ошибка ИИ"}
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    try: return templates.TemplateResponse(f"{page}.html", {"request": request})
-    except: return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        return templates.TemplateResponse(f"{page}.html", {"request": request})
+    except:
+        return templates.TemplateResponse("index.html", {"request": request})
 
-# --- ЗАПУСК ---
-@app.on_event("startup")
-async def on_startup():
-    # Запускаем бота фоном ПРИ СТАРТЕ FastAPI
+# --- ГЛОБАЛЬНЫЙ ЗАПУСК ---
+async def main():
+    # Запускаем бота
     asyncio.create_task(dp.start_polling(bot))
+    
+    # Запускаем FastAPI через сервер напрямую
+    port = int(os.environ.get("PORT", 10000))
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, loop="asyncio")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 
