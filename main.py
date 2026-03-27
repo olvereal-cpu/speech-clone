@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types, F # Добавил F и types
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
@@ -41,6 +41,23 @@ if GEMINI_API_KEY:
         model_ai = None
 else:
     model_ai = None
+
+# --- ЛОГИКА ТЕЛЕГРАМ БОТА (ВОТ ЭТО ДОБАВИЛ) ---
+@dp.message(F.text == "/start")
+async def cmd_start(message: types.Message):
+    await message.answer("Йо! Я Спич-Бро. Напиши мне что угодно, и я отвечу как настоящий бро. А на сайте SpeechClone.online я помогаю озвучивать текст! 🎤")
+
+@dp.message()
+async def handle_message(message: types.Message):
+    if model_ai:
+        try:
+            # Бот использует Gemini для ответов
+            response = await asyncio.to_thread(model_ai.generate_content, message.text)
+            await message.answer(response.text)
+        except Exception as e:
+            await message.answer("Бро, чет я приуныл (ошибка ИИ). Попробуй позже!")
+    else:
+        await message.answer("Я пока не могу говорить, мой мозг (API Ключ) не настроен.")
 
 # --- БАЗА ДАННЫХ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -90,40 +107,33 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     await communicate.save(file_path)
     return file_id
 
-# --- ЭНДПОИНТЫ САЙТА (ЯВНЫЕ) ---
+# --- ЭНДПОИНТЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(name="index.html", context={"request": request})
 
 @app.get("/voices", response_class=HTMLResponse)
-async def voices(request: Request): 
-    return templates.TemplateResponse("voices.html", {"request": request})
+async def voices(request: Request): return templates.TemplateResponse("voices.html", {"request": request})
 
 @app.get("/blog", response_class=HTMLResponse)
-async def blog(request: Request): 
-    return templates.TemplateResponse("blog.html", {"request": request})
+async def blog(request: Request): return templates.TemplateResponse("blog.html", {"request": request})
 
 @app.get("/about", response_class=HTMLResponse)
-async def about(request: Request): 
-    return templates.TemplateResponse("about.html", {"request": request})
+async def about(request: Request): return templates.TemplateResponse("about.html", {"request": request})
 
 @app.get("/guide", response_class=HTMLResponse)
-async def guide(request: Request): 
-    return templates.TemplateResponse("guide.html", {"request": request})
+async def guide(request: Request): return templates.TemplateResponse("guide.html", {"request": request})
 
 @app.get("/privacy", response_class=HTMLResponse)
-async def privacy(request: Request): 
-    return templates.TemplateResponse("privacy.html", {"request": request})
+async def privacy(request: Request): return templates.TemplateResponse("privacy.html", {"request": request})
 
 @app.get("/disclaimer", response_class=HTMLResponse)
-async def disclaimer(request: Request): 
-    return templates.TemplateResponse("disclaimer.html", {"request": request})
+async def disclaimer(request: Request): return templates.TemplateResponse("disclaimer.html", {"request": request})
 
 @app.get("/download", response_class=HTMLResponse)
 async def download_page(request: Request, file: str = None):
     return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
 
-# --- API ---
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     try:
@@ -141,7 +151,6 @@ async def chat(request: ChatRequest):
     except Exception as e:
         return {"reply": f"Ошибка: {str(e)}"}
 
-# Ловушка для остальных страниц (должна быть в самом конце)
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     try:
@@ -152,12 +161,12 @@ async def catch_all(request: Request, page: str):
 # --- ЧИСТЫЙ ЗАПУСК ---
 async def start_services():
     print("🤖 Бот SpeechClone запускается...")
-    # Запускаем поллинг бота как фоновую задачу
+    # Запускаем поллинг (теперь хендлеры выше прописаны и будут работать)
     asyncio.create_task(dp.start_polling(bot))
     
     import uvicorn
-    # На Рендере важно брать PORT из переменной окружения
-    port = int(os.environ.get("PORT", 8000))
+    # Берем порт Render
+    port = int(os.environ.get("PORT", 10000))
     config = uvicorn.Config(app, host="0.0.0.0", port=port, loop="asyncio")
     print(f"🌐 Сайт запускается на порту {port}...")
     server = uvicorn.Server(config)
