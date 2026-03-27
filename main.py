@@ -1,7 +1,6 @@
 import os
 import uuid
 import asyncio
-import sqlite3
 import edge_tts
 import uvicorn
 from fastapi import FastAPI, Request
@@ -11,137 +10,48 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command, CommandObject
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command
 
 # --- КОНФИГУРАЦИЯ ---
-ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
-CHANNEL_URL = "https://t.me/speechclone"
-CHANNEL_ID = "@speechclone"
 
-# РАСШИРЕННЫЙ СПИСОК ГОЛОСОВ (Все запрошенные языки)
-VOICES = {
-    "🇷🇺 Дмитрий": "ru-RU-DmitryNeural",
-    "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет (KZ)": "kk-KZ-DauletNeural",
-    "🇰🇿 Айбике (KZ)": "kk-KZ-AibeekeeNeural",
-    "🇺🇸 Guy (EN)": "en-US-GuyNeural",
-    "🇺🇸 Jenny (EN)": "en-US-JennyNeural",
-    "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
-    "🇺🇦 Полина (UA)": "uk-UA-PolinaNeural",
-    "🇵🇱 Marek (PL)": "pl-PL-MarekNeural",
-    "🇵🇱 Zofia (PL)": "pl-PL-ZofiaNeural",
-    "🇫🇷 Remy (FR)": "fr-FR-RemyNeural",
-    "🇫🇷 Denise (FR)": "fr-FR-DeniseNeural",
-    "🇯🇵 Keita (JP)": "ja-JP-KeitaNeural",
-    "🇯🇵 Nanami (JP)": "ja-JP-NanamiNeural",
-    "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural",
-    "🇨🇳 Xiaoxiao (CN)": "zh-CN-XiaoxiaoNeural"
-}
-
-# --- БАЗА ДАННЫХ ---
+# --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "users.db")
+AUDIO_DIR = os.path.join(BASE_DIR, "static/audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
-    conn.commit()
-    conn.close()
-
-def add_user(uid):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (uid,))
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# --- ТЕЛЕГРАМ БОТ ---
+# --- БОТ ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-async def check_sub(user_id):
-    try:
-        m = await bot.get_chat_member(CHANNEL_ID, user_id)
-        return m.status not in ["left", "kicked"]
-    except: return False
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    add_user(message.from_user.id)
-    kb = InlineKeyboardBuilder()
-    for name in VOICES.keys():
-        kb.button(text=name, callback_data=f"set_voice_{name}")
-    kb.button(text="⭐ Поддержать проект", callback_data="donate_stars")
-    kb.adjust(2) 
-    await message.answer("👋 Привет! Выбери язык и голос для озвучки:", reply_markup=kb.as_markup())
-
-@dp.callback_query(F.data.startswith("set_voice_"))
-async def set_voice(call: types.CallbackQuery):
-    v_name = call.data.replace("set_voice_", "")
-    v_id = VOICES[v_name]
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('UPDATE users SET voice = ? WHERE user_id = ?', (v_id, call.from_user.id))
-    conn.commit()
-    conn.close()
-    await call.answer(f"Голос: {v_name}")
-    await call.message.edit_text(f"✅ Выбран голос: **{v_name}**\n\nПрисылай текст на этом языке!")
-
-@dp.callback_query(F.data == "donate_stars")
-async def donate_stars(call: types.CallbackQuery):
-    await bot.send_invoice(
-        call.from_user.id,
-        title="Поддержка Speech Clone",
-        description="Донат на развитие проекта",
-        payload="donate_stars",
-        currency="XTR",
-        prices=[types.LabeledPrice(label="Звезды", amount=50)] 
-    )
-    await call.answer()
-
-@dp.pre_checkout_query()
-async def pre_checkout(query: types.PreCheckoutQuery):
-    await query.answer(ok=True)
+    await message.answer("👋 Привет! Пришли текст для озвучки.")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    uid = message.from_user.id
     if message.text.startswith("/"): return
-    
-    if uid != ADMIN_ID and not await check_sub(uid):
-        kb = InlineKeyboardBuilder()
-        kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишись на канал для доступа к ИИ-озвучке!", reply_markup=kb.as_markup())
-
-    add_user(uid)
-    
-    conn = sqlite3.connect(DB_PATH)
-    res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (uid,)).fetchone()
-    voice_id = res[0] if res else "ru-RU-DmitryNeural"
-    conn.close()
-
-    status_msg = await message.answer("⏳ Генерирую...")
+    msg = await message.answer("⏳ Озвучиваю...")
     try:
         fid = f"{uuid.uuid4()}.mp3"
-        path = os.path.join(BASE_DIR, "static/audio", fid)
-        comm = edge_tts.Communicate(message.text, voice_id)
+        path = os.path.join(AUDIO_DIR, fid)
+        comm = edge_tts.Communicate(message.text, "ru-RU-DmitryNeural")
         await comm.save(path)
-        
         await message.answer_voice(voice=types.FSInputFile(path))
-        await status_msg.delete()
+        await msg.delete()
     except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
+        await message.answer(f"Ошибка: {e}")
 
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-os.makedirs(os.path.join(BASE_DIR, "static/audio"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-class TTSRequest(BaseModel): text: str; voice: str; mode: str
+class TTSRequest(BaseModel):
+    text: str
+    voice: str
+    mode: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -151,7 +61,7 @@ async def home(request: Request):
 async def generate(r: TTSRequest):
     try:
         fid = f"{uuid.uuid4()}.mp3"
-        path = os.path.join(BASE_DIR, "static/audio", fid)
+        path = os.path.join(AUDIO_DIR, fid)
         rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
         comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
         await comm.save(path)
@@ -159,14 +69,11 @@ async def generate(r: TTSRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
-# --- ЗАПУСК ---
-async def main():
+# --- ЗАПУСК БОТА ---
+@app.on_event("startup")
+async def startup_event():
+    # Запускаем поллинг бота в фоне при старте FastAPI
     asyncio.create_task(dp.start_polling(bot))
-    port = int(os.environ.get("PORT", 10000)) 
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, loop="asyncio")
-    await uvicorn.Server(config).serve()
 
-if __name__ == "__main__":
-    asyncio.run(main())
-
+# Убрали ручной uvicorn.run с портом 8000
 
