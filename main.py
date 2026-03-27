@@ -98,7 +98,12 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
 # --- ЭНДПОИНТЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # В новых версиях сначала пишем request, потом имя файла, потом контекст
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"request": request}
+    )
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
