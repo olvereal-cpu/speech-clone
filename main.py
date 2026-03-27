@@ -2,89 +2,97 @@ import os
 import re
 import uuid
 import asyncio
+import ssl
 import sqlite3
 import edge_tts
 import google.generativeai as genai
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- КОНФИГ ---
-ADMIN_ID = 430747895
+# --- КОНФИГУРАЦИЯ ---
+ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
-CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
-DONATE_URL = "https://yoomoney.ru/to/4100118943714856"
+CHANNEL_ID = "@speechclone" 
 
-# Настройка Gemini (используем твой ключ из переменных окружения)
-GEMINI_KEY = os.getenv("GEMINI_KEY")
-genai.configure(api_key=GEMINI_KEY)
-model_ai = genai.GenerativeModel('gemini-1.5-flash')
-
-# --- ПУТИ ---
+# --- БАЗА ДАННЫХ (SQLite) ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-for p in [STATIC_DIR, AUDIO_DIR, TEMPLATES_DIR]: os.makedirs(p, exist_ok=True)
-
-# --- БАЗА ДАННЫХ ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)')
+    cursor = conn.cursor()
+    cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)')
     conn.commit()
     conn.close()
+
+def add_user(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (user_id,))
+    conn.commit()
+    conn.close()
+
+def get_all_users():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM users')
+    users = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return users
+
 init_db()
 
-# --- ГОЛОСА ---
-VOICES = {
-    "🇷🇺 СНГ": [
-        ("Дмитрий (RU)", "ru-RU-DmitryNeural"),
-        ("Светлана (RU)", "ru-RU-SvetlanaNeural"),
-        ("Даулет (KZ)", "kk-KZ-DauletNeural"),
-        ("Остап (UA)", "uk-UA-OstapNeural"),
-        ("Полина (UA)", "uk-UA-PolinaNeural")
-    ],
-    "🇺🇸 EN / EU": [
-        ("Ava (US)", "en-US-AvaNeural"),
-        ("Andrew (US)", "en-US-AndrewNeural"),
-        ("Sonia (GB)", "en-GB-SoniaNeural"),
-        ("Katja (DE)", "de-DE-KatjaNeural"),
-        ("Denise (FR)", "fr-FR-DeniseNeural"),
-        ("Elvira (ES)", "es-ES-ElviraNeural")
-    ],
-    "🇯🇵 ASIA": [
-        ("Nanami (JP)", "ja-JP-NanamiNeural"),
-        ("SunHi (KR)", "ko-KR-SunHiNeural"),
-        ("Xiaoxiao (CN)", "zh-CN-XiaoxiaoNeural")
-    ]
-}
+# --- НАСТРОЙКА GEMINI AI (С ЗАЩИТОЙ) ---
+GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
+model_ai = None
 
-# --- ЛОГИКА ОЗВУЧКИ ---
-async def generate_speech_logic(text: str, voice: str, mode: str):
-    file_id = f"{uuid.uuid4()}.mp3"
-    file_path = os.path.join(AUDIO_DIR, file_id)
-    
-    def fix_stress(t):
-        vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
-        return re.sub(r'\+([%s])' % vowels, r'\1' + chr(769), t)
+if GOOGLE_API_KEY:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        model_ai = genai.GenerativeModel(
+            model_name='gemini-1.5-flash',
+            system_instruction=(
+                "Ты — Спич-Бро, официальный ИИ-помощник сайта SpeechClone.online. "
+                "Помогай с озвучкой текста, пиши коротко и с эмодзи. "
+                "Ударения: ставь '+' перед гласной. Скачивание: ожидание 30 сек."
+            )
+        )
+    except Exception as e:
+        print(f"Ошибка инициализации Gemini: {e}")
 
-    rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-    rate = rates.get(mode, "+0%")
-    
-    communicate = edge_tts.Communicate(fix_stress(text), voice, rate=rate)
-    await communicate.save(file_path)
-    return file_id
+# --- ФИКС SSL ---
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
-# --- FastAPI MODELS ---
+# --- ИНИЦИАЛИЗАЦИЯ FastAPI ---
+app = FastAPI(redirect_slashes=True)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Создаем папки при старте
+for path in ["static", "static/audio", "static/images/blog"]:
+    os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
 class TTSRequest(BaseModel):
     text: str
     voice: str
@@ -93,76 +101,194 @@ class TTSRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
-# --- FastAPI ROUTES ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+# --- ЛОГИКА ГЕНЕРАЦИИ ---
+async def generate_speech_logic(text: str, voice: str, mode: str):
+    file_id = f"{uuid.uuid4()}.mp3"
+    file_path = os.path.join(BASE_DIR, "static/audio", file_id)
+    clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
+    
+    def fix_stress(t):
+        vowels = "аеёиоуыэюяАЕЁИОУЫЭЮЯaeiouyAEIOUY"
+        stress_symbol = chr(769) 
+        return re.sub(r'\+([%s])' % vowels, r'\1' + stress_symbol, t)
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    processed_text = fix_stress(clean_text)
+    rates = {"natural": "-5%", "slow": "-15%", "fast": "+15%"}
+    rate = rates.get(mode, "+0%")
 
-@app.post("/generate")
-async def api_gen(req: TTSRequest):
     try:
-        fid = await generate_speech_logic(req.text, req.voice, req.mode)
-        return {"audio_url": f"/static/audio/{fid}"}
-    except Exception as e: 
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
+        await communicate.save(file_path)
+    except:
+        communicate = edge_tts.Communicate(clean_text.replace("+", ""), voice)
+        await communicate.save(file_path)
+    return file_id
 
-@app.post("/chat")
-async def api_chat(req: ChatRequest):
-    try:
-        # Обернуто в thread, чтобы не блокировать цикл событий FastAPI
-        res = await asyncio.to_thread(model_ai.generate_content, req.message)
-        return {"response": res.text}
-    except Exception as e: 
-        return {"response": "ИИ временно недоступен. Проверьте API ключ."}
-
-# --- ТЕЛЕГРАМ БОТ ---
+# --- ТЕЛЕГРАМ БОТ (AIOGRAM 3.x) ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-user_texts = {}
+user_data = {}
+
+async def check_sub(user_id):
+    try:
+        member = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        return member.status not in ["left", "kicked"]
+    except:
+        return False
 
 @dp.message(Command("start"))
-async def cmd_start(m: types.Message):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (m.from_user.id,))
-    conn.commit()
-    conn.close()
-    kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💰 Поддержать проект", url=DONATE_URL))
-    await m.answer(f"Привет! Пришли текст, и я его озвучу.\nНа сайте доступно 10+ голосов!", reply_markup=kb.as_markup())
+async def cmd_start(message: types.Message):
+    add_user(message.from_user.id)
+    user_name = message.from_user.first_name or "друг"
+    await message.answer(f"👋 Привет, {user_name}! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
+
+@dp.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    count = len(get_all_users())
+    await message.answer(f"📊 Всего пользователей в базе: {count}")
+
+@dp.message(Command("db"))
+async def cmd_db(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    if os.path.exists(DB_PATH):
+        await message.answer_document(types.FSInputFile(DB_PATH), caption="📦 Бэкап базы данных пользователей.")
+    else:
+        await message.answer("❌ Файл базы данных не найден.")
+
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: types.Message, command: CommandObject):
+    if message.from_user.id != ADMIN_ID: return
+    if not command.args:
+        return await message.answer("❌ Введи текст: `/broadcast Привет всем`")
+    
+    users = get_all_users()
+    success = 0
+    for uid in users:
+        try:
+            await bot.send_message(uid, command.args)
+            success += 1
+            await asyncio.sleep(0.05)
+        except: pass
+    await message.answer(f"✅ Рассылка завершена. Доставлено: {success}/{len(users)}")
 
 @dp.message(F.text)
-async def handle_msg(m: types.Message):
-    if m.text.startswith("/"): return
-    user_texts[m.from_user.id] = m.text
-    kb = InlineKeyboardBuilder()
-    for cat, voices in VOICES.items():
-        for name, vid in voices:
-            kb.row(types.InlineKeyboardButton(text=f"{cat}: {name}", callback_data=f"v_{vid}"))
-    await m.answer("Выберите голос для озвучки:", reply_markup=kb.as_markup())
+async def handle_text(message: types.Message):
+    uid = message.from_user.id
+    if message.text.startswith("/"): return
+    
+    if uid != ADMIN_ID and not await check_sub(uid):
+        kb = InlineKeyboardBuilder()
+        kb.row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
+        text_sub = (
+            "⚠️ **Доступ ограничен**\n\n"
+            "Наш проект **полностью бесплатный**! 🎁\n\n"
+            "Единственное условие — подписка на канал. Это помогает нам работать.\n\n"
+            "Подпишись, и голоса станут доступны!"
+        )
+        return await message.answer(text_sub, reply_markup=kb.as_markup(), parse_mode="Markdown")
+
+    add_user(uid)
+    user_data[uid] = {"text": message.text}
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
+                types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇷🇺 Екатерина", callback_data="v_ru-RU-EkaterinaNeural"),
+                types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
+                types.InlineKeyboardButton(text="🇺🇸 Andrew", callback_data="v_en-US-AndrewNeural"))
+    builder.row(types.InlineKeyboardButton(text="Поддержать проект ⭐️", callback_data="donate_menu"))
+    await message.answer("Выберите голос:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
-async def voice_call(c: types.CallbackQuery):
-    voice = c.data.split("_")[1]
-    text = user_texts.get(c.from_user.id, "Привет")
-    msg = await c.message.answer("⌛ Генерирую аудио...")
+async def select_voice(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id not in user_data: 
+        user_data[user_id] = {"text": "Тестовый текст"}
+    user_data[user_id]["voice"] = callback.data.split("_")[1]
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="Обычный", callback_data="m_natural"),
+                types.InlineKeyboardButton(text="Медленно", callback_data="m_slow"),
+                types.InlineKeyboardButton(text="Быстро", callback_data="m_fast"))
+    await callback.message.edit_text("Выберите режим скорости:", reply_markup=builder.as_markup())
+
+@dp.callback_query(F.data.startswith("m_"))
+async def select_mode(callback: types.CallbackQuery):
+    mode = callback.data.split("_")[1]
+    uid = callback.from_user.id
+    if uid not in user_data: return
+    
+    data = user_data[uid]
+    status_msg = await callback.message.edit_text("⌛ Нейросеть генерирует аудио...")
     try:
-        fid = await generate_speech_logic(text[:1000], voice, "natural")
-        await c.message.answer_audio(types.FSInputFile(os.path.join(AUDIO_DIR, fid)), caption=f"✅ Готово!")
-        await msg.delete()
-    except Exception as e: 
-        await c.message.answer(f"Ошибка: {e}")
+        file_id = await generate_speech_logic(data["text"][:1000], data["voice"], mode)
+        file_path = os.path.join(BASE_DIR, "static/audio", file_id)
+        await callback.message.answer_audio(
+            types.FSInputFile(file_path), 
+            caption="✅ Готово! Озвучено в @SpeechCloneBot"
+        )
+        await status_msg.delete()
+    except Exception as e:
+        await callback.message.answer(f"❌ Ошибка: {e}")
+
+# --- САЙТ И API ---
+@app.post("/api/chat")
+async def chat_ai(request: ChatRequest):
+    if not model_ai:
+        return {"reply": "Бро, мой ИИ-мозг сейчас спит (проблема с ключом), но озвучка работает! 🎤"}
+    try:
+        response = await asyncio.to_thread(model_ai.generate_content, request.message)
+        return {"reply": response.text}
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return {"reply": "Ошибка связи с ИИ. Попробуй позже."}
+
+@app.post("/api/generate")
+async def generate(request: TTSRequest):
+    try:
+        fid = await generate_speech_logic(request.text, request.voice, request.mode)
+        return {"audio_url": f"/static/audio/{fid}"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request): 
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/get-audio/{f}")
+async def get_audio(f: str): 
+    return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
+
+@app.get("/download-page", response_class=HTMLResponse)
+async def download_page(request: Request, file: str):
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
+
+@app.get("/blog")
+async def blog_index(request: Request): 
+    return templates.TemplateResponse("blog_index.html", {"request": request})
+
+@app.get("/blog/{p}")
+async def blog_post(request: Request, p: str): 
+    try:
+        return templates.TemplateResponse(f"blog/{p}.html", {"request": request})
+    except:
+        return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/{p}")
+async def other_pages(request: Request, p: str):
+    try: 
+        return templates.TemplateResponse(f"{p}.html", {"request": request})
+    except: 
+        return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
-async def on_startup(): 
+async def startup_event():
+    # Запускаем бота один раз
     asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 
