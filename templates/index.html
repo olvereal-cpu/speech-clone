@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-12 animate-fade-in">
-    <!-- Твой заголовок -->
+    <!-- Заголовок -->
     <div class="text-center mb-16">
         <h1 class="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-gray-900 uppercase">
             Озвучка <span class="text-blue-600">Нейросетью</span>
@@ -16,20 +16,17 @@
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <select id="voice-select" class="bg-gray-100 p-5 rounded-2xl font-black text-[11px] uppercase tracking-widest outline-none border-2 border-transparent focus:border-blue-600 transition-all">
-                <!-- РУССКИЕ ГОЛОСА -->
                 <optgroup label="Русский (RU)">
                     <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
                     <option value="ru-RU-DmitryNeural">Дмитрий (Мужской)</option>
                     <option value="ru-RU-DariyaNeural">Дарья (Женский)</option>
                 </optgroup>
-                <!-- АНГЛИЙСКИЕ ГОЛОСА -->
                 <optgroup label="English (US/UK)">
                     <option value="en-US-GuyNeural">Guy (Male - US)</option>
                     <option value="en-US-JennyNeural">Jenny (Female - US)</option>
                     <option value="en-GB-SoniaNeural">Sonia (Female - UK)</option>
                     <option value="en-GB-RyanNeural">Ryan (Male - UK)</option>
                 </optgroup>
-                <!-- КАЗАХСКИЕ ГОЛОСА -->
                 <optgroup label="Қазақша (KZ)">
                     <option value="kk-KZ-AigulNeural">Айгүл (Әйел)</option>
                     <option value="kk-KZ-DauletNeural">Дәулет (Ер)</option>
@@ -42,31 +39,81 @@
                 <option value="fast">Ускоренный (+20%)</option>
             </select>
 
-            <button onclick="generateAudio()" id="gen-btn" class="bg-blue-600 text-white font-black uppercase tracking-[0.2em] py-5 rounded-2xl hover:bg-black transition-all shadow-xl shadow-blue-200 text-xs">Озвучить текст</button>
+            <button onclick="generateAudio()" id="gen-btn" class="bg-blue-600 text-white font-black uppercase tracking-[0.2em] py-5 rounded-2xl hover:bg-black transition-all shadow-xl shadow-blue-200 text-xs text-center flex items-center justify-center">Озвучить текст</button>
         </div>
 
-        <!-- Плеер и кнопка перехода -->
         <div id="result-audio" class="hidden mt-10 p-8 bg-blue-50 rounded-[30px] flex flex-col items-center border-2 border-blue-100">
             <audio id="player" controls class="w-full mb-6"></audio>
             <button onclick="goToDownload()" class="bg-black text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">Перейти к скачиванию</button>
         </div>
     </div>
 
-    <!-- Твой чат-виджет Спич-Бро -->
-    <div class="bg-gray-900 rounded-[40px] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
-        <div class="flex items-center gap-4 mb-8">
-            <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-            </span>
-            <h2 class="font-black uppercase tracking-[0.3em] text-[11px]">Спич-Бро ИИ Помощник</h2>
+    <!-- СЕКЦИЯ СТАТЬИ / ИНФО -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+        <div class="bg-gray-900 rounded-[40px] p-8 text-white shadow-xl">
+            <h3 class="text-2xl font-black mb-4 uppercase tracking-tighter">Как работает SpeechClone?</h3>
+            <p class="text-gray-400 text-sm leading-relaxed font-medium">Наш сервис использует передовые нейронные сети (Edge AI), чтобы превратить ваш текст в живую человеческую речь. Мы поддерживаем более 20 языков и десятки уникальных голосов, которые практически невозможно отличить от настоящих.</p>
         </div>
-        <div id="chat-box" class="h-48 overflow-y-auto mb-6 text-gray-400 text-sm font-medium space-y-4 pr-4">
-            <p class="bg-white/5 p-4 rounded-2xl inline-block">👋 Йо! Я — Спич-Бро. Помогу с текстом или ударениями. Что делаем?</p>
+        <div class="bg-blue-600 rounded-[40px] p-8 text-white shadow-xl">
+            <h3 class="text-2xl font-black mb-4 uppercase tracking-tighter">Сфера применения</h3>
+            <p class="text-blue-100 text-sm leading-relaxed font-medium">Озвучивайте свои видео для YouTube и TikTok, создавайте аудиокниги, учебные материалы или системные уведомления. Всё это доступно бесплатно и без сложной регистрации.</p>
         </div>
-        <div class="flex gap-3 bg-white/5 p-2 rounded-[25px]">
-            <input id="chat-input" type="text" class="flex-1 bg-transparent border-none p-4 text-white placeholder-gray-600 focus:ring-0" placeholder="Напиши мне что-нибудь...">
-            <button onclick="sendChat()" class="bg-blue-600 text-white px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-white hover:text-black transition-all">Отправить</button>
+    </div>
+
+    <!-- СЕКЦИЯ FAQ -->
+    <div class="mb-16">
+        <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-tighter text-gray-900">Частые вопросы</h2>
+        <div class="space-y-4">
+            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm transition-hover hover:shadow-md">
+                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Как поставить правильное ударение?</p>
+                <p class="text-gray-500 text-sm">Просто поставьте знак "+" перед гласной, на которую падает ударение. Например: Пон+ятие или Молок+о.</p>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm transition-hover hover:shadow-md">
+                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Это полностью бесплатно?</p>
+                <p class="text-gray-500 text-sm">Да! Основной функционал озвучки текста доступен всем пользователям SpeechClone без оплаты.</p>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm transition-hover hover:shadow-md">
+                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Какое ограничение на длину текста?</p>
+                <p class="text-gray-500 text-sm">В текущей версии мы рекомендуем вставлять тексты до 5000 символов за один раз для стабильной работы.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ВИДЖЕТ ЧАТА В УГЛУ -->
+<div id="chat-widget" class="fixed bottom-6 right-6 z-[999]">
+    <!-- Кнопка вызова -->
+    <button onclick="toggleChat()" class="bg-gray-900 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-600 transition-all border-4 border-white group">
+        <svg id="chat-icon" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+        </svg>
+        <span class="absolute -top-1 -right-1 flex h-4 w-4">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+        </span>
+    </button>
+
+    <!-- Окно чата -->
+    <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[350px] max-w-[90vw] bg-gray-900 rounded-[30px] shadow-2xl overflow-hidden border border-gray-800 animate-fade-in flex flex-col">
+        <div class="p-6 bg-gray-800 flex justify-between items-center border-b border-gray-700">
+            <div>
+                <h3 class="font-black text-white text-[10px] uppercase tracking-[0.2em]">Спич-Бро Помощник</h3>
+                <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-1">Online</p>
+            </div>
+            <button onclick="toggleChat()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div id="chat-box" class="h-80 overflow-y-auto p-6 space-y-4 text-xs font-medium">
+            <div class="text-left">
+                <p class="bg-gray-800 text-gray-300 p-4 rounded-2xl inline-block leading-relaxed">Йо! 👋 Я твой бро по звуку. Напиши, если надо поправить текст или подсказать голос!</p>
+            </div>
+        </div>
+
+        <div class="p-4 bg-gray-800/50 border-t border-gray-800 flex gap-2">
+            <input id="chat-input" type="text" class="flex-1 bg-gray-900 border-none rounded-xl p-3 text-white text-xs focus:ring-2 focus:ring-blue-600 transition-all" placeholder="Спроси Спич-Бро...">
+            <button onclick="sendChat()" class="bg-blue-600 text-white px-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all">OK</button>
         </div>
     </div>
 </div>
@@ -74,6 +121,36 @@
 <script>
 let currentAudioUrl = "";
 
+// Логика чата
+function toggleChat() {
+    document.getElementById('chat-window').classList.toggle('hidden');
+}
+
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const box = document.getElementById('chat-box');
+    const text = input.value;
+    if (!text) return;
+
+    box.innerHTML += `<div class="text-right"><p class="bg-blue-600 text-white p-3 rounded-2xl inline-block text-[11px] font-bold">Вы: ${text}</p></div>`;
+    input.value = "";
+    box.scrollTop = box.scrollHeight;
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: text})
+        });
+        const data = await response.json();
+        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-400 p-3 rounded-2xl inline-block text-[11px] font-bold">Бро: ${data.reply}</p></div>`;
+        box.scrollTop = box.scrollHeight;
+    } catch (e) {
+        box.innerHTML += `<p class="text-red-500 text-[10px] text-center uppercase font-black">Сбой связи...</p>`;
+    }
+}
+
+// Логика озвучки
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
     const text = document.getElementById('text-input').value;
@@ -116,36 +193,11 @@ function goToDownload() {
     window.location.href = `/download?file=${fileName}`;
 }
 
-async function sendChat() {
-    const input = document.getElementById('chat-input');
-    const box = document.getElementById('chat-box');
-    const text = input.value;
-    if (!text) return;
-
-    box.innerHTML += `<div class="text-right"><p class="bg-blue-600 text-white p-4 rounded-2xl inline-block"><b>Ты:</b> ${text}</p></div>`;
-    input.value = "";
-    box.scrollTop = box.scrollHeight;
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: text})
-        });
-        const data = await response.json();
-        box.innerHTML += `<div><p class="bg-white/5 p-4 rounded-2xl inline-block text-blue-400"><b>Бро:</b> ${data.reply}</p></div>`;
-        box.scrollTop = box.scrollHeight;
-    } catch (e) {
-        box.innerHTML += `<p class="text-red-400 text-xs uppercase font-black">Связь потеряна...</p>`;
-    }
-}
-
 document.getElementById('chat-input').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') sendChat();
 });
 </script>
 {% endblock %}
-
 
 
 
