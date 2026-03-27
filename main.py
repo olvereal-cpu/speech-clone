@@ -4,7 +4,7 @@ import uuid
 import asyncio
 import sqlite3
 import edge_tts
-import google.generativeai as genai
+import google.generativeai
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,12 +19,14 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 # ВСТАВЬ СВОЙ НОВЫЙ КЛЮЧ ТУТ:
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (МОДЕЛЬ 2.5 FLASH) ---
+# --- ИНИЦИАЛИЗАЦИЯ ИИ (МОДЕЛЬ 2.5 FLASH ПРЯМОЙ ВЫЗОВ) ---
 if GEMINI_API_KEY:
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
+        # Используем полное имя библиотеки без сокращений
+        google.generativeai.configure(api_key=GEMINI_API_KEY)
+        
         # Прописываю именно ту модель, на которой мы работали в феврале
-        model_ai = genai.GenerativeModel(
+        model_ai = google.generativeai.GenerativeModel(
             model_name='gemini-2.5-flash', 
             system_instruction=(
                 "Ты — Спич-Бро, официальный ИИ-помощник SpeechClone.online. "
@@ -32,9 +34,13 @@ if GEMINI_API_KEY:
                 "Пиши кратко, с юмором и эмодзи. Ударения: знак '+' перед гласной."
             )
         )
+        print("✅ Спич-Бро на базе Gemini 2.5 Flash готов к работе!")
     except Exception as e:
-        print(f"Ошибка инициализации Gemini 2.5: {e}")
+        print(f"❌ Ошибка инициализации Gemini 2.5: {e}")
         model_ai = None
+else:
+    print("⚠️ ВНИМАНИЕ: GEMINI_API_KEY не найден. ИИ не будет работать.")
+    model_ai = None
 
 # --- БАЗА ДАННЫХ (ФЕВРАЛЬСКАЯ СТРУКТУРА) ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
