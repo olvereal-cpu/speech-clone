@@ -22,6 +22,11 @@ CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 DONATE_URL = "https://yoomoney.ru/to/4100118943714856"
 
+# Настройка Gemini (используем твой ключ из переменных окружения)
+GEMINI_KEY = os.getenv("GEMINI_KEY")
+genai.configure(api_key=GEMINI_KEY)
+model_ai = genai.GenerativeModel('gemini-1.5-flash')
+
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -31,10 +36,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 for p in [STATIC_DIR, AUDIO_DIR, TEMPLATES_DIR]: os.makedirs(p, exist_ok=True)
 
-# --- ИИ И БАЗА ---
-genai.configure(api_key=os.getenv("GEMINI_KEY"))
-model_ai = genai.GenerativeModel('gemini-1.5-flash')
-
+# --- БАЗА ДАННЫХ ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)')
@@ -42,7 +44,7 @@ def init_db():
     conn.close()
 init_db()
 
-# --- ГОЛОСА (ПОЛНЫЙ СПИСОК ДЛЯ БОТА И САЙТА) ---
+# --- ГОЛОСА ---
 VOICES = {
     "🇷🇺 СНГ": [
         ("Дмитрий (RU)", "ru-RU-DmitryNeural"),
@@ -82,34 +84,41 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     await communicate.save(file_path)
     return file_id
 
-# --- FastAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
+# --- FastAPI MODELS ---
 class TTSRequest(BaseModel):
     text: str
     voice: str
     mode: str = "natural"
 
+class ChatRequest(BaseModel):
+    message: str
+
+# --- FastAPI ROUTES ---
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/api/generate")
+@app.post("/generate")
 async def api_gen(req: TTSRequest):
     try:
         fid = await generate_speech_logic(req.text, req.voice, req.mode)
         return {"audio_url": f"/static/audio/{fid}"}
-    except Exception as e: return JSONResponse(status_code=500, content={"detail": str(e)})
+    except Exception as e: 
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
-@app.post("/api/chat")
-async def api_chat(req: BaseModel): # Простой фикс для чата
+@app.post("/chat")
+async def api_chat(req: ChatRequest):
     try:
+        # Обернуто в thread, чтобы не блокировать цикл событий FastAPI
         res = await asyncio.to_thread(model_ai.generate_content, req.message)
-        return {"reply": res.text}
-    except: return {"reply": "ИИ занят."}
+        return {"response": res.text}
+    except Exception as e: 
+        return {"response": "ИИ временно недоступен. Проверьте API ключ."}
 
 # --- ТЕЛЕГРАМ БОТ ---
 bot = Bot(token=BOT_TOKEN)
@@ -118,7 +127,10 @@ user_texts = {}
 
 @dp.message(Command("start"))
 async def cmd_start(m: types.Message):
-    conn = sqlite3.connect(DB_PATH); conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (m.from_user.id,)); conn.commit(); conn.close()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (m.from_user.id,))
+    conn.commit()
+    conn.close()
     kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💰 Поддержать проект", url=DONATE_URL))
     await m.answer(f"Привет! Пришли текст, и я его озвучу.\nНа сайте доступно 10+ голосов!", reply_markup=kb.as_markup())
 
@@ -127,10 +139,9 @@ async def handle_msg(m: types.Message):
     if m.text.startswith("/"): return
     user_texts[m.from_user.id] = m.text
     kb = InlineKeyboardBuilder()
-    # Собираем кнопки из нашего списка VOICES
     for cat, voices in VOICES.items():
         for name, vid in voices:
-            kb.row(types.InlineKeyboardButton(text=name, callback_data=f"v_{vid}"))
+            kb.row(types.InlineKeyboardButton(text=f"{cat}: {name}", callback_data=f"v_{vid}"))
     await m.answer("Выберите голос для озвучки:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
@@ -140,12 +151,14 @@ async def voice_call(c: types.CallbackQuery):
     msg = await c.message.answer("⌛ Генерирую аудио...")
     try:
         fid = await generate_speech_logic(text[:1000], voice, "natural")
-        await c.message.answer_audio(types.FSInputFile(os.path.join(AUDIO_DIR, fid)), caption=f"✅ Готово! Голос: {voice}")
+        await c.message.answer_audio(types.FSInputFile(os.path.join(AUDIO_DIR, fid)), caption=f"✅ Готово!")
         await msg.delete()
-    except Exception as e: await c.message.answer(f"Ошибка: {e}")
+    except Exception as e: 
+        await c.message.answer(f"Ошибка: {e}")
 
 @app.on_event("startup")
-async def on_startup(): asyncio.create_task(dp.start_polling(bot))
+async def on_startup(): 
+    asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
     import uvicorn
