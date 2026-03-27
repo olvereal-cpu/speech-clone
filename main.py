@@ -126,24 +126,23 @@ async def catch_all(request: Request, page: str):
         return templates.TemplateResponse("index.html", {"request": request})
 
 
-# --- ЗАПУСК: СИСТЕМА САМА ВЫБИРАЕТ ПОРТ ---
+# --- ЧИСТЫЙ ЗАПУСК: СЕРВЕР САМ ВЫБИРАЕТ ПОРТ ---
 async def start_services():
-    # 1. Запускаем бота в фоне
+    # Запускаем бота в фоне
     print("🤖 Бот SpeechClone запускается...")
     asyncio.create_task(dp.start_polling(bot))
     
-    # 2. Запускаем веб-сервер (без указания конкретного порта)
+    # Запускаем веб-сервер (без указания порта)
     import uvicorn
     
-    # Мы убрали 'port=...', теперь сервер сам найдет свободный или назначенный системой порт
+    # Система сама выделит нужный порт
     config = uvicorn.Config(
         app, 
         host="0.0.0.0", 
-        loop="asyncio",
-        log_level="info"
+        loop="asyncio"
     )
     
-    print("🌐 Сайт подготавливается к работе...")
+    print("🌐 Сайт запускается...")
     server = uvicorn.Server(config)
     await server.serve()
 
@@ -151,7 +150,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(start_services())
     except (KeyboardInterrupt, SystemExit):
-        print("🛑 Все службы остановлены")
+        print("🛑 Остановка всех служб")
 
 
 
