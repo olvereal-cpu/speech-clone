@@ -143,7 +143,7 @@
         const counterDisplay = document.getElementById('user-counter');
         if (counterDisplay) { counterDisplay.innerText = count; }
 
-        {% if scroll_to %}
+        {% if scroll_to is defined and scroll_to %}
         const target = document.getElementById('{{ scroll_to }}');
         if (target) {
             setTimeout(() => {
@@ -155,7 +155,6 @@
     </script>
 </body>
 </html>
-
 
 
 
