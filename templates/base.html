@@ -23,6 +23,7 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
     <link rel="canonical" href="https://speechclone.online/" />
     
+    <!-- Google Tag Manager -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CHHSM6PFGH"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -31,6 +32,7 @@
       gtag('config', 'G-CHHSM6PFGH');
     </script>
     
+    <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,6 +47,8 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         html { scroll-behavior: smooth; }
         #chat-widget { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)); }
+        /* Исправление для мобильного меню */
+        #mobile-menu:not(.hidden) { display: flex; flex-direction: column; }
     </style>
 </head>
 <body class="bg-[#F9FAFB] text-gray-900 antialiased">
@@ -74,11 +78,14 @@
                 </div>
             </div>
 
-            <button id="mobile-menu-btn" class="md:hidden text-gray-900 focus:outline-none">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <button id="mobile-menu-btn" class="md:hidden text-gray-900 focus:outline-none p-2">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
             </button>
         </div>
 
+        <!-- Mobile Menu Container -->
         <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 p-6 space-y-4 shadow-xl">
             <a href="/" class="block font-black uppercase text-xs tracking-widest text-gray-900">Главная</a>
             <a href="/voices" class="block font-black uppercase text-xs tracking-widest text-gray-900">Голоса</a>
@@ -125,29 +132,40 @@
     </footer>
 
     <script>
-    const menuBtn = document.getElementById('mobile-menu-btn');
-    const menu = document.getElementById('mobile-menu');
-    const icon = document.getElementById('menu-icon');
-
-    if (menuBtn) {
-        menuBtn.addEventListener('click', () => {
-            const isHidden = menu.classList.toggle('hidden');
-            icon.setAttribute('d', isHidden ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12');
-        });
-    }
-
+    // Логика мобильного меню
     document.addEventListener('DOMContentLoaded', () => {
-        let count = localStorage.getItem('my_visits') || 0;
-        count++;
-        localStorage.setItem('my_visits', count);
-        const counterDisplay = document.getElementById('user-counter');
-        if (counterDisplay) { counterDisplay.innerText = count; }
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+        const icon = document.getElementById('menu-icon');
 
-        {% if scroll_to is defined and scroll_to %}
+        if (menuBtn && menu && icon) {
+            menuBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const isHidden = menu.classList.toggle('hidden');
+                // Меняем иконку (бургер на крестик)
+                if (isHidden) {
+                    icon.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+                } else {
+                    icon.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+                }
+            });
+        }
+
+        // Счетчик визитов
+        try {
+            let count = parseInt(localStorage.getItem('my_visits')) || 0;
+            count++;
+            localStorage.setItem('my_visits', count);
+            const counterDisplay = document.getElementById('user-counter');
+            if (counterDisplay) { counterDisplay.innerText = count; }
+        } catch (e) { console.warn('LocalStorage unavailable'); }
+
+        // Плавный скролл из Flask/FastAPI контекста
+        {% if scroll_to %}
         const target = document.getElementById('{{ scroll_to }}');
         if (target) {
             setTimeout(() => {
-                target.scrollIntoView({ behavior: 'smooth' });
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 500);
         }
         {% endif %}
