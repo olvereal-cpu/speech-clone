@@ -55,7 +55,6 @@ GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# Устанавливаем модель Gemini 2.5 Flash
 selected_model = 'gemini-2.5-flash' 
 
 model_ai = genai.GenerativeModel(
@@ -85,7 +84,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Создаем папки при старте (защита от отсутствия директорий на Render)
 for path in ["static", "static/audio", "static/images/blog", "templates", "templates/blog"]:
     os.makedirs(os.path.join(BASE_DIR, path), exist_ok=True)
 
@@ -141,25 +139,26 @@ async def cmd_start(message: types.Message):
     user_name = message.from_user.first_name or "друг"
     await message.answer(f"👋 Привет, {user_name}! Пришли текст для озвучки.\n💡 Используй **+** для ударения.")
 
+# --- АДМИНКА ---
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
     count = len(get_all_users())
-    await message.answer(f"📊 Всего пользователей в базе: {count}")
+    await message.answer(f"📊 Всего пользователей: {count}")
 
 @dp.message(Command("db"))
 async def cmd_db(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
     if os.path.exists(DB_PATH):
-        await message.answer_document(types.FSInputFile(DB_PATH), caption="📦 Бэкап БД.")
+        await message.answer_document(types.FSInputFile(DB_PATH), caption="📦 База данных.")
     else:
-        await message.answer("❌ Файл БД не найден.")
+        await message.answer("❌ Ошибка: БД не найдена.")
 
 @dp.message(Command("broadcast"))
 async def cmd_broadcast(message: types.Message, command: CommandObject):
     if message.from_user.id != ADMIN_ID: return
     if not command.args:
-        return await message.answer("❌ Введите текст рассылки.")
+        return await message.answer("❌ Формат: `/broadcast Текст`")
     users = get_all_users()
     success = 0
     for uid in users:
@@ -168,8 +167,9 @@ async def cmd_broadcast(message: types.Message, command: CommandObject):
             success += 1
             await asyncio.sleep(0.05)
         except: pass
-    await message.answer(f"✅ Рассылка завершена: {success}/{len(users)}")
+    await message.answer(f"✅ Готово: {success}/{len(users)}")
 
+# --- ОСНОВНАЯ ЛОГИКА И ПОДПИСКА ---
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
@@ -177,17 +177,34 @@ async def handle_text(message: types.Message):
     
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
-        kb.row(types.InlineKeyboardButton(text="💎 Подписаться на Speech Clone", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишитесь на канал для доступа к озвучке!", reply_markup=kb.as_markup())
+        kb.row(types.InlineKeyboardButton(text="💎 Подписаться на Канал", url=CHANNEL_URL))
+        return await message.answer("⚠️ Чтобы пользоваться ботом, подпишись на наш канал!", reply_markup=kb.as_markup())
 
     add_user(uid)
     user_data[uid] = {"text": message.text}
     builder = InlineKeyboardBuilder()
+    
+    # --- ПОЛНЫЙ СПИСОК ГОЛОСОВ ---
+    # Русские
     builder.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
                 types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇷🇺 Екатерина", callback_data="v_ru-RU-EkaterinaNeural"),
+                types.InlineKeyboardButton(text="🇷🇺 Дарья", callback_data="v_ru-RU-DariyaNeural"))
+    # Казахские
     builder.row(types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"),
-                types.InlineKeyboardButton(text="🇺🇸 Ava (Eng)", callback_data="v_en-US-AvaNeural"))
-    await message.answer("Выберите голос:", reply_markup=builder.as_markup())
+                types.InlineKeyboardButton(text="🇰🇿 Айгуль", callback_data="v_kk-KZ-AigulNeural"))
+    # Английские
+    builder.row(types.InlineKeyboardButton(text="🇺🇸 Ava", callback_data="v_en-US-AvaNeural"),
+                types.InlineKeyboardButton(text="🇺🇸 Andrew", callback_data="v_en-US-AndrewNeural"))
+    builder.row(types.InlineKeyboardButton(text="🇺🇸 Emma", callback_data="v_en-US-EmmaNeural"),
+                types.InlineKeyboardButton(text="🇬🇧 Sonia", callback_data="v_en-GB-SoniaNeural"))
+    # Другие популярные
+    builder.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
+                types.InlineKeyboardButton(text="🇫🇷 Denise", callback_data="v_fr-FR-DeniseNeural"))
+    
+    builder.row(types.InlineKeyboardButton(text="⭐️ Поддержать", callback_data="donate_menu"))
+    
+    await message.answer("Выберите нейро-голос:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
 async def select_voice(callback: types.CallbackQuery):
@@ -197,7 +214,7 @@ async def select_voice(callback: types.CallbackQuery):
     builder.row(types.InlineKeyboardButton(text="Обычный", callback_data="m_natural"),
                 types.InlineKeyboardButton(text="Медленно", callback_data="m_slow"),
                 types.InlineKeyboardButton(text="Быстро", callback_data="m_fast"))
-    await callback.message.edit_text("Выберите режим скорости:", reply_markup=builder.as_markup())
+    await callback.message.edit_text("Выберите скорость:", reply_markup=builder.as_markup())
 
 @dp.callback_query(F.data.startswith("m_"))
 async def select_mode(callback: types.CallbackQuery):
@@ -205,7 +222,7 @@ async def select_mode(callback: types.CallbackQuery):
     uid = callback.from_user.id
     if uid not in user_data: return
     data = user_data[uid]
-    status_msg = await callback.message.edit_text("⌛ Нейросеть (Gemini 2.5) озвучивает текст...")
+    status_msg = await callback.message.edit_text("⌛ Gemini 2.5 генерирует аудио...")
     try:
         file_id = await generate_speech_logic(data["text"][:1000], data.get("voice", "ru-RU-DmitryNeural"), mode)
         await callback.message.answer_audio(types.FSInputFile(os.path.join(BASE_DIR, "static/audio", file_id)))
@@ -213,16 +230,15 @@ async def select_mode(callback: types.CallbackQuery):
     except Exception as e:
         await callback.message.answer(f"❌ Ошибка: {e}")
 
-# --- САЙТ И API ---
+# --- WEB API ---
 @app.post("/api/chat")
 async def chat_ai(request: ChatRequest):
     try:
         loop = asyncio.get_event_loop()
-        # Вызов Gemini 2.5 Flash
         res = await loop.run_in_executor(None, lambda: model_ai.generate_content(request.message))
-        return {"reply": res.text if res else "Я задумался..."}
+        return {"reply": res.text if res else "..."}
     except Exception as e: 
-        return {"reply": f"Ошибка ИИ (2.5 Flash): {str(e)}"}
+        return {"reply": f"Ошибка Gemini 2.5: {str(e)}"}
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -234,7 +250,6 @@ async def generate(request: TTSRequest):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request): 
-    # Проверка существования шаблона для исключения 500 ошибки
     try:
         return templates.TemplateResponse("index.html", {"request": request})
     except:
@@ -244,16 +259,8 @@ async def home(request: Request):
 async def get_audio(f: str): 
     return FileResponse(os.path.join(BASE_DIR, "static/audio", f))
 
-@app.get("/blog")
-async def blog_index(request: Request): 
-    try:
-        return templates.TemplateResponse("blog_index.html", {"request": request})
-    except:
-        raise HTTPException(status_code=404)
-
 @app.get("/{p}")
 async def other_pages(request: Request, p: str):
-    # Если страницы нет — редирект на главную (лечит Internal Server Error)
     try: 
         return templates.TemplateResponse(f"{p}.html", {"request": request})
     except: 
@@ -267,7 +274,6 @@ async def startup_event():
             await bot.delete_webhook(drop_pending_updates=True)
             asyncio.create_task(dp.start_polling(bot))
         except: pass
-
 
 
 
