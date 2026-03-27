@@ -1,229 +1,192 @@
 {% extends "base.html" %}
 
-{% block description %}Озвучьте текст онлайн бесплатно с помощью ИИ. Натуральные голоса, настройка скорости и ударений. Скачивайте готовые аудиофайлы без регистрации.{% endblock %}
-
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
-    <!-- Рекламный блок (Верхний) -->
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-200 rounded-[30px] text-center min-h-[90px] flex items-center justify-center overflow-hidden">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-2792779022553212"
-             data-ad-slot="ТУТ_ID_ВЕРХНЕГО_БЛОКА"
-             data-ad-format="horizontal"
-             data-full-width-responsive="true"></ins>
-    </div>
-
+    <!-- Секция озвучки -->
     <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50 animate-fade-in">
-        <textarea id="textInput" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
+        <textarea id="textInput" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки..."></textarea>
         
         <div class="text-right pr-6 -mt-10 relative z-10">
             <span id="charCount" class="text-[10px] font-black text-gray-400 bg-white/90 px-3 py-1.5 rounded-xl shadow-sm border border-gray-100 uppercase tracking-widest">0 / 2000</span>
         </div>
 
-        <div class="mt-5 ml-4 flex items-center gap-2">
-            <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Совет: ставьте <span class="text-blue-600">+</span> перед гласной для ударения (напр. з+амок)
-            </p>
-        </div>
-        
         <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
             <div class="w-full md:w-1/2">
-                <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос и язык</label>
+                <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос (Все доступные)</label>
                 <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all mb-4">
-                    <optgroup label="СНГ / CIS">
-                        <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Мужской)</option>
-                        <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Женский)</option>
-                        <option value="uk-UA-OstapNeural">Українська — Остап</option>
-                        <option value="kk-KZ-DauletNeural">Қазақша — Даулет</option>
+                    
+                    <optgroup label="🇷🇺 Русский (Russian)">
+                        <option value="ru-RU-DmitryNeural">Дмитрий (Мужской) — Естественный</option>
+                        <option value="ru-RU-SvetlanaNeural">Светлана (Женский) — Приятный</option>
+                        <option value="ru-RU-DariyaNeural">Дарья (Женский) — Четкий</option>
+                        <option value="ru-RU-EkaterinaNeural">Екатерина (Женский) — Эмоциональный</option>
                     </optgroup>
-                    <optgroup label="English">
-                        <option value="en-US-AvaNeural">English (US) — Ava</option>
-                        <option value="en-US-GuyNeural">English (US) — Guy</option>
-                        <option value="en-GB-SoniaNeural">English (UK) — Sonia</option>
+
+                    <optgroup label="🇰🇿 Қазақша (Kazakh)">
+                        <option value="kk-KZ-AigulNeural">Айгүл (Женский)</option>
+                        <option value="kk-KZ-DauletNeural">Дәулет (Мужской)</option>
                     </optgroup>
-                    <optgroup label="Europe & Asia">
-                        <option value="de-DE-KatjaNeural">Deutsch (Germany)</option>
-                        <option value="fr-FR-DeniseNeural">Français (France)</option>
-                        <option value="zh-CN-YunxiNeural">Chinese</option>
-                        <option value="ja-JP-NanamiNeural">Japanese</option>
+
+                    <optgroup label="🇺🇸 English (US)">
+                        <option value="en-US-GuyNeural">Guy (Male)</option>
+                        <option value="en-US-JennyNeural">Jenny (Female)</option>
+                        <option value="en-US-AriaNeural">Aria (Female)</option>
+                        <option value="en-US-ChristopherNeural">Christopher (Male)</option>
+                        <option value="en-US-EricNeural">Eric (Male)</option>
+                        <option value="en-US-MichelleNeural">Michelle (Female)</option>
+                        <option value="en-US-RogerNeural">Roger (Male)</option>
+                    </optgroup>
+
+                    <optgroup label="🇬🇧 English (UK)">
+                        <option value="en-GB-SoniaNeural">Sonia (Female)</option>
+                        <option value="en-GB-RyanNeural">Ryan (Male)</option>
+                        <option value="en-GB-LibbyNeural">Libby (Female)</option>
+                    </optgroup>
+
+                    <optgroup label="🇩🇪 Deutsch (German)">
+                        <option value="de-DE-ConradNeural">Conrad (Male)</option>
+                        <option value="de-DE-KatjaNeural">Katja (Female)</option>
+                        <option value="de-DE-KillianNeural">Killian (Male)</option>
+                    </optgroup>
+
+                    <optgroup label="🇫🇷 Français (French)">
+                        <option value="fr-FR-DeniseNeural">Denise (Female)</option>
+                        <option value="fr-FR-HenriNeural">Henri (Male)</option>
+                    </optgroup>
+
+                    <optgroup label="🇪🇸 Español (Spanish)">
+                        <option value="es-ES-AlvaroNeural">Alvaro (Male)</option>
+                        <option value="es-ES-ElviraNeural">Elvira (Female)</option>
+                    </optgroup>
+
+                    <optgroup label="🇮🇹 Italiano (Italian)">
+                        <option value="it-IT-DiegoNeural">Diego (Male)</option>
+                        <option value="it-IT-ElsaNeural">Elsa (Female)</option>
+                    </optgroup>
+
+                    <optgroup label="🇹🇷 Türkçe (Turkish)">
+                        <option value="tr-TR-AhmetNeural">Ahmet (Male)</option>
+                        <option value="tr-TR-EmelNeural">Emel (Female)</option>
+                    </optgroup>
+
+                    <optgroup label="🇺🇦 Українська (Ukrainian)">
+                        <option value="uk-UA-OstapNeural">Остап (Чоловічий)</option>
+                        <option value="uk-UA-PolinaNeural">Поліна (Жіночий)</option>
+                    </optgroup>
+
+                    <optgroup label="🇵🇱 Polski (Polish)">
+                        <option value="pl-PL-MarekNeural">Marek (Male)</option>
+                        <option value="pl-PL-ZofiaNeural">Zofia (Female)</option>
                     </optgroup>
                 </select>
 
                 <div class="grid grid-cols-3 gap-2">
-                    <label class="cursor-pointer">
-                        <input type="radio" name="mode" value="natural" class="peer hidden" checked>
-                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Natural</div>
-                    </label>
-                    <label class="cursor-pointer">
-                        <input type="radio" name="mode" value="slow" class="peer hidden">
-                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Slow</div>
-                    </label>
-                    <label class="cursor-pointer">
-                        <input type="radio" name="mode" value="fast" class="peer hidden">
-                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Fast</div>
-                    </label>
+                    <label class="cursor-pointer"><input type="radio" name="mode" value="natural" class="peer hidden" checked><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Natural</div></label>
+                    <label class="cursor-pointer"><input type="radio" name="mode" value="slow" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Slow</div></label>
+                    <label class="cursor-pointer"><input type="radio" name="mode" value="fast" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Fast</div></label>
                 </div>
             </div>
 
-            <button id="mainBtn" onclick="generateAudio()" class="w-full md:w-auto px-12 py-5 bg-blue-600 text-white rounded-[25px] font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg shadow-blue-100">
-                Озвучить
-            </button>
+            <button id="mainBtn" onclick="generateAudio()" class="w-full md:w-auto px-12 py-5 bg-blue-600 text-white rounded-[25px] font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg shadow-blue-100">Озвучить</button>
         </div>
 
-        <div id="resultSection" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border border-blue-100 animate-fade-in">
-            <div class="flex flex-col items-center gap-6">
-                <audio id="audioPlayer" controls class="w-full"></audio>
-                <button id="downloadBtn" class="w-full md:w-auto px-8 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest text-center hover:bg-blue-600 transition-all">
-                    Скачать файл →
-                </button>
-            </div>
+        <div id="resultSection" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border border-blue-100 animate-fade-in text-center">
+            <audio id="audioPlayer" controls class="w-full mb-4"></audio>
+            <a id="downloadBtn" href="#" download class="inline-block px-8 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-600 transition-all">Скачать MP3</a>
         </div>
     </section>
 
-    <!-- FAQ -->
-    <section class="mt-20 px-4">
-        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 italic">Вопросы</h2>
-        <div class="grid gap-4">
-            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all">
-                <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold">
-                    Как поставить ударение?
-                    <span class="transition group-open:rotate-180">▼</span>
-                </summary>
-                <div class="px-6 pb-6 text-gray-500 text-sm">Используйте <b>+</b> перед гласной. Пример: з+амок.</div>
-            </details>
-        </div>
-    </section>
-
-    <!-- DONATE -->
-    <section class="mt-20" id="support">
-        <div class="bg-gray-900 rounded-[50px] p-10 text-center text-white relative shadow-2xl">
-            <h2 class="text-3xl font-black mb-6 italic">Поддержите проект</h2>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="https://yoomoney.ru/to/4100118943714856" target="_blank" class="bg-[#8b3ffd] px-4 py-5 rounded-2xl font-black uppercase text-[9px] hover:scale-105 transition-all">ЮMoney РФ 🇷🇺</a>
-                <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="bg-blue-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] hover:scale-105 transition-all">PayPal Global</a>
-            </div>
-        </div>
+    <!-- Инфо-блоки -->
+    <section class="mt-20 grid md:grid-cols-3 gap-8">
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">⚡️</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Мгновенно</h3><p class="text-gray-500 text-sm leading-relaxed">Генерация речи занимает считанные секунды.</p></div>
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">🎧</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Живые голоса</h3><p class="text-gray-500 text-sm leading-relaxed">Все современные нейросети в одном интерфейсе.</p></div>
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">🆓</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Бесплатно</h3><p class="text-gray-500 text-sm leading-relaxed">2000 символов за одну генерацию без оплаты.</p></div>
     </section>
 </main>
 
-<!-- CHAT WIDGET -->
-<div id="chat-widget" class="fixed bottom-6 right-6 z-[100]">
-    <button id="chat-toggle" onclick="toggleChat()" class="w-14 h-14 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:bg-black transition-all text-white">💬</button>
-    <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[320px] bg-white rounded-[30px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
-        <div class="bg-gray-900 p-5 text-white flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-lg">🤖</div>
-            <p class="font-black text-[10px] uppercase tracking-widest">SpeechClone Bro</p>
+<!-- ЧАТ-ВИДЖЕТ -->
+<div id="chat-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div id="chat-window" class="hidden w-80 h-96 bg-white rounded-[30px] shadow-2xl border border-gray-100 mb-4 flex flex-col overflow-hidden animate-fade-in">
+        <div class="bg-blue-600 p-4 text-white font-black text-[10px] uppercase tracking-widest flex justify-between">
+            <span>AI Помощник</span>
+            <button onclick="toggleChat()">×</button>
         </div>
-        <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col"></div>
-        <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
-            <input type="text" id="chat-input" placeholder="Спросить..." class="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none">
-            <button onclick="handleChat()" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black transition-all">🚀</button>
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto text-sm space-y-4 bg-gray-50"></div>
+        <div class="p-4 border-t border-gray-100 flex gap-2">
+            <input id="chat-input" type="text" class="flex-1 bg-gray-100 border-none rounded-xl px-3 py-2 text-xs outline-none" placeholder="Спросите об озвучке...">
+            <button onclick="handleChat()" class="bg-blue-600 text-white p-2 rounded-xl text-xs font-bold">></button>
         </div>
     </div>
+    <button onclick="toggleChat()" class="bg-black text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-all">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.827-1.24L3 20l1.326-3.945A7.821 7.821 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+    </button>
 </div>
 
 <script>
-// Глобальный счетчик
-function updateCounter() {
-    const input = document.getElementById('textInput');
-    const counter = document.getElementById('charCount');
-    const len = input.value.length;
-    counter.innerText = `${len} / 2000`;
-    counter.style.color = len > 1900 ? 'red' : '';
-}
-
-document.getElementById('textInput').addEventListener('input', updateCounter);
-
-function copyToVoice(text) {
-    const input = document.getElementById('textInput');
-    input.value = text;
-    updateCounter();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    input.focus();
-    input.classList.add('ring-4', 'ring-blue-100');
-    setTimeout(() => input.classList.remove('ring-4', 'ring-blue-100'), 2000);
-}
-
-function toggleChat() {
-    const win = document.getElementById('chat-window');
-    win.classList.toggle('hidden');
-    if(!win.classList.contains('hidden')) document.getElementById('chat-input').focus();
-}
-
-function addMessage(text, isBot = false) {
-    const box = document.getElementById('chat-messages');
-    const msg = document.createElement('div');
-    msg.className = isBot ? "self-start bg-white p-3 rounded-2xl border border-gray-100 max-w-[85%] text-sm mb-2" : "self-end bg-blue-600 p-3 rounded-2xl text-white max-w-[85%] text-sm mb-2";
-    
-    // Безопасная передача текста в функцию
-    const escapedText = text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-    
-    msg.innerHTML = `<div>${text}</div><button onclick="copyToVoice('${escapedText}')" class="mt-2 text-[9px] font-black uppercase ${isBot ? 'text-blue-600' : 'text-blue-200'} block">⚡ Озвучить</button>`;
-    box.appendChild(msg);
-    box.scrollTop = box.scrollHeight;
-}
-
-async function handleChat() {
-    const input = document.getElementById('chat-input');
-    const val = input.value.trim();
-    if(!val) return;
-    addMessage(val, false);
-    input.value = '';
-    
-    try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: val})
-        });
-        const data = await res.json();
-        addMessage(data.reply || "Ошибочка вышла...", true);
-    } catch(e) {
-        addMessage("Сервер прилег поспать.", true);
-    }
-}
+// --- ЛОГИКА ОЗВУЧКИ ---
+const textInput = document.getElementById('textInput');
+textInput.addEventListener('input', () => {
+    document.getElementById('charCount').innerText = `${textInput.value.length} / 2000`;
+});
 
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
-    const text = document.getElementById('textInput').value.trim();
+    const text = textInput.value.trim();
     const voice = document.getElementById('voiceSelect').value;
     const mode = document.querySelector('input[name="mode"]:checked').value;
 
-    if(!text) return alert("Введите текст");
-
-    btn.disabled = true;
-    btn.innerText = "Генерируем...";
+    if (!text) { alert("Введите текст"); return; }
+    btn.disabled = true; btn.innerText = "Генерируем...";
 
     try {
-        const res = await fetch('/api/generate', {
+        const res = await fetch('/generate', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, voice, mode})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voice, mode })
         });
         const data = await res.json();
-        if(data.audio_url) {
-            document.getElementById('audioPlayer').src = data.audio_url;
+        if (data.audio_url) {
+            const player = document.getElementById('audioPlayer');
+            player.src = data.audio_url;
+            document.getElementById('downloadBtn').href = data.audio_url;
             document.getElementById('resultSection').classList.remove('hidden');
-            const file = data.audio_url.split('/').pop();
-            document.getElementById('downloadBtn').onclick = () => { window.location.href = `/download-page?file=${file}`; };
+            player.play();
         } else {
-            alert("Ошибка генерации");
+            alert("Ошибка сервера: " + (data.detail || "Неизвестная ошибка"));
         }
-    } catch(e) {
-        alert("Ошибка сети (500)");
+    } catch (e) {
+        alert("Ошибка сети. Проверьте соединение.");
     } finally {
-        btn.disabled = false;
-        btn.innerText = "Озвучить";
+        btn.disabled = false; btn.innerText = "Озвучить";
     }
 }
 
-// Приветствие в чате
-setTimeout(() => addMessage("Привет! Я Спич-Бро. Чем помочь?", true), 1000);
+// --- ЛОГИКА ЧАТА ---
+function toggleChat() { document.getElementById('chat-window').classList.toggle('hidden'); }
+async function handleChat() {
+    const input = document.getElementById('chat-input');
+    const container = document.getElementById('chat-messages');
+    const text = input.value.trim();
+    if (!text) return;
+
+    container.innerHTML += `<div class="bg-blue-100 p-3 rounded-2xl ml-8 text-[11px] font-medium">${text}</div>`;
+    input.value = '';
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        container.innerHTML += `<div class="bg-white p-3 rounded-2xl mr-8 shadow-sm border border-gray-100 text-[11px] leading-relaxed">${data.response}</div>`;
+        container.scrollTop = container.scrollHeight;
+    } catch (e) {
+        container.innerHTML += `<div class="text-red-500 text-[10px]">Ошибка бота</div>`;
+    }
+}
 </script>
 {% endblock %}
-
 
 
 
