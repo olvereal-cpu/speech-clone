@@ -12,60 +12,49 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+from aiogram import Bot, Dispatcher
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
-# ВСТАВЬ СВОЙ НОВЫЙ КЛЮЧ ТУТ:
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (МОДЕЛЬ 2.5 FLASH ПРЯМОЙ ВЫЗОВ) ---
+# --- ИНИЦИАЛИЗАЦИЯ БОТА ---
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+# --- ИНИЦИАЛИЗАЦИЯ ИИ (GEMINI 2.5 FLASH) ---
 if GEMINI_API_KEY:
     try:
-        # Используем полное имя библиотеки без сокращений
         google.generativeai.configure(api_key=GEMINI_API_KEY)
-        
-        # Прописываю именно ту модель, на которой мы работали в феврале
         model_ai = google.generativeai.GenerativeModel(
             model_name='gemini-2.5-flash', 
             system_instruction=(
                 "Ты — Спич-Бро, официальный ИИ-помощник SpeechClone.online. "
-                "Твоя задача: помогать с озвучкой, советовать голоса и ставить ударения. "
-                "Пиши кратко, с юмором и эмодзи. Ударения: знак '+' перед гласной."
+                "Помогай с озвучкой и ударениями (+ перед гласной). Пиши кратко и с юмором."
             )
         )
-        print("✅ Спич-Бро на базе Gemini 2.5 Flash готов к работе!")
     except Exception as e:
-        print(f"❌ Ошибка инициализации Gemini 2.5: {e}")
         model_ai = None
 else:
-    print("⚠️ ВНИМАНИЕ: GEMINI_API_KEY не найден. ИИ не будет работать.")
     model_ai = None
 
-# --- БАЗА ДАННЫХ (ФЕВРАЛЬСКАЯ СТРУКТУРА) ---
+# --- БАЗА ДАННЫХ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            joined_at DATETIME
-        )
-    ''')
+    cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, joined_at DATETIME)')
     conn.commit()
     conn.close()
 
-init_db()
-
-# --- FASTAPI НАСТРОЙКИ ---
+# --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Авто-создание папок статики
+# Папки статики
 for p in ["static/audio", "templates/blog"]:
     os.makedirs(os.path.join(BASE_DIR, p), exist_ok=True)
 
@@ -80,30 +69,21 @@ class TTSRequest(BaseModel):
     voice: str
     mode: str
 
-# --- ЛОГИКА ОЗВУЧКИ (EDGE TTS) ---
+# --- ЛОГИКА ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
-    
-    # Очистка текста и работа с ударениями (+)
     clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
-    
     rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
     rate = rates.get(mode, "+0%")
-
     communicate = edge_tts.Communicate(clean_text, voice, rate=rate)
     await communicate.save(file_path)
     return file_id
 
-# --- ЭНДПОИНТЫ САЙТА ---
+# --- РОУТЫ ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # В новых версиях сначала пишем request, потом имя файла, потом контекст
-    return templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"request": request}
-    )
+    return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -115,21 +95,14 @@ async def generate(request: TTSRequest):
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    try:
-        # Используем полное имя, если убрали "as genai"
-        import google.generativeai
-        
-        # Вызываем генерацию через поток, чтобы не тормозить сервер
-        response = await asyncio.to_thread(
-            model_ai.generate_content, 
-            request.message
-        )
-        return {"reply": response.text}
-    except Exception as e:
-        print(f"Ошибка Gemini: {e}") # Это появится в логах Render
-        return {"reply": f"Ошибка связи с ИИ 2.5: {str(e)}"}
+    if not model_ai: return {"reply": "Бро, ИИ спит."}
+    res = await asyncio.to_thread(model_ai.generate_content, request.message)
+    return {"reply": res.text}
 
-# --- ДЛЯ БЛОГА И ДРУГИХ СТРАНИЦ (МЕНЮ) ---
+@app.get("/download", response_class=HTMLResponse)
+async def download_page(request: Request, file: str = None):
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
+
 @app.get("/blog", response_class=HTMLResponse)
 async def blog(request: Request):
     return templates.TemplateResponse("blog_index.html", {"request": request})
@@ -141,24 +114,14 @@ async def catch_all(request: Request, page: str):
     except:
         return templates.TemplateResponse("index.html", {"request": request})
 
-
-# --- ЧИСТЫЙ ЗАПУСК: СЕРВЕР САМ ВЫБИРАЕТ ПОРТ ---
+# --- ЧИСТЫЙ ЗАПУСК ДЛЯ RENDER ---
 async def start_services():
-    # Запускаем бота в фоне
-    print("🤖 Бот SpeechClone запускается...")
+    init_db()
     asyncio.create_task(dp.start_polling(bot))
     
-    # Запускаем веб-сервер (без указания порта)
     import uvicorn
-    
-    # Система сама выделит нужный порт
-    config = uvicorn.Config(
-        app, 
-        host="0.0.0.0", 
-        loop="asyncio"
-    )
-    
-    print("🌐 Сайт запускается...")
+    # На Рендере достаточно указать хост, остальное он подхватит сам из окружения
+    config = uvicorn.Config(app, host="0.0.0.0", loop="asyncio")
     server = uvicorn.Server(config)
     await server.serve()
 
@@ -166,7 +129,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(start_services())
     except (KeyboardInterrupt, SystemExit):
-        print("🛑 Остановка всех служб")
+        pass
 
 
 
