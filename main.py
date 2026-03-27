@@ -81,9 +81,38 @@ async def generate_speech_logic(text: str, voice: str, mode: str):
     return file_id
 
 # --- РОУТЫ ---
+# --- ЯВНЫЕ РОУТЫ ДЛЯ МЕНЮ ---
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/voices", response_class=HTMLResponse)
+async def voices(request: Request):
+    return templates.TemplateResponse("voices.html", {"request": request})
+
+@app.get("/blog", response_class=HTMLResponse)
+async def blog(request: Request):
+    # Если у тебя файл называется blog.html или blog_index.html — поправь тут имя
+    return templates.TemplateResponse("blog.html", {"request": request})
+
+@app.get("/about", response_class=HTMLResponse)
+async def about(request: Request):
+    return templates.TemplateResponse("about.html", {"request": request})
+
+@app.get("/guide", response_class=HTMLResponse)
+async def guide(request: Request):
+    return templates.TemplateResponse("guide.html", {"request": request})
+
+@app.get("/contribute", response_class=HTMLResponse)
+async def contribute(request: Request):
+    return templates.TemplateResponse("contribute.html", {"request": request})
+
+@app.get("/download", response_class=HTMLResponse)
+async def download_page(request: Request, file: str = None):
+    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
+
+# --- API ДЛЯ ОЗВУЧКИ И ЧАТА ---
 
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
@@ -96,22 +125,20 @@ async def generate(request: TTSRequest):
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     if not model_ai: return {"reply": "Бро, ИИ спит."}
-    res = await asyncio.to_thread(model_ai.generate_content, request.message)
-    return {"reply": res.text}
+    try:
+        res = await asyncio.to_thread(model_ai.generate_content, request.message)
+        return {"reply": res.text}
+    except:
+        return {"reply": "Ошибка связи с Спич-Бро."}
 
-@app.get("/download", response_class=HTMLResponse)
-async def download_page(request: Request, file: str = None):
-    return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
-
-@app.get("/blog", response_class=HTMLResponse)
-async def blog(request: Request):
-    return templates.TemplateResponse("blog_index.html", {"request": request})
-
+# --- УНИВЕРСАЛЬНЫЙ РОУТ (В САМОМ КОНЦЕ) ---
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
+    # Если зашли на страницу, которой нет в списке выше, пробуем найти файл
     try:
         return templates.TemplateResponse(f"{page}.html", {"request": request})
     except:
+        # Если и файла нет — возвращаем на главную
         return templates.TemplateResponse("index.html", {"request": request})
 
 # --- ЧИСТЫЙ ЗАПУСК ДЛЯ RENDER ---
