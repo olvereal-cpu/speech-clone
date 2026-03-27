@@ -1,18 +1,38 @@
 {% extends "base.html" %}
-{% block content %}
 
+{% block title %}SpeechClone AI — Озвучка текста нейросетью онлайн бесплатно{% endblock %}
+
+{% block description %}Озвучьте текст онлайн бесплатно с помощью ИИ. Натуральные голоса (Дмитрий, Светлана и др.), настройка скорости и ударений. Скачивайте готовые аудиофайлы без регистрации на SpeechClone.{% endblock %}
+
+{% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
-    <div class="mb-10 p-4 bg-white border border-dashed border-gray-300 rounded-lg text-center text-gray-400 italic text-[10px] uppercase tracking-widest">
-        Рекламный блок
+    <div class="mb-10 p-4 bg-white border border-dashed border-gray-200 rounded-[30px] text-center min-h-[90px] flex items-center justify-center overflow-hidden">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-2792779022553212"
+             data-ad-slot="ТУТ_ID_ВЕРХНЕГО_БЛОКА"
+             data-ad-format="horizontal"
+             data-full-width-responsive="true"></ins>
     </div>
 
-    <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50">
-        <textarea id="text" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
+    <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50 animate-fade-in">
+        <textarea id="text" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки (до 2000 знаков)..."></textarea>
+        
+        <div class="text-right pr-6 -mt-10 relative z-10">
+            <span id="charCount" class="text-[10px] font-black text-gray-400 bg-white/90 px-3 py-1.5 rounded-xl shadow-sm border border-gray-100 uppercase tracking-widest">0 / 2000</span>
+        </div>
+
+        <div class="mt-5 ml-4 flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Совет: ставьте <span class="text-blue-600">+</span> перед гласной для ударения (напр. з+амок)
+            </p>
+        </div>
         
         <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
             <div class="w-full md:w-1/2">
                 <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос и язык</label>
-                <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all">
+                <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all mb-4">
                     <optgroup label="СНГ / CIS">
                         <option value="ru-RU-DmitryNeural">Русский — Дмитрий (Мужской)</option>
                         <option value="ru-RU-SvetlanaNeural">Русский — Светлана (Женский)</option>
@@ -31,97 +51,287 @@
                         <option value="ja-JP-NanamiNeural">Japanese</option>
                     </optgroup>
                 </select>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="natural" class="peer hidden" checked>
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Natural</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="slow" class="peer hidden">
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Slow</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="fast" class="peer hidden">
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Fast</div>
+                    </label>
+                </div>
             </div>
-            <button onclick="generateAudio()" id="mainBtn" class="w-full md:w-auto px-16 py-5 bg-blue-600 text-white font-black rounded-[20px] hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-xs">
-                Озвучить сейчас
+
+            <button id="mainBtn" onclick="generateAudio()" class="w-full md:w-auto px-12 py-5 bg-blue-600 text-white rounded-[25px] font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg shadow-blue-100">
+                Озвучить
             </button>
         </div>
-    </section>
 
-    <section class="mt-16 p-10 bg-white rounded-[40px] border border-gray-100 text-center shadow-sm">
-        <h3 class="text-2xl font-black mb-2 uppercase tracking-tighter">Поддержать проект ☕</h3>
-        <p class="text-gray-500 mb-10 text-sm font-medium">Мы работаем бесплатно. Ваша поддержка помогает нам оплачивать GPU-серверы.</p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <a href="https://www.buymeacoffee.com/speechclone" target="_blank" class="px-8 py-4 bg-[#FFDD00] text-black font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">☕ Buy me a coffee</a>
-            <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="px-8 py-4 bg-[#0070ba] text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">PayPal</a>
-            <button onclick="alert('BTC: твой-адрес\nUSDT (TRC20): твой-адрес')" class="px-8 py-4 bg-gray-900 text-white font-black rounded-2xl hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-md">Crypto</button>
-        </div>
-    </section>
+        <div id="resultSection" class="hidden mt-10 p-6 bg-blue-50 rounded-[30px] border border-blue-100 animate-fade-in">
+            <div class="flex flex-col items-center gap-6">
+                <audio id="audioPlayer" controls class="w-full"></audio>
+                
+                <div class="w-full py-2 bg-white/50 rounded-2xl flex items-center justify-center min-h-[100px]">
+                     <ins class="adsbygoogle"
+                          style="display:block"
+                          data-ad-client="ca-pub-2792779022553212"
+                          data-ad-slot="ТУТ_ID_ПОД_ПЛЕЕРОМ"
+                          data-ad-format="auto"
+                          data-full-width-responsive="true"></ins>
+                </div>
 
-    <section class="mt-24 mb-12">
-        <div class="text-center mb-16">
-            <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter">Часто задаваемые вопросы</h3>
-            <div class="h-1.5 w-20 bg-blue-600 mx-auto mt-4 rounded-full"></div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🙌 Это бесплатно?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Никаких подвохов. Мы используем современные нейросети 2026 года, которые позволяют генерировать голос без огромных затрат.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🎬 Можно в YouTube?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Конечно! Вы — полноправный владелец созданного аудиофайла. Голоса звучат максимально естественно.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">📝 Почему 2000 знаков?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Это позволяет озвучивать текст мгновенно. Если текст больше — просто разбейте его на части.</p>
-            </div>
-            <div class="bg-white p-8 rounded-[35px] border border-gray-50 shadow-sm hover:shadow-md transition-all">
-                <h4 class="text-lg font-black text-blue-600 mb-4 flex items-center gap-3 uppercase text-xs tracking-widest">🔒 Что с приватностью?</h4>
-                <p class="text-gray-600 leading-relaxed text-sm font-medium">Текст не сохраняется, а аудио удаляется с сервера автоматически через 24 часа.</p>
+                <button id="downloadBtn" class="w-full md:w-auto whitespace-nowrap px-8 py-4 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest text-center hover:bg-blue-600 transition-all">
+                    Скачать файл →
+                </button>
             </div>
         </div>
     </section>
 
-    <div class="mt-20 p-6 bg-white border border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-xs italic uppercase tracking-[0.2em]">
-        Рекламный блок (AdSense Bottom)
-    </div>
+    <section class="mt-20 px-4">
+        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-8 italic">Популярные вопросы</h2>
+        <div class="grid gap-4">
+            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all">
+                <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
+                    Как поставить правильное ударение?
+                    <span class="transition group-open:rotate-180">▼</span>
+                </summary>
+                <div class="px-6 pb-6 text-gray-500 text-sm leading-relaxed">
+                    Если нейросеть ошибается в ударении, используйте символ <span class="text-blue-600 font-bold">+</span> перед ударной гласной.
+                    <br><br>Например: <br>
+                    — <b>хл+опковая</b> ткань <br>
+                    — громкие <b>хлопк+и</b>
+                </div>
+            </details>
+
+            <details class="group bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden transition-all" open>
+                <summary class="flex justify-between items-center p-6 cursor-pointer list-none font-bold text-gray-700">
+                    Как скачать аудио?
+                    <span class="transition group-open:rotate-180">▼</span>
+                </summary>
+                <p class="px-6 pb-6 text-gray-500 text-sm leading-relaxed">
+                    После генерации нажмите кнопку "Скачать файл". Система перенаправит вас на страницу загрузки, где через 30 секунд ожидания вы получите прямую ссылку на MP3.
+                </p>
+            </details>
+        </div>
+    </section>
+
+    <section class="mt-20" id="support">
+        <div class="bg-gray-900 rounded-[50px] p-10 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-200">
+            <div class="relative z-10">
+                <h2 class="text-3xl md:text-5xl font-black mb-6 leading-none tracking-tighter italic">Поддержите <span class="text-blue-500">Open Source</span>.</h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <a href="https://paypal.me/velial39@gmail.com" class="bg-blue-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                        <span>PayPal</span>
+                        <span class="opacity-60 font-normal italic">Global</span>
+                    </a>
+                    <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" class="bg-[#8b3ffd] px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                        <span>ЮMoney</span>
+                        <span class="opacity-90 font-normal italic">РФ 🇷🇺</span>
+                    </a>
+                    <a href="https://kaspi.kz/pay/ТУТ_ID" class="bg-red-600 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2">
+                        <span>Kaspi</span>
+                        <span class="opacity-90 font-normal italic">KZ 🇰🇿</span>
+                    </a>
+                    <a href="https://t.me/speechclonebot?start=donate" class="bg-yellow-500 px-4 py-5 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:scale-105 transition-all flex flex-col items-center gap-2 text-black">
+                        <span>Stars ⭐️</span>
+                        <span class="opacity-90 font-normal italic">Telegram</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
 </main>
 
+<div id="chat-widget" class="fixed bottom-6 right-6 z-[100] font-sans">
+    <button id="chat-toggle" onclick="toggleChat(event)" class="w-14 h-14 bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-2xl hover:bg-black transition-all hover:scale-110 active:scale-95 text-white">
+        💬
+    </button>
+    
+    <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[320px] bg-white rounded-[30px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-fade-in">
+        <div class="bg-gray-900 p-5 text-white flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-lg">🤖</div>
+            <div>
+                <p class="font-black text-[10px] uppercase tracking-widest">SpeechClone Assistant</p>
+                <p class="text-[10px] text-blue-400 font-bold italic">Онлайн</p>
+            </div>
+        </div>
+        
+        <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col"></div>
+
+        <div class="p-4 bg-white border-t border-gray-100 flex gap-2">
+            <input type="text" id="chat-input" placeholder="Задать вопрос..." class="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 font-medium">
+            <button id="chat-send" onclick="handleChat()" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black transition-all">
+                🚀
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+// Активация рекламы
+try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+
+function copyToVoice(text) {
+    const textInput = document.getElementById('text');
+    if (textInput) {
+        textInput.value = text;
+        const charCount = document.getElementById('charCount');
+        if (charCount) charCount.innerText = `${text.length} / 2000`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        textInput.focus();
+        textInput.classList.add('ring-4', 'ring-blue-100');
+        setTimeout(() => textInput.classList.remove('ring-4', 'ring-blue-100'), 2000);
+    }
+}
+
+function toggleChat(e) {
+    if (e) e.preventDefault();
+    const chatWindow = document.getElementById('chat-window');
+    const chatInput = document.getElementById('chat-input');
+    if (chatWindow) {
+        chatWindow.classList.toggle('hidden');
+        if (!chatWindow.classList.contains('hidden')) {
+            chatInput.focus();
+        }
+    }
+}
+
+function addMessage(text, isBot = false) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+
+    const msg = document.createElement('div');
+    msg.className = isBot ? "self-start bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 max-w-[85%] text-sm font-medium text-gray-700 mb-2" 
+                           : "self-end bg-blue-600 p-3 rounded-2xl rounded-br-none text-white max-w-[85%] text-sm font-medium shadow-md shadow-blue-100 mb-2";
+    
+    const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+    if (isBot) {
+        msg.innerHTML = `
+            <div>${text}</div>
+            <button onclick="copyToVoice('${safeText}')" class="mt-2 text-[9px] font-black uppercase text-blue-600 hover:text-black transition-all block">
+                ⚡ Озвучить этот текст
+            </button>
+        `;
+    } else {
+        msg.innerHTML = `
+            <div>${text}</div>
+            <button onclick="copyToVoice('${safeText}')" class="mt-2 text-[9px] font-black uppercase text-blue-100 hover:text-white transition-all block text-right w-full">
+                ⚡ Озвучить мой текст
+            </button>
+        `;
+    }
+    
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function handleChat() {
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    addMessage(text, false);
+    chatInput.value = '';
+
+    const typing = document.createElement('div');
+    typing.className = "self-start text-[10px] text-gray-400 italic ml-2 mb-2";
+    typing.innerText = "Печатает...";
+    chatMessages.appendChild(typing);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await response.json();
+        typing.remove();
+        addMessage(data.reply || "Извини, бро, я задумался. Повторишь?", true);
+    } catch (e) {
+        if(typing) typing.remove();
+        addMessage("Бро, сервер прилег отдохнуть. Попробуй позже! 🔌", true);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const textInput = document.getElementById('text');
+    const charCount = document.getElementById('charCount');
+
+    if (textInput && charCount) {
+        textInput.addEventListener('input', () => {
+            const length = textInput.value.length;
+            charCount.innerText = `${length} / 2000`;
+            if (length >= 1900) {
+                charCount.classList.remove('text-gray-400');
+                charCount.classList.add('text-red-500');
+            } else {
+                charCount.classList.remove('text-red-500');
+                charCount.classList.add('text-gray-400');
+            }
+        });
+    }
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleChat();
+            }
+        });
+    }
+
+    setTimeout(() => {
+        const chatMessages = document.getElementById('chat-messages');
+        if(chatMessages && chatMessages.children.length === 0) {
+            addMessage("Привет! 👋 Я Спич-Бро. Чем помочь с озвучкой?", true);
+        }
+    }, 1000);
+});
+
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const textInput = document.getElementById('text');
     const voiceSelect = document.getElementById('voiceSelect');
+    const modeElement = document.querySelector('input[name="mode"]:checked');
+    const resultSection = document.getElementById('resultSection');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const downloadBtn = document.getElementById('downloadBtn');
     
-    if(!textInput.value.trim()) return alert("Пожалуйста, введите текст");
+    if(!textInput.value.trim()) return alert("Введите текст");
+    const mode = modeElement ? modeElement.value : 'natural';
 
     btn.disabled = true;
-    btn.innerHTML = `<span class="animate-pulse tracking-widest">Генерируем...</span>`;
+    btn.innerHTML = `<span class="animate-pulse">Генерируем...</span>`;
+    resultSection.classList.add('hidden');
 
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                text: textInput.value,
-                voice: voiceSelect.value
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: textInput.value, voice: voiceSelect.value, mode: mode })
         });
-
-        if (!response.ok) {
-            throw new Error("Ошибка сервера");
-        }
-
         const data = await response.json();
-        
         if(data.audio_url) {
+            audioPlayer.src = data.audio_url;
+            resultSection.classList.remove('hidden');
             const fileName = data.audio_url.split('/').pop();
-            // Переход на страницу загрузки
-            window.location.href = `/download-page?file=${fileName}`;
-        } else {
-            alert("Ошибка получения файла");
+            downloadBtn.onclick = () => { window.location.href = `/download-page?file=${fileName}`; };
         }
     } catch (e) {
-        console.error(e);
-        alert("Произошла ошибка. Попробуйте еще раз.");
+        alert("Ошибка на стороне API");
     } finally {
         btn.disabled = false;
-        btn.innerText = "Озвучить сейчас";
+        btn.innerText = "Озвучить";
     }
 }
 </script>
