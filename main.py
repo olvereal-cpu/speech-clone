@@ -15,20 +15,18 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# --- ПУТИ ---
+# --- ПУТИ И НАСТРОЙКИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-# --- КОНФИГ ---
 ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
-CHANNEL_ID = "@speechclone" 
+CHANNEL_ID = "@speechclone"
 
-# Создание папок
 for p in [STATIC_DIR, AUDIO_DIR, TEMPLATES_DIR]:
     os.makedirs(p, exist_ok=True)
 
@@ -59,8 +57,7 @@ init_db()
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-# Используем 1.5 Flash если 2.5 еще в превью, но меняем на 2.5 по твоему запросу
-model_ai = genai.GenerativeModel('gemini-2.5-flash') 
+model_ai = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- FastAPI ---
 app = FastAPI()
@@ -107,80 +104,83 @@ async def check_sub(uid):
 @dp.message(Command("start"))
 async def start(m: types.Message):
     add_user(m.from_user.id)
-    await m.answer(f"Привет, {m.from_user.first_name}! Отправь текст для озвучки.")
+    await m.answer(f"Привет, {m.from_user.first_name}! Пришли текст для озвучки.")
 
 @dp.message(Command("export"))
-async def export(m: types.Message):
+async def export_db(m: types.Message):
     if m.from_user.id != ADMIN_ID: return
     users = get_all_users()
-    f_path = "users.txt"
-    with open(f_path, "w") as f:
-        f.write("\n".join(map(str, users)))
+    f_path = os.path.join(BASE_DIR, "export.txt")
+    with open(f_path, "w") as f: f.write("\n".join(map(str, users)))
     await m.answer_document(types.FSInputFile(f_path), caption=f"Всего: {len(users)}")
-    os.remove(f_path)
+    if os.path.exists(f_path): os.remove(f_path)
 
 @dp.message(F.text)
-async def handle_msg(m: types.Message):
+async def handle_text(m: types.Message):
     if m.text.startswith("/"): return
     if m.from_user.id != ADMIN_ID and not await check_sub(m.from_user.id):
         kb = InlineKeyboardBuilder().row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await m.answer("⚠️ Подпишитесь на канал!", reply_markup=kb.as_markup())
+        return await m.answer("⚠️ Для работы нужна подписка!", reply_markup=kb.as_markup())
 
     user_states[m.from_user.id] = m.text
     kb = InlineKeyboardBuilder()
+    
+    # Кнопки с голосами (СНГ)
     kb.row(types.InlineKeyboardButton(text="🇷🇺 Дмитрий", callback_data="v_ru-RU-DmitryNeural"),
            types.InlineKeyboardButton(text="🇷🇺 Светлана", callback_data="v_ru-RU-SvetlanaNeural"))
     kb.row(types.InlineKeyboardButton(text="🇰🇿 Даулет", callback_data="v_kk-KZ-DauletNeural"),
            types.InlineKeyboardButton(text="🇺🇦 Остап", callback_data="v_uk-UA-OstapNeural"))
+    # English
+    kb.row(types.InlineKeyboardButton(text="🇺🇸 Ava (EN)", callback_data="v_en-US-AvaNeural"),
+           types.InlineKeyboardButton(text="🇬🇧 Sonia (EN)", callback_data="v_en-GB-SoniaNeural"))
+    # Азия / Европа
+    kb.row(types.InlineKeyboardButton(text="🇩🇪 Katja", callback_data="v_de-DE-KatjaNeural"),
+           types.InlineKeyboardButton(text="🇯🇵 Nanami", callback_data="v_ja-JP-NanamiNeural"))
+    
     await m.answer("Выберите голос:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data.startswith("v_"))
-async def set_voice(c: types.CallbackQuery):
+async def voice_callback(c: types.CallbackQuery):
     voice = c.data.split("_")[1]
     text = user_states.get(c.from_user.id, "Привет")
-    msg = await c.message.edit_text("⌛ Генерация...")
+    msg = await c.message.edit_text("⌛ Генерация аудио...")
     try:
         fid = await generate_speech_logic(text[:1000], voice, "natural")
-        await c.message.answer_audio(types.FSInputFile(os.path.join(AUDIO_DIR, fid)))
+        await c.message.answer_audio(types.FSInputFile(os.path.join(AUDIO_DIR, fid)), caption="✅ Готово!")
         await msg.delete()
     except Exception as e: await c.message.answer(f"Ошибка: {e}")
 
-# --- САЙТ РОУТЫ ---
+# --- API ЭНДПОИНТЫ ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/api/chat")
-async def chat_api(request: ChatRequest):
+async def chat_endpoint(request: ChatRequest):
     try:
         res = await asyncio.to_thread(model_ai.generate_content, request.message)
         return {"reply": res.text}
-    except Exception as e: 
-        return {"reply": "Бро, ИИ сейчас занят, попробуй через минуту."}
+    except: return {"reply": "Gemini 2.5 спит. Попробуй позже!"}
 
 @app.post("/api/generate")
-async def api_gen(request: TTSRequest):
+async def generate_endpoint(request: TTSRequest):
     try:
         fid = await generate_speech_logic(request.text, request.voice, request.mode)
         return {"audio_url": f"/static/audio/{fid}"}
-    except Exception as e: 
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/download-page", response_class=HTMLResponse)
 async def download_page(request: Request, file: str):
-    # Убедись, что файл download.html существует в templates
     return templates.TemplateResponse("download.html", {"request": request, "file": file})
 
-# Маршруты для остальных страниц из твоего меню
-@app.get("/{page}", response_class=HTMLResponse)
-async def static_pages(request: Request, page: str):
-    try:
-        return templates.TemplateResponse(f"{page}.html", {"request": request})
-    except:
-        return templates.TemplateResponse("index.html", {"request": request})
+# Обработка всех остальных страниц меню
+@app.get("/{page_name}", response_class=HTMLResponse)
+async def catch_all(request: Request, page_name: str):
+    try: return templates.TemplateResponse(f"{page_name}.html", {"request": request})
+    except: return templates.TemplateResponse("index.html", {"request": request})
 
 @app.on_event("startup")
-async def startup():
+async def startup_event():
     asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
