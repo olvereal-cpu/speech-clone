@@ -2,18 +2,17 @@ import os
 import re
 import uuid
 import asyncio
-import ssl
 import sqlite3
 import edge_tts
 import google.generativeai as genai
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # --- КОНФИГУРАЦИЯ ПУТЕЙ ---
@@ -21,13 +20,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
+DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 # --- НАСТРОЙКИ ---
 ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 CHANNEL_URL = "https://t.me/speechclone"
 CHANNEL_ID = "@speechclone" 
-DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 # --- ИНИЦИАЛИЗАЦИЯ ОКРУЖЕНИЯ ---
 for p in [STATIC_DIR, AUDIO_DIR, TEMPLATES_DIR, os.path.join(TEMPLATES_DIR, "blog")]:
@@ -58,7 +57,7 @@ init_db()
 GOOGLE_API_KEY = os.getenv("GEMINI_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-model_ai = genai.GenerativeModel('gemini-2.5-flash')
+model_ai = genai.GenerativeModel('gemini-1.5-flash') # 2.5 Flash пока может быть недоступна в некоторых регионах API, 1.5 - стабильнее
 
 # --- FastAPI ---
 app = FastAPI()
@@ -74,7 +73,7 @@ class TTSRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
-# --- ЛОГИКА ГЕНЕРАЦИИ ГОЛОСА ---
+# --- ЛОГИКА ОЗВУЧКИ ---
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(AUDIO_DIR, file_id)
@@ -115,30 +114,18 @@ async def stats(m: types.Message):
 
 @dp.message(Command("export"))
 async def cmd_export(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
+    if message.from_user.id != ADMIN_ID: return
     users = get_all_users()
     if not users:
-        return await message.answer("База пуста. Пользователей не найдено.")
+        return await message.answer("База пуста.")
 
     file_path = os.path.join(BASE_DIR, "users_export.txt")
-    
-    try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            for user_id in users:
-                f.write(f"{user_id}\n")
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(map(str, users)))
 
-        document = types.FSInputFile(file_path)
-        await message.answer_document(
-            document, 
-            caption=f"✅ Выгрузка базы\n👥 Всего: {len(users)} чел."
-        )
-    except Exception as e:
-        await message.answer(f"Ошибка при экспорте: {e}")
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    await message.answer_document(types.FSInputFile(file_path), caption=f"👥 Всего: {len(users)} чел.")
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
 @dp.message(F.text)
 async def handle_msg(m: types.Message):
@@ -166,12 +153,12 @@ async def set_voice(c: types.CallbackQuery):
         await msg.delete()
     except Exception as e: await c.message.answer(f"Ошибка: {e}")
 
-# --- САЙТ ЭНДПОИНТЫ ---
+# --- САЙТ ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     index_file = os.path.join(TEMPLATES_DIR, "index.html")
     if not os.path.exists(index_file):
-        return HTMLResponse(f"<h1>Ошибка: index.html не найден</h1><p>Путь: {index_file}</p>")
+        return HTMLResponse(f"<h1>Ошибка: index.html не найден</h1>")
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/api/chat")
@@ -179,7 +166,7 @@ async def chat_api(request: ChatRequest):
     try:
         res = await asyncio.to_thread(model_ai.generate_content, request.message)
         return {"reply": res.text}
-    except: return {"reply": "Бро, я на связи, но Gemini прилег. Попробуй позже!"}
+    except: return {"reply": "Бро, я на связи, но ИИ сейчас отдыхает."}
 
 @app.post("/api/generate")
 async def api_gen(request: TTSRequest):
@@ -188,19 +175,12 @@ async def api_gen(request: TTSRequest):
         return {"audio_url": f"/static/audio/{fid}"}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/download-page")
-async def down_page(request: Request, file: str):
-    return templates.TemplateResponse("download.html", {"request": request, "file": file})
-
 @app.on_event("startup")
 async def on_startup():
-    if not os.environ.get("BOT_RUNNING"):
-        os.environ["BOT_RUNNING"] = "true"
-        asyncio.create_task(dp.start_polling(bot))
+    asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
     import uvicorn
-    # Для Render лучше использовать динамический порт
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
