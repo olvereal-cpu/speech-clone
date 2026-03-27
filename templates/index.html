@@ -2,7 +2,7 @@
 
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 py-12">
-    <!-- Секция озвучки -->
+    <!-- Блок генерации аудио -->
     <section class="bg-white rounded-[40px] shadow-xl p-8 md:p-12 border border-gray-50 animate-fade-in">
         <textarea id="textInput" maxlength="2000" class="w-full h-64 p-6 bg-gray-50 border border-gray-100 rounded-[30px] outline-none focus:ring-4 focus:ring-blue-100 text-lg resize-none transition-all font-medium" placeholder="Введите текст для озвучки..."></textarea>
         
@@ -12,78 +12,42 @@
 
         <div class="mt-8 flex flex-col md:flex-row gap-6 items-end justify-between">
             <div class="w-full md:w-1/2">
-                <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос (Все доступные)</label>
+                <label class="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-[0.2em] ml-2">Выберите голос</label>
                 <select id="voiceSelect" class="w-full p-4 bg-white border border-gray-200 rounded-2xl outline-none shadow-sm font-bold text-gray-700 cursor-pointer focus:border-blue-500 transition-all mb-4">
-                    
-                    <optgroup label="🇷🇺 Русский (Russian)">
-                        <option value="ru-RU-DmitryNeural">Дмитрий (Мужской) — Естественный</option>
-                        <option value="ru-RU-SvetlanaNeural">Светлана (Женский) — Приятный</option>
-                        <option value="ru-RU-DariyaNeural">Дарья (Женский) — Четкий</option>
-                        <option value="ru-RU-EkaterinaNeural">Екатерина (Женский) — Эмоциональный</option>
+                    <optgroup label="🇷🇺 Русский">
+                        <option value="ru-RU-DmitryNeural">Дмитрий (Мужской)</option>
+                        <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
+                        <option value="ru-RU-DariyaNeural">Дарья (Женский)</option>
+                        <option value="ru-RU-EkaterinaNeural">Екатерина (Женский)</option>
                     </optgroup>
-
-                    <optgroup label="🇰🇿 Қазақша (Kazakh)">
+                    <optgroup label="🇰🇿 Қазақша">
                         <option value="kk-KZ-AigulNeural">Айгүл (Женский)</option>
                         <option value="kk-KZ-DauletNeural">Дәулет (Мужской)</option>
                     </optgroup>
-
-                    <optgroup label="🇺🇸 English (US)">
+                    <optgroup label="🇺🇸 English">
                         <option value="en-US-GuyNeural">Guy (Male)</option>
                         <option value="en-US-JennyNeural">Jenny (Female)</option>
                         <option value="en-US-AriaNeural">Aria (Female)</option>
-                        <option value="en-US-ChristopherNeural">Christopher (Male)</option>
-                        <option value="en-US-EricNeural">Eric (Male)</option>
-                        <option value="en-US-MichelleNeural">Michelle (Female)</option>
-                        <option value="en-US-RogerNeural">Roger (Male)</option>
                     </optgroup>
-
-                    <optgroup label="🇬🇧 English (UK)">
-                        <option value="en-GB-SoniaNeural">Sonia (Female)</option>
-                        <option value="en-GB-RyanNeural">Ryan (Male)</option>
-                        <option value="en-GB-LibbyNeural">Libby (Female)</option>
-                    </optgroup>
-
-                    <optgroup label="🇩🇪 Deutsch (German)">
-                        <option value="de-DE-ConradNeural">Conrad (Male)</option>
-                        <option value="de-DE-KatjaNeural">Katja (Female)</option>
-                        <option value="de-DE-KillianNeural">Killian (Male)</option>
-                    </optgroup>
-
-                    <optgroup label="🇫🇷 Français (French)">
-                        <option value="fr-FR-DeniseNeural">Denise (Female)</option>
-                        <option value="fr-FR-HenriNeural">Henri (Male)</option>
-                    </optgroup>
-
-                    <optgroup label="🇪🇸 Español (Spanish)">
-                        <option value="es-ES-AlvaroNeural">Alvaro (Male)</option>
-                        <option value="es-ES-ElviraNeural">Elvira (Female)</option>
-                    </optgroup>
-
-                    <optgroup label="🇮🇹 Italiano (Italian)">
-                        <option value="it-IT-DiegoNeural">Diego (Male)</option>
-                        <option value="it-IT-ElsaNeural">Elsa (Female)</option>
-                    </optgroup>
-
-                    <optgroup label="🇹🇷 Türkçe (Turkish)">
-                        <option value="tr-TR-AhmetNeural">Ahmet (Male)</option>
-                        <option value="tr-TR-EmelNeural">Emel (Female)</option>
-                    </optgroup>
-
-                    <optgroup label="🇺🇦 Українська (Ukrainian)">
+                    <optgroup label="🇺🇦 Українська">
                         <option value="uk-UA-OstapNeural">Остап (Чоловічий)</option>
                         <option value="uk-UA-PolinaNeural">Поліна (Жіночий)</option>
-                    </optgroup>
-
-                    <optgroup label="🇵🇱 Polski (Polish)">
-                        <option value="pl-PL-MarekNeural">Marek (Male)</option>
-                        <option value="pl-PL-ZofiaNeural">Zofia (Female)</option>
                     </optgroup>
                 </select>
 
                 <div class="grid grid-cols-3 gap-2">
-                    <label class="cursor-pointer"><input type="radio" name="mode" value="natural" class="peer hidden" checked><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Natural</div></label>
-                    <label class="cursor-pointer"><input type="radio" name="mode" value="slow" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Slow</div></label>
-                    <label class="cursor-pointer"><input type="radio" name="mode" value="fast" class="peer hidden"><div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Fast</div></label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="natural" class="peer hidden" checked>
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Natural</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="slow" class="peer hidden">
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Slow</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="mode" value="fast" class="peer hidden">
+                        <div class="peer-checked:bg-blue-600 peer-checked:text-white bg-gray-100 text-gray-500 py-3 rounded-xl text-center text-[10px] font-black uppercase transition-all">Fast</div>
+                    </label>
                 </div>
             </div>
 
@@ -96,25 +60,37 @@
         </div>
     </section>
 
-    <!-- Инфо-блоки -->
+    <!-- Инфо-секция -->
     <section class="mt-20 grid md:grid-cols-3 gap-8">
-        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">⚡️</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Мгновенно</h3><p class="text-gray-500 text-sm leading-relaxed">Генерация речи занимает считанные секунды.</p></div>
-        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">🎧</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Живые голоса</h3><p class="text-gray-500 text-sm leading-relaxed">Все современные нейросети в одном интерфейсе.</p></div>
-        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm"><div class="text-blue-600 mb-4 text-2xl">🆓</div><h3 class="font-black uppercase text-xs tracking-widest mb-2">Бесплатно</h3><p class="text-gray-500 text-sm leading-relaxed">2000 символов за одну генерацию без оплаты.</p></div>
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm">
+            <div class="text-blue-600 mb-4 text-2xl">⚡️</div>
+            <h3 class="font-black uppercase text-xs tracking-widest mb-2">Мгновенно</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Обработка через Google Studio AI.</p>
+        </div>
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm">
+            <div class="text-blue-600 mb-4 text-2xl">🎧</div>
+            <h3 class="font-black uppercase text-xs tracking-widest mb-2">Качество</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Лучшие голоса с глубоким обучением.</p>
+        </div>
+        <div class="bg-white p-8 rounded-[30px] border border-gray-100 shadow-sm">
+            <div class="text-blue-600 mb-4 text-2xl">🆓</div>
+            <h3 class="font-black uppercase text-xs tracking-widest mb-2">Лимиты</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Бесплатно до 2000 знаков.</p>
+        </div>
     </section>
 </main>
 
-<!-- ЧАТ-ВИДЖЕТ -->
+<!-- Чат-виджет ИИ -->
 <div id="chat-widget" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
     <div id="chat-window" class="hidden w-80 h-96 bg-white rounded-[30px] shadow-2xl border border-gray-100 mb-4 flex flex-col overflow-hidden animate-fade-in">
         <div class="bg-blue-600 p-4 text-white font-black text-[10px] uppercase tracking-widest flex justify-between">
-            <span>AI Помощник</span>
+            <span>AI Assistant (Gemini)</span>
             <button onclick="toggleChat()">×</button>
         </div>
-        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto text-sm space-y-4 bg-gray-50"></div>
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto text-[11px] space-y-4 bg-gray-50"></div>
         <div class="p-4 border-t border-gray-100 flex gap-2">
-            <input id="chat-input" type="text" class="flex-1 bg-gray-100 border-none rounded-xl px-3 py-2 text-xs outline-none" placeholder="Спросите об озвучке...">
-            <button onclick="handleChat()" class="bg-blue-600 text-white p-2 rounded-xl text-xs font-bold">></button>
+            <input id="chat-input" type="text" class="flex-1 bg-gray-100 border-none rounded-xl px-3 py-2 text-[10px] outline-none" placeholder="Спросите ассистента...">
+            <button onclick="handleChat()" class="bg-blue-600 text-white p-2 rounded-xl">></button>
         </div>
     </div>
     <button onclick="toggleChat()" class="bg-black text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-all">
@@ -123,66 +99,85 @@
 </div>
 
 <script>
-// --- ЛОГИКА ОЗВУЧКИ ---
+// --- ЛОГИКА ТЕКСТА ---
 const textInput = document.getElementById('textInput');
+const charCount = document.getElementById('charCount');
+
 textInput.addEventListener('input', () => {
-    document.getElementById('charCount').innerText = `${textInput.value.length} / 2000`;
+    charCount.innerText = `${textInput.value.length} / 2000`;
 });
 
+// --- ГЕНЕРАЦИЯ АУДИО ---
 async function generateAudio() {
     const btn = document.getElementById('mainBtn');
     const text = textInput.value.trim();
     const voice = document.getElementById('voiceSelect').value;
     const mode = document.querySelector('input[name="mode"]:checked').value;
 
-    if (!text) { alert("Введите текст"); return; }
-    btn.disabled = true; btn.innerText = "Генерируем...";
+    if (!text) {
+        alert("Пожалуйста, введите текст");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Генерируем...";
 
     try {
-        const res = await fetch('/generate', {
+        const response = await fetch('/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, voice, mode })
         });
-        const data = await res.json();
-        if (data.audio_url) {
+
+        const data = await response.json();
+
+        if (response.ok && data.audio_url) {
             const player = document.getElementById('audioPlayer');
             player.src = data.audio_url;
             document.getElementById('downloadBtn').href = data.audio_url;
             document.getElementById('resultSection').classList.remove('hidden');
             player.play();
         } else {
-            alert("Ошибка сервера: " + (data.detail || "Неизвестная ошибка"));
+            alert("Ошибка Google Studio: " + (data.detail || "Проверьте API ключ в main.py"));
         }
-    } catch (e) {
-        alert("Ошибка сети. Проверьте соединение.");
+    } catch (err) {
+        console.error(err);
+        alert("Ошибка соединения с сервером");
     } finally {
-        btn.disabled = false; btn.innerText = "Озвучить";
+        btn.disabled = false;
+        btn.innerText = "Озвучить";
     }
 }
 
-// --- ЛОГИКА ЧАТА ---
-function toggleChat() { document.getElementById('chat-window').classList.toggle('hidden'); }
+// --- ЛОГИКА ЧАТА (GEMINI) ---
+function toggleChat() {
+    document.getElementById('chat-window').classList.toggle('hidden');
+}
+
 async function handleChat() {
     const input = document.getElementById('chat-input');
     const container = document.getElementById('chat-messages');
-    const text = input.value.trim();
-    if (!text) return;
+    const msg = input.value.trim();
+    
+    if (!msg) return;
 
-    container.innerHTML += `<div class="bg-blue-100 p-3 rounded-2xl ml-8 text-[11px] font-medium">${text}</div>`;
+    // Сообщение пользователя
+    container.innerHTML += `<div class="bg-blue-100 p-3 rounded-2xl ml-8 text-blue-900 font-medium">${msg}</div>`;
     input.value = '';
 
     try {
         const res = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
+            body: JSON.stringify({ message: msg })
         });
         const data = await res.json();
-        container.innerHTML += `<div class="bg-white p-3 rounded-2xl mr-8 shadow-sm border border-gray-100 text-[11px] leading-relaxed">${data.response}</div>`;
+        
+        // Ответ ИИ
+        container.innerHTML += `<div class="bg-white p-3 rounded-2xl mr-8 shadow-sm border border-gray-100 text-gray-700">${data.response}</div>`;
         container.scrollTop = container.scrollHeight;
     } catch (e) {
-        container.innerHTML += `<div class="text-red-500 text-[10px]">Ошибка бота</div>`;
+        container.innerHTML += `<div class="text-red-500 text-[9px] text-center">Ошибка Gemini API</div>`;
     }
 }
 </script>
