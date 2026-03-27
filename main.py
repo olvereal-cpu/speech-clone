@@ -125,9 +125,44 @@ async def catch_all(request: Request, page: str):
     except:
         return templates.TemplateResponse("index.html", {"request": request})
 
-if __name__ == "__main__":
+# 1. В начале импорты и ключи
+import os
+import asyncio
+# ... (остальной код)
+
+# 2. Потом база данных и настройки FastAPI (app = FastAPI)
+# ...
+
+# 3. Потом все функции сайта (@app.get, @app.post)
+# ...
+
+# 4. И В САМЫЙ НИЗ СТАВИШЬ ЭТОТ КУСОК:
+async def start_services():
+    # Запускаем бота в фоне
+    print("🤖 Бот запускается...")
+    asyncio.create_task(dp.start_polling(bot))
+    
+    # Запускаем веб-сервер через uvicorn
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Берем порт из настроек системы, если его нет — ставим 5000
+    port = int(os.environ.get("PORT", 5000)) 
+    
+    print(f"🌐 Сайт стартует на порту {port}...")
+    
+    config = uvicorn.Config(
+        app, 
+        host="0.0.0.0", 
+        port=port, 
+        loop="asyncio"
+    )
+    server = uvicorn.Server(config)
+    await server.serve()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(start_services())
+    except (KeyboardInterrupt, SystemExit):
+        print("🛑 Остановка...")
 
 
 
