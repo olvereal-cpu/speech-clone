@@ -114,15 +114,20 @@ async def generate(request: TTSRequest):
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @app.post("/api/chat")
-async def chat_ai(request: ChatRequest):
-    if not model_ai:
-        return {"reply": "Бро, проверь ключ API в main.py! 2.5 Flash не отвечает."}
+async def chat(request: ChatRequest):
     try:
-        response = await asyncio.to_thread(model_ai.generate_content, request.message)
+        # Используем полное имя, если убрали "as genai"
+        import google.generativeai
+        
+        # Вызываем генерацию через поток, чтобы не тормозить сервер
+        response = await asyncio.to_thread(
+            model_ai.generate_content, 
+            request.message
+        )
         return {"reply": response.text}
     except Exception as e:
-        print(f"AI Error: {e}")
-        return {"reply": "Ошибка связи с ИИ 2.5. Попробуй позже."}
+        print(f"Ошибка Gemini: {e}") # Это появится в логах Render
+        return {"reply": f"Ошибка связи с ИИ 2.5: {str(e)}"}
 
 # --- ДЛЯ БЛОГА И ДРУГИХ СТРАНИЦ (МЕНЮ) ---
 @app.get("/blog", response_class=HTMLResponse)
