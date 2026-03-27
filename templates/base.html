@@ -3,138 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SpeechClone | Open Source AI{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <title>{% block title %}SpeechClone AI — Озвучка текста нейросетью онлайн бесплатно{% endblock %}</title>
+    <meta name="description" content="{% block description %}Бесплатная озвучка текста нейросетями онлайн. Более 50 реалистичных голосов, поддержка ударений и скачивание в MP3. Лучший сервис для создания аудио из текста.{% endblock %}">
+    <meta name="keywords" content="озвучка текста, нейросеть голос, текст в речь, синтез речи онлайн, SpeechClone, скачать озвучку mp3">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://speechclone.online/">
+    <meta property="og:title" content="SpeechClone AI — Профессиональная озвучка текста">
+    <meta property="og:description" content="Озвучивайте тексты живыми голосами нейросетей. Бесплатно, быстро и качественно.">
+    <meta property="og:image" content="{{ url_for('static', path='logo.png') }}">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://speechclone.online/">
+    <meta property="twitter:title" content="SpeechClone AI — Озвучка текста">
+    <meta property="twitter:description" content="Бесплатный синтез речи онлайн. MP3 скачивание.">
+    <meta property="twitter:image" content="{{ url_for('static', path='logo.png') }}">
+
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
+    <link rel="canonical" href="https://speechclone.online/" />
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CHHSM6PFGH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-CHHSM6PFGH');
+    </script>
+    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2792779022553212" crossorigin="anonymous"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        :root { 
-            --p: #6366f1; 
-            --bg: #0f172a; 
-            --g: rgba(255,255,255,0.05); 
-            --border: rgba(255,255,255,0.1); 
-        }
-        
-        body { 
-            margin: 0; 
-            font-family: 'Inter', sans-serif, system-ui; 
-            background: var(--bg); 
-            color: white; 
-            line-height: 1.6; 
-        }
-
-        /* Навигация (8 пунктов) */
-        nav { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            padding: 15px 5%; 
-            background: rgba(15, 23, 42, 0.9); 
-            backdrop-filter: blur(10px); 
-            position: sticky; 
-            top: 0; 
-            z-index: 1000;
-            border-bottom: 1px solid var(--border); 
-        }
-        
-        .logo { 
-            font-weight: 800; 
-            font-size: 1.4rem; 
-            color: var(--p); 
-            text-decoration: none; 
-        }
-
-        .menu { display: flex; gap: 18px; }
-        .menu a { 
-            color: #94a3b8; 
-            text-decoration: none; 
-            font-size: 0.85rem; 
-            transition: 0.3s; 
-        }
-        .menu a:hover { color: white; }
-        .menu a.stars-btn { color: #fbbf24; font-weight: bold; }
-
-        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-        
-        footer { 
-            text-align: center; 
-            padding: 60px; 
-            color: #475569; 
-            border-top: 1px solid var(--border); 
-            margin-top: 50px; 
-            font-size: 0.9rem;
-        }
-
-        /* Стили для сетки и карточек, которые будут в index.html */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
-            gap: 20px; 
-        }
-        
-        .card { 
-            background: var(--g); 
-            padding: 30px; 
-            border-radius: 20px; 
-            border: 1px solid var(--border); 
-            transition: 0.3s; 
-        }
-
-        .price-card { 
-            background: rgba(255,255,255,0.03); 
-            padding: 30px 25px; 
-            border-radius: 18px; 
-            border: 1px solid var(--border); 
-            text-align: left; /* Текст слева по просьбе */
-            display: flex;
-            flex-direction: column;
-            transition: 0.3s;
-        }
-        .price-card:hover { border-color: var(--p); }
-        .price-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; }
-        .price-card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 25px; min-height: 40px; }
-
-        .btn { 
-            background: var(--p); 
-            color: white; 
-            padding: 10px 22px; 
-            border-radius: 10px; 
-            text-decoration: none; 
-            display: inline-block; 
-            font-weight: bold; 
-            font-size: 0.9rem;
-            width: fit-content;
-            transition: 0.3s;
-        }
-        .btn:hover { opacity: 0.9; transform: scale(1.02); }
-
-        {% block style %}{% endblock %}
+        body { font-family: 'Inter', sans-serif; }
+        .transition-all { transition: all 0.3s ease; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        html { scroll-behavior: smooth; }
+        #chat-widget { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)); }
     </style>
 </head>
-<body>
+<body class="bg-[#F9FAFB] text-gray-900 antialiased">
 
-<nav>
-    <a href="/" class="logo">SpeechClone</a>
-    <div class="menu">
-        <a href="/">Главная</a>
-        <a href="/about">О проекте</a>
-        <a href="/services">Услуги</a>
-        <a href="/blog/main">Блог</a>
-        <a href="/faq">FAQ</a>
-        <a href="/api-docs">API</a>
-        <a href="/contacts">Контакты</a>
-        <a href="/donate" class="stars-btn">⭐ Донат</a>
+    <nav class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 h-20 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2">
+                <img src="{{ url_for('static', path='logo.png') }}" alt="SpeechClone AI" class="h-10 w-auto">
+                <span class="bg-blue-600 text-[8px] font-black text-white px-2 py-0.5 rounded uppercase tracking-widest">Open Source</span>
+            </a>
+            
+            <div class="hidden md:flex items-center space-x-6">
+                <div class="flex space-x-6 font-bold text-gray-500 uppercase text-[10px] tracking-widest">
+                    <a href="/" class="hover:text-blue-600 transition-all">Главная</a>
+                    <a href="/voices" class="hover:text-blue-600 transition-all">Голоса</a>
+                    <a href="/blog" class="hover:text-blue-600 transition-all">Блог</a>
+                    <a href="/about" class="hover:text-blue-600 transition-all">О нас</a>
+                    <a href="/guide" class="hover:text-blue-600 transition-all">Инструкция</a>
+                    <a href="/contribute" class="text-blue-600 hover:text-gray-900 transition-all">❤️ Поддержать</a>
+                </div>
+
+                <a href="https://t.me/speechclonebot" target="_blank" class="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">Бот</a>
+
+                <div class="flex bg-gray-100 p-1 rounded-xl ml-2">
+                    <button class="px-2 py-1 text-[9px] font-black rounded-lg bg-white shadow-sm text-blue-600">RU</button>
+                    <button onclick="alert('English version coming soon!')" class="px-2 py-1 text-[9px] font-black text-gray-400 hover:text-gray-600 transition-all">EN</button>
+                </div>
+            </div>
+
+            <button id="mobile-menu-btn" class="md:hidden text-gray-900 focus:outline-none">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 p-6 space-y-4 shadow-xl">
+            <a href="/" class="block font-black uppercase text-xs tracking-widest text-gray-900">Главная</a>
+            <a href="/voices" class="block font-black uppercase text-xs tracking-widest text-gray-900">Голоса</a>
+            <a href="/blog" class="block font-black uppercase text-xs tracking-widest text-gray-900">Блог</a>
+            <a href="/guide" class="block font-black uppercase text-xs tracking-widest text-gray-900">Инструкция</a>
+            <a href="/contribute" class="block font-black uppercase text-xs tracking-widest text-blue-600">❤️ Поддержать</a>
+            <a href="https://t.me/speechclonebot" target="_blank" class="block w-full text-center bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest">Открыть бота</a>
+        </div>
+    </nav>
+
+    <div class="min-h-screen">
+        {% block content %}{% endblock %}
     </div>
-</nav>
 
-<main>
-    {% block content %}{% endblock %}
-</main>
+    <footer class="bg-gray-900 text-gray-400 py-16 mt-20 border-t border-gray-800">
+        <div class="max-w-5xl mx-auto px-4 text-center">
+            <div class="flex flex-wrap justify-center gap-6 md:gap-10 mb-10 text-[11px] font-bold uppercase tracking-[0.2em]">
+                <a href="/privacy" class="hover:text-white transition-all">Конфиденциальность</a>
+                <a href="/disclaimer" class="hover:text-white transition-all">Отказ от ответственности</a>
+                <a href="/about" class="hover:text-white transition-all">О проекте</a>
+                <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="text-blue-400 hover:text-white transition-all">PayPal</a>
+                <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
+                <a href="https://kaspi.kz/pay/ТУТ_ID" target="_blank" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
+                <a href="https://t.me/speechclonebot?start=donate" target="_blank" class="text-yellow-400 hover:text-white transition-all">Stars ⭐️</a>
+                <a href="/guide" class="hover:text-white transition-all">Помощь</a>
+            </div>
+            
+            <div class="flex flex-col items-center space-y-6">
+                <p class="text-[10px] tracking-[0.3em] uppercase text-gray-600">
+                    © 2026 SpeechClone Online. Все права защищены.
+                </p>
+                
+                <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                        Ваш визит №<span id="user-counter" class="text-white ml-1">1</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-<footer>
-    &copy; 2026 SpeechClone Online. Open Source Initiative.
-</footer>
+    <script>
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const menu = document.getElementById('mobile-menu');
+    const icon = document.getElementById('menu-icon');
 
+    if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+            const isHidden = menu.classList.toggle('hidden');
+            icon.setAttribute('d', isHidden ? 'M4 6h16M4 12h16M4 18h16' : 'M6 18L18 6M6 6l12 12');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        let count = localStorage.getItem('my_visits') || 0;
+        count++;
+        localStorage.setItem('my_visits', count);
+        const counterDisplay = document.getElementById('user-counter');
+        if (counterDisplay) { counterDisplay.innerText = count; }
+
+        {% if scroll_to %}
+        const target = document.getElementById('{{ scroll_to }}');
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        }
+        {% endif %}
+    });
+    </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
