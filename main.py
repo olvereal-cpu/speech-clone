@@ -6,12 +6,11 @@ import sqlite3
 import edge_tts
 import google.generativeai
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from datetime import datetime
 from aiogram import Bot, Dispatcher
 
 # --- КОНФИГУРАЦИЯ ---
@@ -19,22 +18,18 @@ ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 
-# --- ИНИЦИАЛИЗАЦИЯ БОТА ---
+# --- ИНИЦИАЛИЗАЦИЯ ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (GEMINI 2.5 FLASH) ---
 if GEMINI_API_KEY:
     try:
         google.generativeai.configure(api_key=GEMINI_API_KEY)
         model_ai = google.generativeai.GenerativeModel(
             model_name='gemini-2.5-flash', 
-            system_instruction=(
-                "Ты — Спич-Бро, официальный ИИ-помощник SpeechClone.online. "
-                "Помогай с озвучкой и ударениями (+ перед гласной). Пиши кратко и с юмором."
-            )
+            system_instruction="Ты — Спич-Бро. Помогай с озвучкой. Пиши кратко."
         )
-    except Exception as e:
+    except:
         model_ai = None
 else:
     model_ai = None
@@ -45,8 +40,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, joined_at DATETIME)')
+    conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, joined_at DATETIME)')
     conn.commit()
     conn.close()
 
@@ -54,9 +48,8 @@ def init_db():
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Папки статики
-for p in ["static/audio", "templates/blog"]:
-    os.makedirs(os.path.join(BASE_DIR, p), exist_ok=True)
+# Создаем папки, если их нет
+os.makedirs(os.path.join(BASE_DIR, "static/audio"), exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
@@ -73,16 +66,13 @@ class TTSRequest(BaseModel):
 async def generate_speech_logic(text: str, voice: str, mode: str):
     file_id = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, "static/audio", file_id)
-    clean_text = re.sub(r'[^\w\s\+\!\?\.\,\:\;\-]', '', text).strip()
     rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
     rate = rates.get(mode, "+0%")
-    communicate = edge_tts.Communicate(clean_text, voice, rate=rate)
+    communicate = edge_tts.Communicate(text, voice, rate=rate)
     await communicate.save(file_path)
     return file_id
 
-# --- РОУТЫ ---
-# --- ЯВНЫЕ РОУТЫ ДЛЯ МЕНЮ ---
-
+# --- РОУТЫ СТРАНИЦ ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -93,7 +83,6 @@ async def voices(request: Request):
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog(request: Request):
-    # Если у тебя файл называется blog.html или blog_index.html — поправь тут имя
     return templates.TemplateResponse("blog.html", {"request": request})
 
 @app.get("/about", response_class=HTMLResponse)
@@ -104,16 +93,19 @@ async def about(request: Request):
 async def guide(request: Request):
     return templates.TemplateResponse("guide.html", {"request": request})
 
-@app.get("/contribute", response_class=HTMLResponse)
-async def contribute(request: Request):
-    return templates.TemplateResponse("contribute.html", {"request": request})
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy(request: Request):
+    return templates.TemplateResponse("privacy.html", {"request": request})
+
+@app.get("/disclaimer", response_class=HTMLResponse)
+async def disclaimer(request: Request):
+    return templates.TemplateResponse("disclaimer.html", {"request": request})
 
 @app.get("/download", response_class=HTMLResponse)
 async def download_page(request: Request, file: str = None):
     return templates.TemplateResponse("download.html", {"request": request, "file_name": file})
 
-# --- API ДЛЯ ОЗВУЧКИ И ЧАТА ---
-
+# --- API ---
 @app.post("/api/generate")
 async def generate(request: TTSRequest):
     try:
@@ -124,39 +116,33 @@ async def generate(request: TTSRequest):
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    if not model_ai: return {"reply": "Бро, ИИ спит."}
-    try:
-        res = await asyncio.to_thread(model_ai.generate_content, request.message)
-        return {"reply": res.text}
-    except:
-        return {"reply": "Ошибка связи с Спич-Бро."}
+    if not model_ai: return {"reply": "ИИ недоступен."}
+    res = await asyncio.to_thread(model_ai.generate_content, request.message)
+    return {"reply": res.text}
 
-# --- УНИВЕРСАЛЬНЫЙ РОУТ (В САМОМ КОНЦЕ) ---
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    # Если зашли на страницу, которой нет в списке выше, пробуем найти файл
     try:
         return templates.TemplateResponse(f"{page}.html", {"request": request})
     except:
-        # Если и файла нет — возвращаем на главную
         return templates.TemplateResponse("index.html", {"request": request})
 
-# --- ЧИСТЫЙ ЗАПУСК ДЛЯ RENDER ---
-async def start_services():
+# --- ЗАПУСК ---
+async def main():
     init_db()
-    asyncio.create_task(dp.start_polling(bot))
-    
     import uvicorn
-    # На Рендере достаточно указать хост, остальное он подхватит сам из окружения
-    config = uvicorn.Config(app, host="0.0.0.0", loop="asyncio")
+    
+    # Запускаем uvicorn и бота параллельно в одном цикле
+    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), loop="asyncio")
     server = uvicorn.Server(config)
-    await server.serve()
+    
+    await asyncio.gather(
+        server.serve(),
+        dp.start_polling(bot)
+    )
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(start_services())
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    asyncio.run(main())
 
 
 
