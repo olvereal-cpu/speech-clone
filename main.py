@@ -17,24 +17,22 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ (БЕЗОПАСНАЯ) ---
-# os.getenv ищет переменную в системе, если не находит — берет второй аргумент (None)
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Проверка, что ключи загружены (опционально, для отладки)
 if not BOT_TOKEN or not GEMINI_API_KEY:
     print("⚠️ ВНИМАНИЕ: BOT_TOKEN или GEMINI_API_KEY не установлены в переменных окружения!")
+
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 
-# Список активных ключей Premium
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
 # Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
+model_ai = genai.GenerativeModel('gemini-1.5-flash') # Обновил на стабильную версию
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -80,6 +78,10 @@ VOICES = {
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
+    # Добавляем таблицу для хранения постов, если ее нет
+    conn.execute('''CREATE TABLE IF NOT EXISTS posts 
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
+                     excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
     conn.commit()
     conn.close()
 
@@ -161,16 +163,50 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
 class KeyCheck(BaseModel): key: str
+class AdminGenRequest(BaseModel): message: str; category: str; color: str
 
 # --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"posts": BLOG_POSTS[:8]})
+    # Объединяем статические посты и посты из БД
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+    conn.close()
+    
+    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
+    return templates.TemplateResponse(request, "index.html", {"posts": all_posts[:8]})
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
     return templates.TemplateResponse(request, "premium.html")
+
+# --- АДМИН-МАРШРУТЫ (ДОЛЖНЫ БЫТЬ ВЫШЕ CATCH_ALL) ---
+
+@app.get("/admin/generate", response_class=HTMLResponse)
+async def admin_gen_page(request: Request):
+    return templates.TemplateResponse(request, "admin_generate.html")
+
+@app.post("/api/admin/generate-post")
+async def api_admin_gen(req: AdminGenRequest):
+    try:
+        prompt = f"Напиши статью на тему: {req.message}. Формат HTML (только p, b, i). Дай заголовок, краткий анонс и текст статьи."
+        response = await asyncio.to_thread(model_ai.generate_content, prompt)
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''INSERT INTO posts 
+                        (title, slug, image, excerpt, content, date, author, category, color) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                     (req.message, f"post-{uuid.uuid4().hex[:6]}", 
+                      "https://images.unsplash.com/photo-1614064641935-4476e83bb023", 
+                      "Сгенерировано нейросетью", response.text, 
+                      datetime.now().strftime("%d.%m.%Y"), "Admin AI", req.category, req.color))
+        conn.commit()
+        conn.close()
+        return {"status": "success"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
 
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
@@ -217,11 +253,21 @@ async def api_generate_web(r: TTSRequest):
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": BLOG_POSTS, "is_single": False})
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+    conn.close()
+    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
+    return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
+    conn.close()
+    
+    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404, detail="Статья не найдена")
     return templates.TemplateResponse(request, "blog_index.html", {"posts": [post], "is_single": True})
 
@@ -230,7 +276,13 @@ async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
         return templates.TemplateResponse(request, template_file)
-    return templates.TemplateResponse(request, "index.html", {"posts": BLOG_POSTS[:8]})
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 8').fetchall()
+    conn.close()
+    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
+    return templates.TemplateResponse(request, "index.html", {"posts": all_posts[:8]})
 
 @app.on_event("startup")
 async def startup_event():
