@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
@@ -23,7 +23,7 @@ CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini - ОБНОВЛЕНО до 2.0
+# Настройка Gemini 2.0
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-2.0-flash')
 
@@ -36,12 +36,18 @@ BLOG_POSTS = [
     {"id": 5, "title": "Озвучка на 20+ языках", "slug": "multilanguage-update", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Глобальное обновление...", "content": "Теперь наш сервис поддерживает редкие диалекты...", "date": "28.02.2026", "author": "К. Ли", "category": "Глобал", "color": "green"},
     {"id": 6, "title": "Будущее подкастов", "slug": "podcast-future", "image": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800", "excerpt": "Куда движется индустрия...", "content": "Интерактивные подкасты станут нормой в ближайшие годы...", "date": "25.02.2026", "author": "Р. Грей", "category": "Тренды", "color": "purple"},
     {"id": 7, "title": "YouTube без микрофона", "slug": "youtube-voiceover", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800", "excerpt": "Кейсы создания видео...", "content": "Как делать качественный контент, имея только текст...", "date": "22.02.2026", "author": "В. Кей", "category": "YouTube", "color": "red"},
-    {"id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "Критерии выбора идеального тембра для вашего проекта...", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"}
+    {"id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "Критерии выбора идеального тембра для вашего проекта...", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"},
+    {"id": 9, "title": "Скрытая статья 9", "slug": "hidden-9", "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800", "excerpt": "Для проверки списка...", "content": "Контент 9 статьи...", "date": "18.02.2026", "author": "А. Хопп", "category": "Будущее", "color": "orange"}
 ]
 
 VOICES = {
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇺🇸 Guy (EN)": "en-US-GuyNeural"
+    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇰🇿 Айгуль": "kk-KZ-AigulNeural",
+    "🇺🇸 Guy (EN)": "en-US-GuyNeural", "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
+    "🇹🇷 Ahmet (TR)": "tr-TR-AhmetNeural", "🇪🇸 Alvaro (ES)": "es-ES-AlvaroNeural",
+    "🇩🇪 Conrad (DE)": "de-DE-ConradNeural", "🇵🇱 Marek (PL)": "pl-PL-MarekNeural",
+    "🇫🇷 Remy (FR)": "fr-FR-RemyNeural", "🇯🇵 Keita (JP)": "ja-JP-KeitaNeural",
+    "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
 # --- ПУТИ И БД ---
@@ -54,6 +60,12 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
+    conn.commit()
+    conn.close()
+
+def add_user(uid):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (uid,))
     conn.commit()
     conn.close()
 
@@ -71,34 +83,78 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    add_user(message.from_user.id)
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys():
         kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
-    await message.answer("👋 Привет! Выбери голос:", reply_markup=kb.as_markup())
+    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars (Поддержка)", callback_data="buy_stars"))
+    await message.answer("👋 Привет! Выбери голос и пришли текст для озвучки:", reply_markup=kb.as_markup())
+
+@dp.callback_query(F.data == "buy_stars")
+async def send_invoice(call: types.CallbackQuery):
+    await bot.send_invoice(
+        chat_id=call.message.chat.id,
+        title="Поддержка проекта",
+        description="Покупка 50 Telegram Stars для поддержки развития сервиса озвучки.",
+        payload="stars_support_payload",
+        currency="XTR",
+        prices=[LabeledPrice(label="Stars", amount=50)],
+    )
+    await call.answer()
+
+@dp.pre_checkout_query()
+async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+@dp.message(F.successful_payment)
+async def success_payment(message: types.Message):
+    await message.answer("🎉 Спасибо большое за поддержку! Ваши Stars получены.")
+
+@dp.message(Command("export"))
+async def cmd_export(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    conn = sqlite3.connect(DB_PATH)
+    users = conn.execute('SELECT user_id, voice FROM users').fetchall()
+    conn.close()
+    file_path = "users_export.txt"
+    with open(file_path, "w") as f:
+        for u in users: f.write(f"ID: {u[0]} | Voice: {u[1]}\n")
+    await message.answer_document(document=FSInputFile(file_path), caption="📊 Список пользователей")
+    if os.path.exists(file_path): os.remove(file_path)
+
+@dp.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    conn = sqlite3.connect(DB_PATH)
+    count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    conn.close()
+    await message.answer(f"📊 Всего пользователей: {count}")
 
 @dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
-    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
+    v_name = call.data.replace("v_", "")
+    v_id = VOICES.get(v_name, "ru-RU-DmitryNeural")
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-    await call.message.answer(f"✅ Голос изменен!")
+    await call.message.answer(f"✅ Выбран голос: {v_name}")
     await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
+    uid = message.from_user.id
     if message.text.startswith("/"): return
-    if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
+    if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Сначала подпишись!", reply_markup=kb.as_markup())
+        return await message.answer("⚠️ Подпишись на канал!", reply_markup=kb.as_markup())
     
     msg = await message.answer("⏳ Генерирую...")
     try:
         conn = sqlite3.connect(DB_PATH)
-        res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
+        res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (uid,)).fetchone()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
         
@@ -123,12 +179,10 @@ class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Отдаем только первые 8 постов на главную
     return templates.TemplateResponse("index.html", {
         "request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER
     })
 
-# ИСПРАВЛЕНО: Маршрут блога должен быть ВЫШЕ catch_all
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     return templates.TemplateResponse("blog_index.html", {
@@ -143,17 +197,14 @@ async def read_post(request: Request, slug: str):
         "request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER
     })
 
-# ИСПРАВЛЕНО: Чат-бот API
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Принудительно вызываем генерацию через потоки, чтобы не блокировать event loop
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
-        # Gemini 2.0 возвращает объект, текст берем через .text
         return {"reply": response.text}
     except Exception as e:
-        print(f"Gemini Error: {e}")
-        return JSONResponse(status_code=500, content={"reply": "Бро, я приуныл. Попробуй позже."})
+        print(f"Chat Error: {e}")
+        return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ."})
 
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
@@ -167,25 +218,24 @@ async def generate(r: TTSRequest):
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
-# ИСПРАВЛЕНО: Роут для скачивания (чтобы не качало HTML)
 @app.get("/download")
 async def download_file(file: str):
     file_path = os.path.join(AUDIO_DIR, file)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
-    return HTMLResponse("Файл потерялся", status_code=404)
+    return HTMLResponse("Файл не найден", status_code=404)
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    try: 
+    # Пытаемся найти страницу, иначе редирект на главную
+    try:
         return templates.TemplateResponse(f"{page}.html", {"request": request, "li_counter": LI_COUNTER})
-    except: 
+    except:
         return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
 
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
 
 
