@@ -29,7 +29,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 3.1 / 2.0 FLASH) ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 2.0 FLASH LITE) ---
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -39,13 +39,8 @@ class ModelManager:
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
-        # Приоритет на 2.0 Flash (она же 3.1 в твоей классификации)
-        self.priority_list = [
-            'gemini-2.0-flash', 
-            'gemini-2.0-flash-lite-preview-02-05', 
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-8b'
-        ]
+        # Жесткая установка на 2.0 Flash Lite (3.1)
+        self.target_model = 'gemini-2.0-flash-lite-preview-02-05'
         self.active_model = None
         self._setup()
 
@@ -53,27 +48,25 @@ class ModelManager:
         if not self.api_key: return
         genai.configure(api_key=self.api_key)
         try:
-            available = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            for p in self.priority_list:
-                if any(p in a for a in available):
-                    target = next(a for a in available if p in a)
-                    self.active_model = genai.GenerativeModel(target, safety_settings=self.safety_settings)
-                    print(f"🚀 Активная модель (3.1/2.0): {target}")
-                    return
-            self.active_model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=self.safety_settings)
+            # Инициализируем только выбранную модель 2.0
+            self.active_model = genai.GenerativeModel(
+                model_name=self.target_model, 
+                safety_settings=self.safety_settings
+            )
+            print(f"🚀 Активная модель: {self.target_model}")
         except Exception as e:
-            print(f"❌ Ошибка выбора модели: {e}")
-            self.active_model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=self.safety_settings)
+            print(f"❌ Ошибка инициализации модели: {e}")
 
     async def generate(self, prompt):
+        if not self.active_model:
+            return "Ошибка: Модель ИИ не настроена."
         try:
             resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
             return resp.text
         except Exception as e:
+            print(f"⚠️ Ошибка генерации: {e}")
             if "429" in str(e):
-                temp_model = genai.GenerativeModel('gemini-1.5-flash-8b', safety_settings=self.safety_settings)
-                resp = await asyncio.to_thread(temp_model.generate_content, prompt)
-                return resp.text
+                return "Ошибка: Слишком много запросов (429). Попробуйте позже."
             raise e
 
 mm = ModelManager(GEMINI_API_KEY)
