@@ -252,54 +252,48 @@ async def blog_list(request: Request):
 async def api_admin_gen(req: AdminGenRequest):
     conn = None
     try:
-        # 1. Промпт с жестким контролем
-        prompt = (
-            f"Напиши статью на тему: {req.message}. "
-            "Используй только HTML теги <p>, <b>, <i>. "
-            "НЕ пиши слово 'html', не используй кавычки ```. Просто чистый текст."
-        )
+        # 1. Генерация текста (упрощенный промпт)
+        prompt = f"Напиши статью: {req.message}. Используй теги <p>, <b>. Без Markdown!"
+        raw_content = await mm.generate(prompt)
         
-        # Генерируем
-        content = await mm.generate(prompt)
-        if not content:
-            raise ValueError("ИИ вернул пустой ответ")
+        if not raw_content:
+            return JSONResponse(status_code=500, content={"message": "ИИ вернул пустоту"})
             
-        # Очистка от Markdown-мусора
-        content = content.replace("```html", "").replace("```", "").strip()
+        clean_content = raw_content.replace("```html", "").replace("```", "").strip()
 
-        # 2. Работа с БД с авто-миграцией
+        # 2. Работа с БД (с проверкой структуры)
         conn = sqlite3.connect(DB_PATH, timeout=30)
         cursor = conn.cursor()
         
-        # Проверяем структуру таблицы posts
+        # Создаем таблицу, если её нет вообще
+        cursor.execute('''CREATE TABLE IF NOT EXISTS posts 
+            (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
+             excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
+        
+        # ПРОВЕРКА: Добавляем колонки, если база старая (миграция)
         cursor.execute("PRAGMA table_info(posts)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        # Если каких-то колонок нет — добавляем их прямо сейчас
-        if 'category' not in columns:
-            cursor.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Общее'")
-        if 'color' not in columns:
-            cursor.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
-        
-        post_slug = f"post-{uuid.uuid4().hex[:8]}"
-        post_date = datetime.now().strftime("%d.%m.%Y")
-        
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        for col_name in ['category', 'color']:
+            if col_name not in existing_columns:
+                cursor.execute(f"ALTER TABLE posts ADD COLUMN {col_name} TEXT DEFAULT 'General'")
+
         # 3. Вставка данных
+        new_slug = f"post-{uuid.uuid4().hex[:6]}"
         cursor.execute('''INSERT INTO posts 
-                        (title, slug, image, excerpt, content, date, author, category, color) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                     (req.message, post_slug, 
-                      "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
-                      "Автоматический обзор от SpeechClone AI", content, 
-                      post_date, "Gemini Editor", req.category, req.color))
+            (title, slug, image, excerpt, content, date, author, category, color) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+            (req.message, new_slug, "https://images.unsplash.com/photo-1614064641935-4476e83bb023", 
+             "AI Generated Content", clean_content, datetime.now().strftime("%d.%m.%Y"), 
+             "Gemini AI", req.category or "Tech", req.color or "blue"))
         
         conn.commit()
-        print(f"--- Статья '{req.message}' успешно сохранена! ---")
-        return {"status": "success", "slug": post_slug}
+        return {"status": "success", "slug": new_slug}
 
     except Exception as e:
-        print(f"!!! ОШИБКА ГЕНЕРАЦИИ: {str(e)}")
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        # ВАЖНО: Это выведет реальную ошибку в консоль сервера (Logs на Render)
+        error_msg = f"SQL/AI Error: {str(e)}"
+        print(f"!!! КРИТИКА: {error_msg}") 
+        return JSONResponse(status_code=500, content={"status": "error", "message": error_msg})
     finally:
         if conn:
             conn.close()
