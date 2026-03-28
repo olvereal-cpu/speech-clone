@@ -22,12 +22,12 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyCQ3JD4Fot7wV3oVklOxPU96jH6sNDoIoE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
-# Убрал лишние пробелы в адресе
-SITE_URL = "https://speechclone.online" 
+SITE_URL = "https://speechclone.online"
 
+# Список активных ключей Premium (Добавляй сюда новые ключи)
+PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-
-# Настройка Gemini 3.1 Flash-Lite
+# Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
@@ -59,24 +59,6 @@ BLOG_POSTS = [
         "excerpt": "Автоматизация монтажа...", 
         "content": "<p>Создание подкаста всегда было трудоемким процессом. В 2026 году ИИ берет на себя 80% рутины.</p>", 
         "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"
-    },
-    {
-        "id": 3, 
-        "title": "ИИ в аудиокнигах", 
-        "slug": "ii-v-obrazovanii-audioknigi", 
-        "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800", 
-        "excerpt": "Революция в обучении...", 
-        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям.</p>", 
-        "date": "05.03.2026", "author": "С. Адамс", "category": "Образование", "color": "green"
-    },
-    {
-        "id": 4, 
-        "title": "Как нейронки понимают текст", 
-        "slug": "how-it-works", 
-        "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800", 
-        "excerpt": "Технический разбор...", 
-        "content": "<p>Архитектура трансформеров перевернула мир ИИ.</p>", 
-        "date": "01.03.2026", "author": "Д. Тэч", "category": "Разработка", "color": "indigo"
     }
 ]
 
@@ -128,12 +110,13 @@ async def pre_checkout(query: PreCheckoutQuery):
 
 @dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
-    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
+    v_name = call.data.replace("v_", "")
+    v_id = VOICES.get(v_name, "ru-RU-DmitryNeural")
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-    await call.message.answer(f"✅ Голос установлен!")
+    await call.message.answer(f"✅ Голос {v_name} установлен!")
     await call.answer()
 
 @dp.message(F.text)
@@ -154,9 +137,7 @@ async def handle_text(message: types.Message):
         comm = edge_tts.Communicate(message.text, v_id)
         await comm.save(path)
         
-        # Ссылка на страницу ожидания
         download_link = f"{SITE_URL}/wait-download?file={fid}"
-        
         kb = InlineKeyboardBuilder()
         kb.button(text="📥 СКАЧАТЬ ФАЙЛ", url=download_link)
         
@@ -173,59 +154,40 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str
-class AdminGenRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
+class KeyCheck(BaseModel): key: str
 
 # --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8]})
+    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8]})
+
+@app.get("/premium", response_class=HTMLResponse)
+async def premium_page(request: Request):
+    return templates.TemplateResponse("premium.html", {"request": request})
+
+@app.post("/api/verify-key")
+async def verify_key(data: KeyCheck):
+    if data.key.upper() in [k.upper() for k in PREMIUM_KEYS]:
+        return {"success": True}
+    return {"success": False}
 
 @app.get("/wait-download", response_class=HTMLResponse)
-async def wait_page(request: Request, file: str):
-    # Эта страница рендерит таймер и рекламу
-    file_url = f"/download?file={file}"
+async def wait_page(request: Request, file: str, key: str = None):
+    # Если ключ Premium — мгновенный редирект на скачивание
+    if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
+        return FileResponse(path=os.path.join(AUDIO_DIR, file), filename="speechclone.mp3")
     
-    # Убираем "li_counter": LI_COUNTER, так как переменная больше не существует
-    return templates.TemplateResponse(
-        "wait_page.html", 
-        {
-            "request": request, 
-            "file_url": file_url
-        }
-    )
+    file_url = f"/download?file={file}"
+    return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": file_url})
 
 @app.get("/download")
 async def download_file(file: str):
     file_path = os.path.join(AUDIO_DIR, file)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
-    return HTMLResponse("Файл не найден. Попробуйте создать его заново.", status_code=404)
-
-@app.post("/api/admin/generate-post")
-async def admin_generate_post(req: AdminGenRequest):
-    try:
-        prompt = f"Напиши статью для блога на тему: {req.message}. Стиль: экспертный, но доступный. Оформи в HTML (только теги p). Верни JSON: title, content, excerpt, category."
-        response = await asyncio.to_thread(model_ai.generate_content, prompt)
-        
-        new_id = len(BLOG_POSTS) + 1
-        new_post = {
-            "id": new_id,
-            "title": req.message,
-            "slug": f"post-{new_id}",
-            "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800",
-            "excerpt": "Автоматически сгенерировано нейросетью Gemini 3.1 Flash-Lite.",
-            "content": response.text,
-            "date": datetime.now().strftime("%d.%m.%Y"),
-            "author": "AI Admin",
-            "category": "ИИ",
-            "color": "blue"
-        }
-        BLOG_POSTS.insert(0, new_post)
-        return {"status": "success"}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    return HTMLResponse("Файл не найден.", status_code=404)
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
@@ -243,32 +205,32 @@ async def api_generate_web(r: TTSRequest):
         rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
         comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
         await comm.save(path)
-        # Для веб-версии возвращаем URL страницы ожидания
         return {"audio_url": f"/wait-download?file={fid}"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    return templates.TemplateResponse(request, name="blog_index.html", context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER})
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": BLOG_POSTS, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404, detail="Статья не найдена")
-    return templates.TemplateResponse(request, name="blog_index.html", context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER})
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
-        return templates.TemplateResponse(request, name=template_file, context={"li_counter": LI_COUNTER})
-    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+        return templates.TemplateResponse(template_file, {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8]})
 
 @app.on_event("startup")
 async def startup_event():
+    # Удаляем вебхук и запускаем поллинг с пропуском старых обновлений (важно для Render)
     await bot.delete_webhook(drop_pending_updates=True)
-    asyncio.create_task(dp.start_polling(bot))
+    asyncio.create_task(dp.start_polling(bot, skip_updates=True))
 
 
 
