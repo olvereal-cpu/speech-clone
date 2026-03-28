@@ -32,7 +32,7 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
 # Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview') # Обновил на стабильную версию
+model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview') 
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +78,6 @@ VOICES = {
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
-    # Добавляем таблицу для хранения постов, если ее нет
     conn.execute('''CREATE TABLE IF NOT EXISTS posts 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
                      excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
@@ -169,10 +168,9 @@ class AdminGenRequest(BaseModel): message: str; category: str; color: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Объединяем статические посты и посты из БД
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 8').fetchall()
     conn.close()
     
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
@@ -181,8 +179,6 @@ async def home(request: Request):
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
     return templates.TemplateResponse(request, "premium.html")
-
-# --- АДМИН-МАРШРУТЫ (ДОЛЖНЫ БЫТЬ ВЫШЕ CATCH_ALL) ---
 
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_gen_page(request: Request):
@@ -255,10 +251,10 @@ async def api_generate_web(r: TTSRequest):
 async def blog_list(request: Request):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 15').fetchall()
     conn.close()
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
+    return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts[:15], "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
