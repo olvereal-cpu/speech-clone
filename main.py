@@ -32,6 +32,7 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
 # Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
+# Установлена модель 3.1 по вашему запросу
 model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview') 
 
 # --- ПУТИ ---
@@ -188,8 +189,13 @@ async def admin_gen_page(request: Request):
 async def api_admin_gen(req: AdminGenRequest):
     try:
         prompt = f"Напиши статью на тему: {req.message}. Формат HTML (только p, b, i). Дай заголовок, краткий анонс и текст статьи."
+        # Вызываем Gemini
         response = await asyncio.to_thread(model_ai.generate_content, prompt)
         
+        # Проверка на наличие текста (защита от пустых ответов 3.1)
+        if not response.text:
+            raise Exception("ИИ заблокировал генерацию или вернул пустой ответ")
+
         conn = sqlite3.connect(DB_PATH)
         conn.execute('''INSERT INTO posts 
                         (title, slug, image, excerpt, content, date, author, category, color) 
@@ -202,6 +208,7 @@ async def api_admin_gen(req: AdminGenRequest):
         conn.close()
         return {"status": "success"}
     except Exception as e:
+        print(f"Ошибка в api_admin_gen: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
 
 @app.post("/api/verify-key")
@@ -284,6 +291,5 @@ async def catch_all(request: Request, page: str):
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot, skip_updates=True))
-
 
 
