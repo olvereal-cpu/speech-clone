@@ -29,7 +29,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# Настройка Gemini с максимальным доступом
+# Настройка Gemini с отключением фильтров контента
 genai.configure(api_key=GEMINI_API_KEY)
 safety_settings = [
     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -37,7 +37,6 @@ safety_settings = [
     {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
 ]
-# Используем стабильную версию модели
 model_ai = genai.GenerativeModel('gemini-1.5-flash-latest', safety_settings=safety_settings) 
 
 # --- ПУТИ ---
@@ -147,7 +146,7 @@ class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
 class KeyCheck(BaseModel): key: str
 class AdminGenRequest(BaseModel): message: str; category: str; color: str
 
-# --- МАРШРУТЫ ---
+# --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -166,12 +165,11 @@ async def blog_list(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Улучшенный промпт для Gemini
-        prompt = f"Напиши статью на тему: {req.message}. Используй ТОЛЬКО чистый HTML (теги p, b, i). Не пиши ```html или слово Markdown. Дай интересный и длинный контент."
+        prompt = f"Напиши статью на тему: {req.message}. Формат HTML (только p, b, i). Не используй ```html, просто текст."
         response = await asyncio.to_thread(model_ai.generate_content, prompt)
         
-        if not response or not response.candidates:
-            raise Exception("ИИ заблокировал ответ или произошла ошибка безопасности.")
+        if not response or not response.text:
+            raise Exception("ИИ вернул пустой ответ")
 
         content = response.text.replace("```html", "").replace("```", "").strip()
 
@@ -181,12 +179,11 @@ async def api_admin_gen(req: AdminGenRequest):
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
                      (req.message, f"post-{uuid.uuid4().hex[:6]}", 
                       "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
-                      "Материал создан искусственным интеллектом", content, 
+                      "Сгенерировано нейросетью", content, 
                       datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
         conn.commit(); conn.close()
         return {"status": "success"}
     except Exception as e:
-        print(f"Admin Gen Error: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -226,14 +223,11 @@ async def download_file(file: str):
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Добавлена проверка ответа для чат-бота
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
         if response and response.candidates:
             return {"reply": response.text}
-        return {"reply": "Извините, я не смог обработать ваш запрос."}
-    except Exception as e: 
-        print(f"Chat API Error: {e}")
-        return {"reply": f"Ошибка ИИ: {e}"}
+        return {"reply": "Не удалось получить ответ от ИИ."}
+    except Exception as e: return {"reply": f"Ошибка: {e}"}
 
 @app.post("/api/generate")
 async def api_generate_web(r: TTSRequest):
