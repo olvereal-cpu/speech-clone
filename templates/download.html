@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <main class="max-w-4xl mx-auto px-4 py-8 text-center flex flex-col items-center">
-    <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50 w-full flex flex-col items-center">
-        <h1 id="main-title" class="text-3xl font-black text-gray-900 uppercase mb-12">Ваш файл готов!</h1>
+    
+    <!-- ВЕРХНИЙ БАННЕР (Horizontal 728x90 style) -->
+    <div class="w-full mb-8 bg-gray-100 rounded-[30px] border-2 border-dashed border-gray-200 p-4 flex flex-col items-center justify-center min-h-[120px]">
+        <span class="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-tighter">Рекламная интеграция</span>
+        <!-- ВСТАВЬ СВОЙ КОД РЕКЛАМЫ ТУТ -->
+        <div class="text-gray-300 font-bold italic">Место под ваш горизонтальный баннер</div>
+    </div>
 
-        <div id="timer-container" class="relative flex items-center justify-center mb-6" style="width: 200px; height: 200px;">
+    <div class="bg-white rounded-[40px] shadow-xl p-10 md:p-16 border border-gray-50 w-full flex flex-col items-center relative overflow-hidden">
+        <!-- Декоративный элемент фона -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 opacity-50"></div>
+        
+        <h1 id="main-title" class="text-3xl font-black text-gray-900 uppercase mb-12 relative z-10">Ваш файл готов!</h1>
+
+        <div id="timer-container" class="relative flex items-center justify-center mb-6 z-10" style="width: 200px; height: 200px;">
             <svg class="w-full h-full rotate-[-90deg]">
                 <circle cx="100" cy="100" r="90" stroke="#f3f4f6" stroke-width="12" fill="transparent"/>
                 <circle id="progress-bar" cx="100" cy="100" r="90" stroke="#2563eb" stroke-width="12" fill="transparent" stroke-dasharray="565.48" stroke-dashoffset="565.48" style="transition: stroke-dashoffset 1s linear;"/>
@@ -12,26 +23,53 @@
             <div class="absolute text-4xl font-black text-gray-900" id="countdown">30</div>
         </div>
 
-        <p id="wait-text" class="text-[10px] uppercase tracking-widest text-gray-400 mb-8 font-black">Формируем прямую ссылку...</p>
+        <p id="wait-text" class="text-[10px] uppercase tracking-widest text-gray-400 mb-8 font-black z-10">Формируем прямую ссылку...</p>
 
-        <div id="download-block" class="hidden w-full">
-            <a href="{{ file_url }}" download class="px-16 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all uppercase tracking-widest text-sm inline-block">
+        <div id="download-block" class="hidden w-full z-10">
+            <a href="{{ file_url }}" download class="px-16 py-6 bg-green-500 text-white font-black rounded-[25px] hover:bg-black transition-all uppercase tracking-widest text-sm inline-block shadow-lg shadow-green-100">
                 Скачать MP3 файл
             </a>
         </div>
     </div>
+
+    <!-- НИЖНИЙ БАННЕР (Large 300x250 or Native) -->
+    <div class="w-full mt-8 bg-gray-800 rounded-[40px] p-8 text-center border border-gray-700 shadow-2xl">
+        <span class="text-[10px] font-black uppercase text-gray-500 mb-4 block tracking-tighter">Спонсорский контент</span>
+        <div class="flex flex-col md:flex-row items-center justify-around gap-6">
+            <!-- Блок для рекламы или твоего промо -->
+            <div class="w-full md:w-1/2 h-40 bg-gray-700 rounded-2xl flex items-center justify-center border border-gray-600">
+                <p class="text-gray-400 text-sm italic">Рекламный блок №2</p>
+            </div>
+            <div class="w-full md:w-1/2 text-left">
+                <h4 class="text-blue-400 font-black uppercase text-xs mb-2 italic">Кстати, бро...</h4>
+                <p class="text-gray-300 text-sm leading-tight">Подпишись на наш Telegram, чтобы получать обновления голосов первым и юзать эксклюзивные фишки!</p>
+                <a href="#" class="mt-4 inline-block text-white border-b-2 border-blue-500 pb-1 font-bold text-xs uppercase hover:text-blue-400 transition-colors">Перейти в канал →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- СЧЕТЧИК (LIVEINTERNET ИЛИ ДРУГОЕ) -->
+    <div class="mt-12 opacity-30 grayscale hover:grayscale-0 transition-all">
+        {{ li_counter | safe }}
+    </div>
+
 </main>
 
 <script>
     let timeLeft = 30;
+    const totalTime = 30;
     const circumference = 565.48; 
     const progressBar = document.getElementById('progress-bar');
+
+    // Инициализация прогресса
+    progressBar.style.strokeDashoffset = circumference;
 
     const timer = setInterval(() => {
         timeLeft--;
         if (timeLeft >= 0) {
             document.getElementById('countdown').innerText = timeLeft;
-            const offset = circumference - ( (30 - timeLeft) / 30) * circumference;
+            const progress = (totalTime - timeLeft) / totalTime;
+            const offset = circumference - (progress * circumference);
             progressBar.style.strokeDashoffset = offset;
         }
         if (timeLeft <= 0) {
@@ -43,6 +81,7 @@
         }
     }, 1000);
 </script>
+{% endblock %}
 {% endblock %}
 
 
