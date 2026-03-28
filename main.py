@@ -29,7 +29,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 2.0 FLASH LITE) ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 3.1 FLASH LITE) ---
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -39,35 +39,46 @@ class ModelManager:
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
-        # Жесткая установка на 2.0 Flash Lite (3.1)
-        self.target_model = 'gemini-2.0-flash-lite-preview-02-05'
+        # Устанавливаем именно 3.1 Flash Lite
+        self.target_model = 'gemini-3.1-flash-lite'
         self.active_model = None
         self._setup()
 
     def _setup(self):
-        if not self.api_key: return
+        if not self.api_key: 
+            print("❌ GEMINI_API_KEY отсутствует!")
+            return
         genai.configure(api_key=self.api_key)
         try:
-            # Инициализируем только выбранную модель 2.0
+            # Инициализация модели gemini-3.1-flash-lite
             self.active_model = genai.GenerativeModel(
                 model_name=self.target_model, 
                 safety_settings=self.safety_settings
             )
             print(f"🚀 Активная модель: {self.target_model}")
         except Exception as e:
-            print(f"❌ Ошибка инициализации модели: {e}")
+            print(f"❌ Ошибка инициализации модели {self.target_model}: {e}")
+            # Резервный вариант, если библиотека еще не обновила алиас
+            print("🔄 Пробую альтернативный ID...")
+            try:
+                self.target_model = 'models/gemini-3.1-flash-lite'
+                self.active_model = genai.GenerativeModel(model_name=self.target_model)
+                print(f"🚀 Подключено через: {self.target_model}")
+            except:
+                print("⚠️ Не удалось подключить 3.1, проверьте версию google-generativeai")
 
     async def generate(self, prompt):
         if not self.active_model:
             return "Ошибка: Модель ИИ не настроена."
         try:
+            # Используем asyncio.to_thread для блокирующего вызова SDK
             resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
             return resp.text
         except Exception as e:
             print(f"⚠️ Ошибка генерации: {e}")
             if "429" in str(e):
                 return "Ошибка: Слишком много запросов (429). Попробуйте позже."
-            raise e
+            return f"Ошибка ИИ: {str(e)}"
 
 mm = ModelManager(GEMINI_API_KEY)
 
