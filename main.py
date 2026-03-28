@@ -183,15 +183,17 @@ class TTSRequest(BaseModel): text: str; voice: str; mode: str
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
+        request,
         name="index.html", 
-        context={"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     return templates.TemplateResponse(
+        request,
         name="blog_index.html", 
-        context={"request": request, "posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
+        context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -201,8 +203,9 @@ async def read_post(request: Request, slug: str):
         raise HTTPException(status_code=404, detail="Статья не найдена")
     
     return templates.TemplateResponse(
+        request,
         name="blog_index.html", 
-        context={"request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER}
+        context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER}
     )
 
 @app.post("/api/chat")
@@ -242,16 +245,17 @@ async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
         return templates.TemplateResponse(
+            request,
             name=template_file, 
-            context={"request": request, "li_counter": LI_COUNTER}
+            context={"li_counter": LI_COUNTER}
         )
     return templates.TemplateResponse(
+        request,
         name="index.html", 
-        context={"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
     )
 
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
