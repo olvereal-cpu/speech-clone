@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Premium Доступ — SpeechClone AI{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-16 animate-fade-in">
+    <!-- Заголовок -->
+    <div class="text-center mb-16">
+        <h1 class="text-6xl font-black mb-6 tracking-tighter uppercase text-gray-900">
+            SpeechClone <span class="text-blue-600">Plus</span>
+        </h1>
+        <p class="text-gray-500 font-bold uppercase text-[10px] tracking-[0.3em]">
+            Озвучка без очереди, без рекламы и без ограничений.
+        </p>
+    </div>
+
+    <!-- Поле активации ключа -->
+    <div class="max-w-2xl mx-auto bg-white rounded-[40px] p-10 border border-blue-100 shadow-2xl mb-20 text-center">
+        <h3 class="font-black uppercase tracking-widest text-[11px] mb-6 text-gray-400">Уже есть ключ? Активируйте здесь:</h3>
+        <div class="flex flex-col md:flex-row gap-4">
+            <input id="prem-input" type="text" placeholder="XXXX-XXXX" 
+                   class="flex-1 bg-gray-50 border-none px-6 py-5 rounded-2xl font-black text-sm focus:ring-4 focus:ring-blue-100 transition-all uppercase text-center">
+            <button onclick="checkKey()" class="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-200">
+                Активировать
+            </button>
+        </div>
+        <p id="status-msg" class="mt-4 text-[10px] font-black uppercase tracking-widest hidden"></p>
+    </div>
+
+    <!-- Тарифные планы -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Бот -->
+        <div class="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg flex flex-col">
+            <span class="text-[9px] font-black text-blue-600 uppercase mb-2">Для мессенджера</span>
+            <h4 class="text-2xl font-black mb-4">Telegram Bot</h4>
+            <div class="text-3xl font-black mb-6 text-gray-900">500 ₸</div>
+            <ul class="text-[11px] font-bold text-gray-500 space-y-3 mb-10 flex-1">
+                <li>• Прямо в Telegram</li>
+                <li>• Быстрая обработка</li>
+                <li>• Лимит 5000 знаков</li>
+            </ul>
+            <a href="https://t.me/speechclonebot" target="_blank" class="w-full py-4 bg-gray-900 text-white rounded-xl text-center font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">В бота</a>
+        </div>
+
+        <!-- Месяц (Акцент) -->
+        <div class="bg-gray-950 rounded-[40px] p-8 shadow-2xl border-4 border-blue-600 flex flex-col transform md:-translate-y-4">
+            <span class="text-[9px] font-black text-blue-400 uppercase mb-2">Самый популярный</span>
+            <h4 class="text-2xl font-black mb-4 text-white">Месяц PRO</h4>
+            <div class="text-3xl font-black mb-6 text-white">1 500 ₸</div>
+            <ul class="text-[11px] font-bold text-gray-400 space-y-3 mb-10 flex-1 text-white">
+                <li>✅ Без очереди на сайте</li>
+                <li>✅ Отсутствие рекламы</li>
+                <li>✅ Доступ к API</li>
+            </ul>
+            <a href="https://kaspi.kz/pay/speechclone" target="_blank" class="w-full py-4 bg-blue-600 text-white rounded-xl text-center font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg shadow-blue-900/40">Купить ключ</a>
+        </div>
+
+        <!-- Навсегда -->
+        <div class="bg-white rounded-[40px] p-8 border border-gray-100 shadow-lg flex flex-col">
+            <span class="text-[9px] font-black text-gray-400 uppercase mb-2">Навсегда</span>
+            <h4 class="text-2xl font-black mb-4">Lifetime</h4>
+            <div class="text-3xl font-black mb-6 text-gray-900">5 000 ₸</div>
+            <ul class="text-[11px] font-bold text-gray-500 space-y-3 mb-10 flex-1">
+                <li>• Один раз и навсегда</li>
+                <li>• Все будущие голоса</li>
+                <li>• VIP поддержка</li>
+            </ul>
+            <a href="https://yoomoney.ru/to/4100118023150000" target="_blank" class="w-full py-4 bg-gray-100 text-gray-900 rounded-xl text-center font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Навсегда</a>
+        </div>
+    </div>
+</div>
+
+<script>
+async function checkKey() {
+    const key = document.getElementById('prem-input').value.trim();
+    const msg = document.getElementById('status-msg');
+    
+    if(!key) return;
+
+    msg.innerText = "ПРОВЕРКА...";
+    msg.className = "mt-4 text-[10px] font-black uppercase tracking-widest text-blue-600";
+    msg.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/verify-key', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key: key})
+        });
+        const data = await response.json();
+
+        if(data.success) {
+            localStorage.setItem('speechclone_key', key);
+            msg.innerText = "УСПЕШНО! ПРЕМИУМ АКТИВИРОВАН.";
+            msg.className = "mt-4 text-[10px] font-black uppercase tracking-widest text-green-600";
+            setTimeout(() => { window.location.href = '/'; }, 1500);
+        } else {
+            msg.innerText = "ОШИБКА: НЕВЕРНЫЙ КЛЮЧ";
+            msg.className = "mt-4 text-[10px] font-black uppercase tracking-widest text-red-600";
+        }
+    } catch(e) {
+        msg.innerText = "ОШИБКА СЕРВЕРА";
+    }
+}
+</script>
+{% endblock %}
