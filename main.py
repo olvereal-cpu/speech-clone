@@ -32,7 +32,7 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
 # Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('gemini-1.5-flash') # Обновил на стабильную версию
+model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview') # Обновил на стабильную версию
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
