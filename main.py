@@ -45,8 +45,7 @@ BLOG_POSTS = [
     {"id": 5, "title": "Озвучка на 20+ языках", "slug": "multilanguage-update", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Глобальное обновление...", "content": "Теперь наш сервис поддерживает редкие диалекты...", "date": "28.02.2026", "author": "К. Ли", "category": "Глобал", "color": "green"},
     {"id": 6, "title": "Будущее подкастов", "slug": "podcast-future", "image": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800", "excerpt": "Куда движется индустрия...", "content": "Интерактивные подкасты станут нормой в ближайшие годы...", "date": "25.02.2026", "author": "Р. Грей", "category": "Тренды", "color": "purple"},
     {"id": 7, "title": "YouTube без микрофона", "slug": "youtube-voiceover", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800", "excerpt": "Кейсы создания видео...", "content": "Как делать качественный контент, имея только текст...", "date": "22.02.2026", "author": "В. Кей", "category": "YouTube", "color": "red"},
-    {"id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "Критерии выбора идеального тембра для вашего проекта...", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"},
-    {"id": 9, "title": "Скрытая статья 9", "slug": "hidden-9", "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800", "excerpt": "Для проверки списка...", "content": "Контент 9 статьи...", "date": "18.02.2026", "author": "А. Хопп", "category": "Будущее", "color": "orange"}
+    {"id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "Критерии выбора идеального тембра для вашего проекта...", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"}
 ]
 
 VOICES = {
@@ -138,7 +137,7 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
-# ИСПРАВЛЕННЫЕ РОУТЫ (TemplateResponse теперь с именованными аргументами)
+# --- ИСПРАВЛЕННЫЕ МАРШРУТЫ ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -150,6 +149,7 @@ async def home(request: Request):
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
+    # Явно передаем список всех постов
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
@@ -158,8 +158,12 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
+    # Поиск поста по слагу
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
+    if not post:
+        raise HTTPException(status_code=404, detail="Статья не найдена")
+    
+    # Передаем список из ОДНОГО поста и флаг is_single=True
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
@@ -169,11 +173,18 @@ async def read_post(request: Request, slug: str):
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
+        # Для Gemini 2.0 Flash используем запуск в потоке или прямой вызов
+        # Исправлено: добавление обработки исключения пустого ответа
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
+        
+        if not response or not response.text:
+            return JSONResponse(status_code=500, content={"reply": "ИИ не смог сформировать ответ."})
+            
         return {"reply": response.text}
     except Exception as e:
-        print(f"AI ERROR: {e}")
-        return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ."})
+        print(f"AI ERROR: {str(e)}")
+        # Возвращаем детали ошибки для отладки
+        return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {str(e)}"})
 
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
@@ -194,14 +205,17 @@ async def download_file(file: str):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
     return HTMLResponse("Файл не найден", status_code=404)
 
+# Важно: catch_all должен быть последним
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    if os.path.exists(os.path.join(TEMPLATE_DIR, f"{page}.html")):
+    template_file = f"{page}.html"
+    if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
         return templates.TemplateResponse(
             request=request, 
-            name=f"{page}.html", 
+            name=template_file, 
             context={"li_counter": LI_COUNTER}
         )
+    # Если страница не найдена, кидаем на главную
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
@@ -212,5 +226,4 @@ async def catch_all(request: Request, page: str):
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
 
