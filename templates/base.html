@@ -102,8 +102,8 @@
                 <a href="/disclaimer" class="hover:text-white transition-all">Отказ от ответственности</a>
                 <a href="/about" class="hover:text-white transition-all">О проекте</a>
                 <a href="https://paypal.me/velial39@gmail.com" target="_blank" class="text-blue-400 hover:text-white transition-all">PayPal</a>
-                <a href="https://yoomoney.ru/to/ТУТ_ТВОЙ_НОМЕР" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
-                <a href="https://kaspi.kz/pay/ТУТ_ID" target="_blank" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
+                <a href="https://yoomoney.ru/to/4100118023150000" target="_blank" class="text-purple-400 hover:text-white transition-all">ЮMoney (РФ)</a>
+                <a href="https://kaspi.kz/pay/speechclone" target="_blank" class="text-red-400 hover:text-white transition-all">Kaspi (КЗ)</a>
                 <a href="https://t.me/speechclonebot?start=donate" target="_blank" class="text-yellow-400 hover:text-white transition-all">Stars ⭐️</a>
                 <a href="/guide" class="hover:text-white transition-all">Помощь</a>
             </div>
@@ -113,14 +113,22 @@
                     © 2026 SpeechClone Online. Все права защищены.
                 </p>
                 
-                <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
-                    <span class="flex h-2 w-2 relative">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                    </span>
-                    <p class="text-[9px] font-black uppercase tracking-widest text-gray-400">
-                        Ваш визит №<span id="user-counter" class="text-white ml-1">1</span>
-                    </p>
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <!-- Внутренний счетчик визитов -->
+                    <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
+                        <span class="flex h-2 w-2 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                        <p class="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                            Ваш визит №<span id="user-counter" class="text-white ml-1">1</span>
+                        </p>
+                    </div>
+
+                    <!-- Внешний счетчик LiveInternet -->
+                    <div class="opacity-40 hover:opacity-100 transition-opacity">
+                        {{ li_counter | safe }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -139,12 +147,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Логика личного счетчика
         let count = localStorage.getItem('my_visits') || 0;
         count++;
         localStorage.setItem('my_visits', count);
         const counterDisplay = document.getElementById('user-counter');
         if (counterDisplay) { counterDisplay.innerText = count; }
 
+        // Логика скролла
         {% if scroll_to %}
         const target = document.getElementById('{{ scroll_to }}');
         if (target) {
