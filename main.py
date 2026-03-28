@@ -66,9 +66,9 @@ VOICES = {
     "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini 2.5 Flash) ---
+# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini 1.5 Flash) ---
 google.generativeai.configure(api_key=GEMINI_API_KEY)
-model_ai = google.generativeai.GenerativeModel('gemini-2.5-flash')
+model_ai = google.generativeai.GenerativeModel('gemini-1.5-flash')
 
 # --- ПУТИ И БД ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -122,6 +122,7 @@ async def handle_text(message: types.Message):
     if message.text.startswith("/"): return
     uid = message.from_user.id
     
+    # Проверка подписки
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
@@ -137,9 +138,11 @@ async def handle_text(message: types.Message):
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
         
+        # Генерация аудио
         communicate = edge_tts.Communicate(message.text, v_id)
         await communicate.save(path)
         
+        # Отправка и удаление
         await message.answer_voice(voice=FSInputFile(path))
         await msg.delete()
         
@@ -153,6 +156,7 @@ async def handle_text(message: types.Message):
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Монтирование статики
 if not os.path.exists(os.path.join(BASE_DIR, "static")):
     os.makedirs(os.path.join(BASE_DIR, "static"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -183,10 +187,12 @@ async def blog_index_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_blog_post(request: Request, slug: str):
+    # Ищем пост
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post:
         raise HTTPException(status_code=404)
     
+    # Передаем request ОБЯЗАТЕЛЬНО отдельным аргументом и is_single=True
     return templates.TemplateResponse(
         name="blog_index.html", 
         context={
@@ -205,14 +211,12 @@ async def chat_api(req: ChatRequest):
             return {"reply": "ИИ задумался, попробуйте еще раз."}
         return {"reply": response.text}
     except Exception as e:
+        print(f"Gemini Error: {e}")
         return JSONResponse(status_code=500, content={"reply": "Извините, сейчас ИИ не доступен."})
 
 @app.on_event("startup")
 async def startup_event():
-    # Даем немного времени на завершение старых процессов
-    await asyncio.sleep(2)
+    # Удаляем вебхуки и запускаем поллинг бота в фоне
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=10000)
