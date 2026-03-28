@@ -250,46 +250,59 @@ async def blog_list(request: Request):
 
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
+    conn = None
     try:
-        # 1. Промпт с жестким ограничением формата
+        # 1. Промпт с жестким контролем
         prompt = (
             f"Напиши статью на тему: {req.message}. "
             "Используй только HTML теги <p>, <b>, <i>. "
-            "НЕ используй ```html или кавычки. Просто текст."
+            "НЕ пиши слово 'html', не используй кавычки ```. Просто чистый текст."
         )
         
-        # 2. Генерация (с проверкой на пустоту)
-        raw_text = await mm.generate(prompt)
-        if not raw_text:
+        # Генерируем
+        content = await mm.generate(prompt)
+        if not content:
             raise ValueError("ИИ вернул пустой ответ")
             
-        content = raw_text.replace("```html", "").replace("```", "").strip()
+        # Очистка от Markdown-мусора
+        content = content.replace("```html", "").replace("```", "").strip()
 
-        # 3. Работа с БД (Создаем таблицу, если её нет, и пишем)
-        with sqlite3.connect(DB_PATH, timeout=30) as conn:
-            # Убеждаемся, что таблица соответствует коду
-            conn.execute('''CREATE TABLE IF NOT EXISTS posts 
-                            (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
-                             excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
-            
-            cursor = conn.cursor()
-            post_slug = f"post-{uuid.uuid4().hex[:6]}"
-            
-            cursor.execute('''INSERT INTO posts 
-                            (title, slug, image, excerpt, content, date, author, category, color) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                         (req.message, post_slug, 
-                          "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
-                          "Автоматический обзор от SpeechClone AI", content, 
-                          datetime.now().strftime("%d.%m.%Y"), "Gemini Editor", req.category, req.color))
-            conn.commit()
-            
+        # 2. Работа с БД с авто-миграцией
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        cursor = conn.cursor()
+        
+        # Проверяем структуру таблицы posts
+        cursor.execute("PRAGMA table_info(posts)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        # Если каких-то колонок нет — добавляем их прямо сейчас
+        if 'category' not in columns:
+            cursor.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Общее'")
+        if 'color' not in columns:
+            cursor.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
+        
+        post_slug = f"post-{uuid.uuid4().hex[:8]}"
+        post_date = datetime.now().strftime("%d.%m.%Y")
+        
+        # 3. Вставка данных
+        cursor.execute('''INSERT INTO posts 
+                        (title, slug, image, excerpt, content, date, author, category, color) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                     (req.message, post_slug, 
+                      "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
+                      "Автоматический обзор от SpeechClone AI", content, 
+                      post_date, "Gemini Editor", req.category, req.color))
+        
+        conn.commit()
+        print(f"--- Статья '{req.message}' успешно сохранена! ---")
         return {"status": "success", "slug": post_slug}
 
     except Exception as e:
-        # Это критично: выводим реальную ошибку в консоль сервера
-        print(f"!!! ERROR LOG: {str(e)}") 
+        print(f"!!! ОШИБКА ГЕНЕРАЦИИ: {str(e)}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+    finally:
+        if conn:
+            conn.close()
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
