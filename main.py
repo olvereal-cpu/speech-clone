@@ -251,57 +251,45 @@ async def blog_list(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # 1. Улучшенный промпт (просим ИИ не использовать разметку Markdown)
+        # 1. Промпт с жестким ограничением формата
         prompt = (
-            f"Напиши информативную статью на тему: {req.message}. "
+            f"Напиши статью на тему: {req.message}. "
             "Используй только HTML теги <p>, <b>, <i>. "
-            "ВАЖНО: Не пиши слово 'html', не используй обратные кавычки ```. "
-            "Просто текст статьи."
+            "НЕ используй ```html или кавычки. Просто текст."
         )
         
-        # 2. Получаем ответ
+        # 2. Генерация (с проверкой на пустоту)
         raw_text = await mm.generate(prompt)
-        
-        # 3. Жесткая очистка контента от мусора
-        clean_content = raw_text.replace("```html", "").replace("```", "").strip()
-        
-        # 4. Генерируем данные для вставки
-        post_title = req.message
-        post_slug = f"post-{uuid.uuid4().hex[:8]}"
-        post_date = datetime.now().strftime("%d.%m.%Y")
-        # Ставим дефолтную картинку, если в запросе нет своей
-        post_image = "[https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800](https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800)"
-        
-        # 5. Запись в БД с использованием контекстного менеджера (безопасно)
-        with sqlite3.connect(DB_PATH, timeout=20) as conn:
+        if not raw_text:
+            raise ValueError("ИИ вернул пустой ответ")
+            
+        content = raw_text.replace("```html", "").replace("```", "").strip()
+
+        # 3. Работа с БД (Создаем таблицу, если её нет, и пишем)
+        with sqlite3.connect(DB_PATH, timeout=30) as conn:
+            # Убеждаемся, что таблица соответствует коду
+            conn.execute('''CREATE TABLE IF NOT EXISTS posts 
+                            (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
+                             excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
+            
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO posts 
-                (title, slug, image, excerpt, content, date, author, category, color) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                post_title, 
-                post_slug, 
-                post_image, 
-                "Статья создана нейросетью Gemini 3.1 Flash-Lite.", 
-                clean_content, 
-                post_date, 
-                "AI Editor", 
-                req.category, 
-                req.color
-            ))
+            post_slug = f"post-{uuid.uuid4().hex[:6]}"
+            
+            cursor.execute('''INSERT INTO posts 
+                            (title, slug, image, excerpt, content, date, author, category, color) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+                         (req.message, post_slug, 
+                          "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
+                          "Автоматический обзор от SpeechClone AI", content, 
+                          datetime.now().strftime("%d.%m.%Y"), "Gemini Editor", req.category, req.color))
             conn.commit()
             
-        print(f"--- Статья успешно создана: {post_title} ---")
         return {"status": "success", "slug": post_slug}
-        
+
     except Exception as e:
-        # Печатаем ошибку в логи Render, чтобы ты мог ее прочитать
-        print(f"!!! КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {str(e)}")
-        return JSONResponse(
-            status_code=500, 
-            content={"status": "error", "message": f"Ошибка на стороне сервера: {str(e)}"}
-        )
+        # Это критично: выводим реальную ошибку в консоль сервера
+        print(f"!!! ERROR LOG: {str(e)}") 
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
