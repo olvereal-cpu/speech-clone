@@ -5,7 +5,7 @@ import sqlite3
 import edge_tts
 import google.generativeai
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,8 +22,7 @@ GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 
-# --- ДАННЫЕ БЛОГА (Для вывода на главную) ---
-# Добавь сюда свои реальные статьи. Шаблон index.html должен уметь их отображать.
+# --- ДАННЫЕ БЛОГА ---
 BLOG_POSTS = [
     {
         "id": 1,
@@ -162,7 +161,6 @@ BLOG_POSTS = [
     }
 ]
 
-# Все доступные голоса
 VOICES = {
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural",
     "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
@@ -179,9 +177,8 @@ VOICES = {
     "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini) ---
+# --- ИНИЦИАЛИЗАЦИЯ ИИ ---
 google.generativeai.configure(api_key=GEMINI_API_KEY)
-# Используем flash модель для скорости
 model_ai = google.generativeai.GenerativeModel('gemini-1.5-flash')
 
 # --- ПУТИ И БД ---
@@ -221,9 +218,8 @@ async def cmd_start(message: types.Message):
     for name in VOICES.keys():
         kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
-    await message.answer("👋 Привет! Выбери язык озвучки кнопку ниже и пришли текст. Не забудь подписаться на канал!", reply_markup=kb.as_markup())
+    await message.answer("👋 Привет! Выбери язык озвучки кнопкой ниже и пришли текст.", reply_markup=kb.as_markup())
 
-# --- АДМИН-ПАНЕЛЬ ---
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
@@ -263,7 +259,6 @@ async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
     
-    # Обязательная подписка
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
@@ -286,67 +281,54 @@ async def handle_text(message: types.Message):
     except Exception as e:
         await message.answer(f"Ошибка озвучки: {e}")
 
-# --- FASTAPI (САЙТ И API) ---
+# --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-# Модели запросов
 class ChatRequest(BaseModel):
     message: str
 
 class TTSRequest(BaseModel):
-    text: str; voice: str; mode: str
+    text: str
+    voice: str
+    mode: str
 
-# 1. ГЛАВНАЯ СТРАНИЦА: Теперь с передачей статей блога
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Передаем список постов в шаблон главной страницы
     return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS})
-    @app.get("/blog/{slug}", response_class=HTMLResponse)
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_blog(request: Request, slug: str):
-    # Ищем пост в списке по slug
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post:
         raise HTTPException(status_code=404, detail="Статья не найдена")
-    # Открываем шаблон статьи
     return templates.TemplateResponse("blog.html", {"request": request, "post": post})
 
-# 2. ПОЧИНЕННЫЙ РОУТ ЧАТА: Больше не будет undefined
 @app.post("/api/chat")
 async def chat(r: ChatRequest):
     try:
-        # Генерация ответа через Gemini в отдельном потоке (чтобы не вешать сервер)
         response = await asyncio.to_thread(model_ai.generate_content, r.message)
-        
-        # ВАЖНО: возвращаем {"reply": ...}, JS на сайте ищет это поле
         if response and response.text:
             return {"reply": response.text}
         else:
             return {"reply": "ИИ не смог сгенерировать ответ. Попробуйте другой запрос."}
-            
     except Exception as e:
-        print(f"Chat Error: {e}")
-        # Если ИИ упал, возвращаем понятную ошибку в том же формате
-        return JSONResponse(status_code=500, content={"reply": "Ошибка соединения с ИИ. Попробуйте позже."})
+        return JSONResponse(status_code=500, content={"reply": "Ошибка соединения с ИИ."})
 
-# API для генерации аудио на сайте (Speech Clone)
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
     try:
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
-        # Настройка скорости
         rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
         comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
         await comm.save(path)
-        # Возвращаем URL файла
         return {"audio_url": f"/static/audio/{fid}"}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": f"Ошибка генерации: {e}"})
+        return JSONResponse(status_code=500, content={"detail": f"Ошибка: {e}"})
 
-# Перехват всех остальных страниц (если есть)
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     try:
@@ -354,8 +336,6 @@ async def catch_all(request: Request, page: str):
     except:
         return templates.TemplateResponse(request=request, name="index.html")
 
-# --- ЗАПУСК БОТА В ФОНЕ ---
 @app.on_event("startup")
 async def startup_event():
-    # Запускаем поллинг бота в фоне при старте FastAPI
     asyncio.create_task(dp.start_polling(bot))
