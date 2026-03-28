@@ -27,6 +27,16 @@ LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img s
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-2.0-flash')
 
+# --- ОПРЕДЕЛЕНИЕ ПУТЕЙ (КРИТИЧНО ДЛЯ RENDER) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
+DB_PATH = os.path.join(BASE_DIR, "users.db")
+
+# Создаем папки, если их нет
+os.makedirs(AUDIO_DIR, exist_ok=True)
+
 # Данные блога
 BLOG_POSTS = [
     {"id": 1, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", "excerpt": "Разбираемся в будущем клонирования...", "content": "Полный текст статьи о будущем ИИ-голосов...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"},
@@ -50,22 +60,9 @@ VOICES = {
     "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
-# --- ПУТИ И БД ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
-DB_PATH = os.path.join(BASE_DIR, "users.db")
-os.makedirs(AUDIO_DIR, exist_ok=True)
-
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
-    conn.commit()
-    conn.close()
-
-def add_user(uid):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (uid,))
     conn.commit()
     conn.close()
 
@@ -83,78 +80,42 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    add_user(message.from_user.id)
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys():
         kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
-    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars (Поддержка)", callback_data="buy_stars"))
-    await message.answer("👋 Привет! Выбери голос и пришли текст для озвучки:", reply_markup=kb.as_markup())
+    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
+    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data == "buy_stars")
 async def send_invoice(call: types.CallbackQuery):
-    await bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title="Поддержка проекта",
-        description="Покупка 50 Telegram Stars для поддержки развития сервиса озвучки.",
-        payload="stars_support_payload",
-        currency="XTR",
-        prices=[LabeledPrice(label="Stars", amount=50)],
-    )
+    await bot.send_invoice(call.message.chat.id, title="Поддержка", description="50 Stars", payload="stars", currency="XTR", prices=[LabeledPrice(label="Stars", amount=50)])
     await call.answer()
 
 @dp.pre_checkout_query()
-async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-
-@dp.message(F.successful_payment)
-async def success_payment(message: types.Message):
-    await message.answer("🎉 Спасибо большое за поддержку! Ваши Stars получены.")
-
-@dp.message(Command("export"))
-async def cmd_export(message: types.Message):
-    if message.from_user.id != ADMIN_ID: return
-    conn = sqlite3.connect(DB_PATH)
-    users = conn.execute('SELECT user_id, voice FROM users').fetchall()
-    conn.close()
-    file_path = "users_export.txt"
-    with open(file_path, "w") as f:
-        for u in users: f.write(f"ID: {u[0]} | Voice: {u[1]}\n")
-    await message.answer_document(document=FSInputFile(file_path), caption="📊 Список пользователей")
-    if os.path.exists(file_path): os.remove(file_path)
-
-@dp.message(Command("stats"))
-async def cmd_stats(message: types.Message):
-    if message.from_user.id != ADMIN_ID: return
-    conn = sqlite3.connect(DB_PATH)
-    count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-    conn.close()
-    await message.answer(f"📊 Всего пользователей: {count}")
+async def pre_checkout(query: PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(query.id, ok=True)
 
 @dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
-    v_name = call.data.replace("v_", "")
-    v_id = VOICES.get(v_name, "ru-RU-DmitryNeural")
+    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-    await call.message.answer(f"✅ Выбран голос: {v_name}")
+    await call.message.answer("✅ Голос сохранен")
     await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    uid = message.from_user.id
     if message.text.startswith("/"): return
-    if uid != ADMIN_ID and not await check_sub(uid):
-        kb = InlineKeyboardBuilder()
-        kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишись на канал!", reply_markup=kb.as_markup())
+    if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
+        return await message.answer("⚠️ Подпишись на канал!")
     
     msg = await message.answer("⏳ Генерирую...")
     try:
         conn = sqlite3.connect(DB_PATH)
-        res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (uid,)).fetchone()
+        res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
         
@@ -171,31 +132,27 @@ async def handle_text(message: types.Message):
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Монтируем статику через абсолютный путь
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {
-        "request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER
-    })
+    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    return templates.TemplateResponse("blog_index.html", {
-        "request": request, "posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER
-    })
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse("blog_index.html", {
-        "request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER
-    })
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER})
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
@@ -203,7 +160,7 @@ async def chat_api(req: ChatRequest):
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
         return {"reply": response.text}
     except Exception as e:
-        print(f"Chat Error: {e}")
+        print(f"AI ERROR: {e}")
         return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ."})
 
 @app.post("/api/generate")
@@ -227,11 +184,10 @@ async def download_file(file: str):
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    # Пытаемся найти страницу, иначе редирект на главную
-    try:
+    # ПРОВЕРКА: существует ли файл перед рендером
+    if os.path.exists(os.path.join(TEMPLATE_DIR, f"{page}.html")):
         return templates.TemplateResponse(f"{page}.html", {"request": request, "li_counter": LI_COUNTER})
-    except:
-        return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
 
 @app.on_event("startup")
 async def startup_event():
