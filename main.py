@@ -23,7 +23,21 @@ GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 
-# --- ДАННЫЕ БЛОГА (15 СТАТЕЙ) ---
+# Код счетчика LiveInternet
+LI_COUNTER = """
+<!--LiveInternet counter--><a href="https://www.liveinternet.ru/click"
+target="_blank"><img id="licnt516F" width="31" height="31" style="border:0" 
+title="LiveInternet"
+src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAEALAAAAAABAAEAAAIBTAA7"
+alt=""/></a><script>(function(d,s){d.getElementById("licnt516F").src=
+"https://counter.yadro.ru/hit?t50.6;r"+escape(d.referrer)+
+((typeof(s)=="undefined")?"":";s"+s.width+"*"+s.height+"*"+
+(s.colorDepth?s.colorDepth:s.pixelDepth))+";u"+escape(d.URL)+
+";h"+escape(d.title.substring(0,150))+";"+Math.random()})
+(document,screen)</script><!--/LiveInternet-->
+"""
+
+# --- ДАННЫЕ БЛОГА ---
 BLOG_POSTS = [
     {"id": 1, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", "excerpt": "Разбираемся в будущем клонирования...", "content": "Текст статьи...", "date": "10.02.2026", "author": "Алекс Грей", "category": "Технологии", "color": "blue"},
     {"id": 2, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", "excerpt": "Автоматизация монтажа...", "content": "Текст статьи...", "date": "08.02.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"},
@@ -52,9 +66,9 @@ VOICES = {
     "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
-# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini 2.5 Flash) ---
+# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini 1.5 Flash) ---
 google.generativeai.configure(api_key=GEMINI_API_KEY)
-model_ai = google.generativeai.GenerativeModel('gemini-2.5-flash')
+model_ai = google.generativeai.GenerativeModel('gemini-1.5-flash')
 
 # --- ПУТИ И БД ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -65,12 +79,6 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
-    conn.commit()
-    conn.close()
-
-def add_user(uid):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (uid,))
     conn.commit()
     conn.close()
 
@@ -88,62 +96,42 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    add_user(message.from_user.id)
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
-    await message.answer("👋 Привет! Выбери голос кнопкой и пришли текст.", reply_markup=kb.as_markup())
+    await message.answer("👋 Привет! Выбери голос и пришли текст для озвучки.", reply_markup=kb.as_markup())
 
 @dp.message(Command("stars"))
-async def cmd_stars(message: types.Message):
-    await message.answer("🌟 **Поддержка проекта**\n\nВы можете поддержать сервис отправив Telegram Stars. Это поможет нам добавлять новые голоса и улучшать качество озвучки!")
-
-@dp.message(Command("export"))
-async def cmd_export(message: types.Message):
-    if message.from_user.id != ADMIN_ID: return
-    conn = sqlite3.connect(DB_PATH)
-    users = conn.execute('SELECT user_id FROM users').fetchall()
-    conn.close()
-    file_path = os.path.join(BASE_DIR, "users.txt")
-    with open(file_path, "w") as f:
-        for u in users: f.write(f"{u[0]}\n")
-    await message.answer_document(FSInputFile(file_path), caption=f"📊 Список пользователей (всего: {len(users)})")
-    if os.path.exists(file_path): os.remove(file_path)
-
-@dp.message(Command("stats"))
-async def cmd_stats(message: types.Message):
-    if message.from_user.id != ADMIN_ID: return
-    conn = sqlite3.connect(DB_PATH)
-    count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
-    conn.close()
-    await message.answer(f"📊 Всего в базе: {count}")
+@dp.message(Command("help"))
+async def cmd_stars_help(message: types.Message):
+    await message.answer("🌟 **Поддержка проекта (Stars)**\n\nВы можете поддержать сервис с помощью Telegram Stars. Это помогает нам развивать проект!\n\n/start — Настройка голоса\n/stars — Помощь проекту")
 
 @dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
-    v_name = call.data.replace("v_", "")
-    v_id = VOICES.get(v_name, "ru-RU-DmitryNeural")
+    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-    await call.message.answer(f"✅ Голос изменен на: {v_name}")
+    await call.message.answer("✅ Голос успешно сохранен!")
     await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    uid = message.from_user.id
     if message.text.startswith("/"): return
+    uid = message.from_user.id
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
-        return await message.answer("⚠️ Подпишитесь на канал для доступа!", reply_markup=kb.as_markup())
+        return await message.answer("⚠️ Пожалуйста, подпишитесь на канал для доступа!", reply_markup=kb.as_markup())
 
-    msg = await message.answer("⏳ Генерирую...")
+    msg = await message.answer("⏳ Озвучиваю...")
     try:
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (uid,)).fetchone()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
+        
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
         comm = edge_tts.Communicate(message.text, v_id)
@@ -152,49 +140,50 @@ async def handle_text(message: types.Message):
         await msg.delete()
         if os.path.exists(path): os.remove(path)
     except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
 
-# --- FASTAPI ---
+# --- FASTAPI (САЙТ) ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-class ChatRequest(BaseModel):
-    message: str
+class ChatRequest(BaseModel): message: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8]})
+    return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+
+@app.get("/blog", response_class=HTMLResponse)
+async def blog_index_list(request: Request):
+    # Общий список статей
+    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": BLOG_POSTS, "li_counter": LI_COUNTER})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
-async def read_blog(request: Request, slug: str):
+async def read_blog_post(request: Request, slug: str):
+    # Ищем пост
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse(request=request, name="blog.html", context={"post": post})
-
-# Универсальный роут для остальных страниц (о нас, услуги и т.д.)
-@app.get("/{page}", response_class=HTMLResponse)
-async def get_page(request: Request, page: str):
-    try:
-        return templates.TemplateResponse(request=request, name=f"{page}.html", context={})
-    except:
-        return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8]})
+    if not post: 
+        raise HTTPException(status_code=404)
+    # Используем blog_index.html, но передаем только один пост в списке или отдельной переменной
+    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER})
 
 @app.post("/api/chat")
-async def chat(r: ChatRequest):
+async def chat_api(req: ChatRequest):
     try:
-        response = await asyncio.to_thread(model_ai.generate_content, r.message)
+        # Улучшенный вызов Gemini с таймаутом и обработкой
+        response = await asyncio.to_thread(model_ai.generate_content, req.message)
+        if not response or not response.text:
+            return JSONResponse(status_code=200, content={"reply": "ИИ задумался, попробуйте еще раз."})
         return {"reply": response.text}
-    except Exception:
-        return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ."})
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return JSONResponse(status_code=500, content={"reply": "Извините, сейчас ИИ не может ответить (проблема с API)."})
 
 @app.on_event("startup")
 async def startup_event():
-    # Очистка вебхуков для предотвращения ConflictError
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
-
