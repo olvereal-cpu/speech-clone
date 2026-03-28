@@ -22,6 +22,9 @@ GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 
+# Код счетчика LiveInternet
+LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
+
 # Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-1.5-flash')
@@ -109,7 +112,6 @@ async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
 async def success_payment(message: types.Message):
     await message.answer("🎉 Спасибо большое за поддержку! Ваши Stars получены, это очень помогает проекту.")
 
-# Админка: Выгрузка базы в TXT
 @dp.message(Command("export"))
 async def cmd_export(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
@@ -118,8 +120,7 @@ async def cmd_export(message: types.Message):
     conn.close()
     file_path = "users_export.txt"
     with open(file_path, "w") as f:
-        for u in users:
-            f.write(f"ID: {u[0]} | Voice: {u[1]}\n")
+        for u in users: f.write(f"ID: {u[0]} | Voice: {u[1]}\n")
     await message.answer_document(document=FSInputFile(file_path), caption="📊 Список пользователей")
     os.remove(file_path)
 
@@ -173,37 +174,30 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-class ChatRequest(BaseModel):
-    message: str
-
-class TTSRequest(BaseModel):
-    text: str; voice: str; mode: str
+class ChatRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"posts": BLOG_POSTS[:8]}
+        request=request, name="index.html", 
+        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": BLOG_POSTS, "is_single": False}
+        request=request, name="blog_index.html", 
+        context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post:
-        raise HTTPException(status_code=404)
+    if not post: raise HTTPException(status_code=404)
     return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": [post], "is_single": True}
+        request=request, name="blog_index.html", 
+        context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER}
     )
 
 @app.post("/api/chat")
@@ -211,8 +205,7 @@ async def chat_api(req: ChatRequest):
     try:
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
         return {"reply": response.text}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ. Попробуйте позже."})
+    except: return JSONResponse(status_code=500, content={"reply": "Ошибка ИИ."})
 
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
@@ -228,15 +221,16 @@ async def generate(r: TTSRequest):
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    try: return templates.TemplateResponse(request=request, name=f"{page}.html", context={})
-    except: return templates.TemplateResponse(request=request, name="index.html", context={})
+    try: 
+        return templates.TemplateResponse(request=request, name=f"{page}.html", context={"li_counter": LI_COUNTER})
+    except: 
+        return templates.TemplateResponse(request=request, name="index.html", context={"li_counter": LI_COUNTER})
 
 # --- СТАРТ ---
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
 
 
 
