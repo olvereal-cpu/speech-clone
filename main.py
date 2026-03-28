@@ -42,7 +42,7 @@ safety_settings = [
     {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
 ]
-model_ai = genai.GenerativeModel('gemini-1.5-flash', safety_settings=safety_settings) 
+model_ai = genai.GenerativeModel('models/gemini-1.5-flash', safety_settings=safety_settings) 
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
