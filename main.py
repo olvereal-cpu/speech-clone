@@ -4,6 +4,7 @@ import asyncio
 import sqlite3
 import edge_tts
 import google.generativeai as genai
+from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,11 +22,12 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyCQ3JD4Fot7wV3oVklOxPU96jH6sNDoIoE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
+SITE_URL = "https://speechclone.online/"  # ЗАМЕНИ НА СВОЙ АДРЕС САЙТА 
 
 # Счетчик LiveInternet
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini - Переход на новую модель Gemini 3.1 Flash-Lite
+# Настройка Gemini 3.1 Flash-Lite
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
@@ -38,7 +40,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# Данные блога
+# --- ДАННЫЕ БЛОГА (Глобальный список) ---
 BLOG_POSTS = [
     {
         "id": 1, 
@@ -46,7 +48,7 @@ BLOG_POSTS = [
         "slug": "kak-ii-izmenit-vash-golos", 
         "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
         "excerpt": "Разбираемся в будущем клонирования...", 
-        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом. Теперь нейросети способны передавать не только тембр, но и эмоциональное состояние говорящего, сарказм, радость или усталость.</p><p>Основным трендом становится мгновенное клонирование голоса по короткому фрагменту записи всего в 3 секунды. Это открывает огромные возможности для индустрии кино, игр и личных помощников. Однако вместе с этим возрастают риски дипфейков, что требует внедрения цифровых водяных знаков в аудиопотоки.</p>", 
+        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом. Теперь нейросети способны передавать не только тембр, но и эмоциональное состояние говорящего.</p>", 
         "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"
     },
     {
@@ -55,7 +57,7 @@ BLOG_POSTS = [
         "slug": "sekrety-sozdaniya-podkasta-ii", 
         "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", 
         "excerpt": "Автоматизация монтажа...", 
-        "content": "<p>Создание подкаста всегда было трудоемким процессом. В 2026 году ИИ берет на себя 80% рутины. Инструменты автоматического монтажа удаляют паузы, слова-паразиты и выравнивают громкость всех участников диалога.</p><p>Кроме того, теперь возможно переводить подкаст на любой язык мира, сохраняя ваш оригинальный голос. Это позволяет авторам выходить на глобальную аудиторию без необходимости учить иностранные языки.</p>", 
+        "content": "<p>Создание подкаста всегда было трудоемким процессом. В 2026 году ИИ берет на себя 80% рутины.</p>", 
         "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"
     },
     {
@@ -64,7 +66,7 @@ BLOG_POSTS = [
         "slug": "ii-v-obrazovanii-audioknigi", 
         "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800", 
         "excerpt": "Революция в обучении...", 
-        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям. Раньше запись аудиокниги занимала недели работы в студии с профессиональным диктором. Теперь любой автор может выпустить аудиоверсию своего произведения за несколько часов.</p><p>Современные модели умеют менять интонацию в зависимости от контекста — будь то диалог персонажей в фэнтези или серьезное научное повествование.</p>", 
+        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям. Раньше запись аудиокниги занимала недели работы.</p>", 
         "date": "05.03.2026", "author": "С. Адамс", "category": "Образование", "color": "green"
     },
     {
@@ -73,20 +75,9 @@ BLOG_POSTS = [
         "slug": "how-it-works", 
         "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800", 
         "excerpt": "Технический разбор...", 
-        "content": "<p>Архитектура трансформеров перевернула мир ИИ. Механизмы внимания (Attention mechanisms) позволяют моделям концентрироваться на важных частях предложения, понимая контекст и связи между словами.</p><p>Мы разберем, как именно текст превращается в векторы чисел, и каким образом нейросеть предсказывает следующее слово или генерирует звуковую волну из этих данных.</p>", 
+        "content": "<p>Архитектура трансформеров перевернула мир ИИ. Механизмы внимания позволяют моделям понимать контекст.</p>", 
         "date": "01.03.2026", "author": "Д. Тэч", "category": "Разработка", "color": "indigo"
-    },
-    {
-        "id": 5, "title": "Озвучка на 20+ языках", "slug": "multilanguage-update", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Глобальное обновление...", "content": "<p>Наше последнее обновление расширило список поддерживаемых языков. Теперь SpeechClone говорит на 20+ языках, включая казахский, украинский, турецкий и многие другие.</p>", "date": "28.02.2026", "author": "К. Ли", "category": "Глобал", "color": "green"
-    },
-    {
-        "id": 6, "title": "Будущее подкастов", "slug": "podcast-future", "image": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800", "excerpt": "Куда движется индустрия...", "content": "<p>Интерактивные подкасты станут нормой. Слушатель сможет задавать вопросы в реальном времени, а ИИ-версия ведущего будет отвечать, основываясь на базе знаний автора.</p>", "date": "25.02.2026", "author": "Р. Грей", "category": "Тренды", "color": "purple"
-    },
-    {
-        "id": 7, "title": "YouTube без микрофона", "slug": "youtube-voiceover", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800", "excerpt": "Кейсы создания видео...", "content": "<p>Многие блогеры переходят на полную автоматизацию. Видеоряд создается ИИ, а голос — нашим сервисом. Это позволяет выпускать по 10 видео в день без потери качества.</p>", "date": "22.02.2026", "author": "В. Кей", "category": "YouTube", "color": "red"
-    },
-    {
-        "id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "<p>Для рекламы подходят энергичные голоса, для медитаций — спокойные и низкие. Мы собрали гайд, как не ошибиться с выбором тембра для вашего проекта.</p>", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"}
+    }
 ]
 
 VOICES = {
@@ -124,7 +115,7 @@ async def cmd_start(message: types.Message):
         kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
     kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
-    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
+    await message.answer("👋 Выбери голос и пришли текст для озвучки:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data == "buy_stars")
 async def send_invoice(call: types.CallbackQuery):
@@ -142,16 +133,16 @@ async def set_voice(call: types.CallbackQuery):
     conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-    await call.message.answer("✅ Голос сохранен")
+    await call.message.answer(f"✅ Голос установлен!")
     await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith("/"): return
     if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
-        return await message.answer("⚠️ Подпишись на канал!")
+        return await message.answer(f"⚠️ Подпишись на наш канал, чтобы пользоваться ботом:\n{CHANNEL_URL}")
     
-    msg = await message.answer("⏳ Генерирую...")
+    status_msg = await message.answer("⏳ Создаю аудио, подождите...")
     try:
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
@@ -162,11 +153,17 @@ async def handle_text(message: types.Message):
         path = os.path.join(AUDIO_DIR, fid)
         comm = edge_tts.Communicate(message.text, v_id)
         await comm.save(path)
-        await message.answer_voice(voice=FSInputFile(path))
-        await msg.delete()
-        if os.path.exists(path): os.remove(path)
+        
+        # Генерируем ссылку на страницу ожидания на сайте
+        download_link = f"{SITE_URL}/wait-download?file={fid}"
+        
+        kb = InlineKeyboardBuilder()
+        kb.button(text="📥 СКАЧАТЬ ФАЙЛ", url=download_link)
+        
+        await message.answer(f"✅ Аудио готово! Для скачивания перейдите по ссылке (нужно подождать 30 секунд):", reply_markup=kb.as_markup())
+        await status_msg.delete()
     except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+        await message.answer(f"❌ Ошибка генерации: {e}")
 
 # --- FASTAPI ---
 app = FastAPI()
@@ -177,85 +174,92 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
+class AdminGenRequest(BaseModel): message: str
 
-# --- МАРШРУТЫ ---
+# --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(
-        request,
-        name="index.html", 
-        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
-    )
+    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
 
-@app.get("/blog", response_class=HTMLResponse)
-async def blog_list(request: Request):
-    return templates.TemplateResponse(
-        request,
-        name="blog_index.html", 
-        context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
-    )
-
-@app.get("/blog/{slug}", response_class=HTMLResponse)
-async def read_post(request: Request, slug: str):
-    post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post:
-        raise HTTPException(status_code=404, detail="Статья не найдена")
-    
-    return templates.TemplateResponse(
-        request,
-        name="blog_index.html", 
-        context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER}
-    )
-
-@app.post("/api/chat")
-async def chat_api(req: ChatRequest):
-    try:
-        response = await asyncio.to_thread(model_ai.generate_content, req.message)
-        if not response or not hasattr(response, 'text'):
-            return JSONResponse(status_code=500, content={"reply": "ИИ не смог сформировать ответ."})
-        return {"reply": response.text}
-    except Exception as e:
-        err_msg = str(e)
-        if "429" in err_msg:
-            return JSONResponse(status_code=429, content={"reply": "Слишком много запросов. Попробуйте через минуту!"})
-        return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {err_msg}"})
-
-@app.post("/api/generate")
-async def generate(r: TTSRequest):
-    try:
-        fid = f"{uuid.uuid4()}.mp3"
-        path = os.path.join(AUDIO_DIR, fid)
-        rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-        comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
-        await comm.save(path)
-        return {"audio_url": f"/static/audio/{fid}"}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+@app.get("/wait-download", response_class=HTMLResponse)
+async def wait_page(request: Request, file: str):
+    # Эта страница рендерит таймер и рекламу, а потом дает скачать файл
+    file_url = f"/download?file={file}"
+    return templates.TemplateResponse(request, name="wait_page.html", context={"file_url": file_url, "li_counter": LI_COUNTER})
 
 @app.get("/download")
 async def download_file(file: str):
     file_path = os.path.join(AUDIO_DIR, file)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
-    return HTMLResponse("Файл не найден", status_code=404)
+    return HTMLResponse("Файл не найден. Срок жизни ссылки истек.", status_code=404)
+
+@app.post("/api/admin/generate-post")
+async def admin_generate_post(req: AdminGenRequest):
+    try:
+        prompt = f"Напиши статью для блога на тему: {req.message}. Стиль: экспертный, но доступный. Оформи в HTML (только теги p). Верни JSON: title, content, excerpt, category."
+        response = await asyncio.to_thread(model_ai.generate_content, prompt)
+        
+        new_id = len(BLOG_POSTS) + 1
+        new_post = {
+            "id": new_id,
+            "title": req.message,
+            "slug": f"post-{new_id}",
+            "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800",
+            "excerpt": "Автоматически сгенерировано нейросетью Gemini 3.1 Flash-Lite.",
+            "content": response.text,
+            "date": datetime.now().strftime("%d.%m.%Y"),
+            "author": "AI Admin",
+            "category": "ИИ",
+            "color": "blue"
+        }
+        BLOG_POSTS.insert(0, new_post)
+        return {"status": "success"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/chat")
+async def chat_api(req: ChatRequest):
+    try:
+        response = await asyncio.to_thread(model_ai.generate_content, req.message)
+        return {"reply": response.text}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {str(e)}"})
+
+@app.post("/api/generate")
+async def api_generate_web(r: TTSRequest):
+    try:
+        fid = f"{uuid.uuid4()}.mp3"
+        path = os.path.join(AUDIO_DIR, fid)
+        rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+        comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
+        await comm.save(path)
+        # Для веб-версии тоже используем страницу ожидания
+        return {"audio_url": f"/wait-download?file={fid}"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@app.get("/blog", response_class=HTMLResponse)
+async def blog_list(request: Request):
+    return templates.TemplateResponse(request, name="blog_index.html", context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER})
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
+async def read_post(request: Request, slug: str):
+    post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
+    if not post: raise HTTPException(status_code=404, detail="Статья не найдена")
+    return templates.TemplateResponse(request, name="blog_index.html", context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER})
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
-        return templates.TemplateResponse(
-            request,
-            name=template_file, 
-            context={"li_counter": LI_COUNTER}
-        )
-    return templates.TemplateResponse(
-        request,
-        name="index.html", 
-        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
-    )
+        return templates.TemplateResponse(request, name=template_file, context={"li_counter": LI_COUNTER})
+    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
 
 @app.on_event("startup")
 async def startup_event():
+    # Запуск бота в фоновом режиме при старте сервера
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
