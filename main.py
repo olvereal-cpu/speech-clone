@@ -19,65 +19,36 @@ from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Берем ключ именно из GEMINI_KEY, как указано на Render
 GEMINI_API_KEY = os.getenv("GEMINI_KEY") 
-
-if not BOT_TOKEN or not GEMINI_API_KEY:
-    print(f"⚠️ ВНИМАНИЕ: Данные не получены! BOT_TOKEN: {'OK' if BOT_TOKEN else 'MISSING'}, GEMINI_KEY: {'OK' if GEMINI_API_KEY else 'MISSING'}")
 
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 3.1 FLASH LITE) ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI (ПРЯМАЯ УСТАНОВКА 3.1 FLASH LITE) ---
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
+        self.target_model = 'gemini-3.1-flash-lite'
         self.safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
-        # Устанавливаем именно 3.1 Flash Lite
-        self.target_model = 'gemini-3.1-flash-lite'
-        self.active_model = None
-        self._setup()
-
-    def _setup(self):
-        if not self.api_key: 
-            print("❌ GEMINI_API_KEY отсутствует!")
-            return
         genai.configure(api_key=self.api_key)
-        try:
-            # Инициализация модели gemini-3.1-flash-lite
-            self.active_model = genai.GenerativeModel(
-                model_name=self.target_model, 
-                safety_settings=self.safety_settings
-            )
-            print(f"🚀 Активная модель: {self.target_model}")
-        except Exception as e:
-            print(f"❌ Ошибка инициализации модели {self.target_model}: {e}")
-            # Резервный вариант, если библиотека еще не обновила алиас
-            print("🔄 Пробую альтернативный ID...")
-            try:
-                self.target_model = 'models/gemini-3.1-flash-lite'
-                self.active_model = genai.GenerativeModel(model_name=self.target_model)
-                print(f"🚀 Подключено через: {self.target_model}")
-            except:
-                print("⚠️ Не удалось подключить 3.1, проверьте версию google-generativeai")
+        self.active_model = genai.GenerativeModel(
+            model_name=self.target_model, 
+            safety_settings=self.safety_settings
+        )
 
     async def generate(self, prompt):
-        if not self.active_model:
-            return "Ошибка: Модель ИИ не настроена."
         try:
-            # Используем asyncio.to_thread для блокирующего вызова SDK
             resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
             return resp.text
         except Exception as e:
-            print(f"⚠️ Ошибка генерации: {e}")
-            if "429" in str(e):
-                return "Ошибка: Слишком много запросов (429). Попробуйте позже."
             return f"Ошибка ИИ: {str(e)}"
 
 mm = ModelManager(GEMINI_API_KEY)
@@ -220,146 +191,5 @@ async def check_sub(uid):
 async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2)
-    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
-    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
-
-@dp.callback_query(F.data == "buy_stars")
-async def send_invoice(call: types.CallbackQuery):
-    await bot.send_invoice(call.message.chat.id, title="Поддержка", description="50 Stars", payload="stars", currency="XTR", prices=[LabeledPrice(label="Stars", amount=50)])
-    await call.answer()
-
-@dp.pre_checkout_query()
-async def pre_checkout(query: PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(query.id, ok=True)
-
-@dp.callback_query(F.data.startswith("v_"))
-async def set_voice(call: types.CallbackQuery):
-    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
-    conn = sqlite3.connect(DB_PATH); conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id)); conn.commit(); conn.close()
-    await call.message.answer("✅ Голос установлен!"); await call.answer()
-
-@dp.message(F.text)
-async def handle_text(message: types.Message):
-    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): return
-    try:
-        conn = sqlite3.connect(DB_PATH); res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone(); v_id = res[0] if res else "ru-RU-DmitryNeural"; conn.close()
-        fid = f"{uuid.uuid4()}.mp3"; path = os.path.join(AUDIO_DIR, fid)
-        await edge_tts.Communicate(message.text, v_id).save(path)
-        kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ", url=f"{SITE_URL}/wait-download?file={fid}")
-        await message.answer("✅ Готово!", reply_markup=kb.as_markup())
-    except Exception as e: await message.answer(f"❌ Ошибка: {e}")
-
-# --- FASTAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
-
-class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
-class KeyCheck(BaseModel): key: str
-class AdminGenRequest(BaseModel): message: str; category: str; color: str
-
-# --- МАРШРУТЫ САЙТА ---
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall(); conn.close()
-    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "index.html", {"posts": all_posts[:15]})
-
-@app.get("/blog", response_class=HTMLResponse)
-async def blog_list(request: Request):
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall(); conn.close()
-    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
-
-@app.post("/api/admin/generate-post")
-async def api_admin_gen(req: AdminGenRequest):
-    try:
-        prompt = f"Напиши статью на тему: {req.message}. Формат HTML (только p, b, i). Не используй ```html, просто текст."
-        text = await mm.generate(prompt)
-        content = text.replace("```html", "").replace("```", "").strip()
-
-        conn = sqlite3.connect(DB_PATH, timeout=10)
-        conn.execute('''INSERT INTO posts 
-                        (title, slug, image, excerpt, content, date, author, category, color) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                     (req.message, f"post-{uuid.uuid4().hex[:6]}", 
-                      "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
-                      "Сгенерировано нейросетью", content, 
-                      datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
-        conn.commit(); conn.close()
-        return {"status": "success"}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
-
-@app.get("/blog/{slug}", response_class=HTMLResponse)
-async def read_post(request: Request, slug: str):
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone(); conn.close()
-    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": [post], "is_single": True})
-
-@app.get("/premium", response_class=HTMLResponse)
-async def premium_page(request: Request):
-    return templates.TemplateResponse(request, "premium.html")
-
-@app.get("/admin/generate", response_class=HTMLResponse)
-async def admin_gen_page(request: Request):
-    return templates.TemplateResponse(request, "admin_generate.html")
-
-@app.post("/api/verify-key")
-async def verify_key(data: KeyCheck):
-    if data.key.upper() in [k.upper() for k in PREMIUM_KEYS]: return {"success": True}
-    return {"success": False}
-
-@app.get("/wait-download", response_class=HTMLResponse)
-async def wait_page(request: Request, file: str, key: str = None):
-    if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
-        if os.path.exists(os.path.join(AUDIO_DIR, file)):
-            return FileResponse(path=os.path.join(AUDIO_DIR, file), filename="speechclone.mp3")
-    return templates.TemplateResponse(request, "wait_page.html", {"file_url": f"/download?file={file}"})
-
-@app.get("/download")
-async def download_file(file: str):
-    path = os.path.join(AUDIO_DIR, file)
-    if os.path.exists(path): return FileResponse(path=path, filename="speechclone.mp3")
-    return HTMLResponse("Файл не найден.", status_code=404)
-
-@app.post("/api/chat")
-async def chat_api(req: ChatRequest):
-    try:
-        reply = await mm.generate(req.message)
-        return {"reply": reply}
-    except Exception as e: return {"reply": f"Ошибка: {e}"}
-
-@app.post("/api/generate")
-async def api_generate_web(r: TTSRequest):
-    try:
-        fid = f"{uuid.uuid4()}.mp3"; path = os.path.join(AUDIO_DIR, fid)
-        rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-        await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
-        return {"audio_url": f"/wait-download?file={fid}"}
-    except Exception as e: return JSONResponse(status_code=500, content={"detail": str(e)})
-
-@app.get("/{page}", response_class=HTMLResponse)
-async def catch_all(request: Request, page: str):
-    template_file = f"{page}.html"
-    if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
-        return templates.TemplateResponse(request, template_file)
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 12').fetchall(); conn.close()
-    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "index.html", {"posts": all_posts[:15]})
-
-@app.on_event("startup")
-async def startup_event():
-    await bot.delete_webhook(drop_pending_updates=True)
-    asyncio.create_task(dp.start_polling(bot, skip_updates=True))
 
 
