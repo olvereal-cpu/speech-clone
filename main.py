@@ -24,7 +24,7 @@ CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 
-# Список активных ключей Premium (Добавляй сюда новые ключи)
+# Список активных ключей Premium
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
 # Настройка Gemini
@@ -141,7 +141,7 @@ async def handle_text(message: types.Message):
         kb = InlineKeyboardBuilder()
         kb.button(text="📥 СКАЧАТЬ ФАЙЛ", url=download_link)
         
-        await message.answer(f"✅ Аудио готово! Для скачивания перейдите по ссылке (нужно подождать 30 секунд):", reply_markup=kb.as_markup())
+        await message.answer(f"✅ Аудио готово!", reply_markup=kb.as_markup())
         await status_msg.delete()
     except Exception as e:
         await message.answer(f"❌ Ошибка генерации: {e}")
@@ -161,11 +161,11 @@ class KeyCheck(BaseModel): key: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8]})
+    return templates.TemplateResponse(request, "index.html", {"posts": BLOG_POSTS[:8]})
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
-    return templates.TemplateResponse("premium.html", {"request": request})
+    return templates.TemplateResponse(request, "premium.html")
 
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
@@ -175,12 +175,13 @@ async def verify_key(data: KeyCheck):
 
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait_page(request: Request, file: str, key: str = None):
-    # Если ключ Premium — мгновенный редирект на скачивание
     if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
-        return FileResponse(path=os.path.join(AUDIO_DIR, file), filename="speechclone.mp3")
+        file_path = os.path.join(AUDIO_DIR, file)
+        if os.path.exists(file_path):
+            return FileResponse(path=file_path, filename="speechclone.mp3")
     
     file_url = f"/download?file={file}"
-    return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": file_url})
+    return templates.TemplateResponse(request, "wait_page.html", {"file_url": file_url})
 
 @app.get("/download")
 async def download_file(file: str):
@@ -211,24 +212,23 @@ async def api_generate_web(r: TTSRequest):
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": BLOG_POSTS, "is_single": False})
+    return templates.TemplateResponse(request, "blog_index.html", {"posts": BLOG_POSTS, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404, detail="Статья не найдена")
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
+    return templates.TemplateResponse(request, "blog_index.html", {"posts": [post], "is_single": True})
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
-        return templates.TemplateResponse(template_file, {"request": request})
-    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8]})
+        return templates.TemplateResponse(request, template_file)
+    return templates.TemplateResponse(request, "index.html", {"posts": BLOG_POSTS[:8]})
 
 @app.on_event("startup")
 async def startup_event():
-    # Удаляем вебхук и запускаем поллинг с пропуском старых обновлений (важно для Render)
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot, skip_updates=True))
 
