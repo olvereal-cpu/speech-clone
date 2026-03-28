@@ -21,12 +21,13 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
-# Счетчик LiveInternet (передаем в контекст для вставки в футер шаблона)
+
+# Счетчик LiveInternet
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini 1.5 Flash (более стабильная квота для бесплатного уровня)
+# Настройка Gemini (используем обновленный идентификатор модели)
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('gemini-1.5-flash')
+model_ai = genai.GenerativeModel('models/gemini-1.5-flash-latest')
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,16 +38,55 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# Данные блога
+# Данные блога (Наполнены контентом для корректного отображения)
 BLOG_POSTS = [
-    {"id": 1, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", "excerpt": "Разбираемся в будущем клонирования...", "content": "Полный текст статьи о будущем ИИ-голосов...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"},
-    {"id": 2, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", "excerpt": "Автоматизация монтажа...", "content": "Как использовать ИИ для обработки звука в подкастах...", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"},
-    {"id": 3, "title": "ИИ в аудиокнигах", "slug": "ii-v-obrazovanii-audioknigi", "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800", "excerpt": "Революция в обучении...", "content": "Озвучка книг стала доступнее благодаря нейросетям...", "date": "05.03.2026", "author": "С. Адамс", "category": "Образование", "color": "green"},
-    {"id": 4, "title": "Как нейронки понимают текст", "slug": "how-it-works", "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800", "excerpt": "Технический разбор...", "content": "Разбираем архитектуру трансформеров на пальцах...", "date": "01.03.2026", "author": "Д. Тэч", "category": "Разработка", "color": "indigo"},
-    {"id": 5, "title": "Озвучка на 20+ языках", "slug": "multilanguage-update", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Глобальное обновление...", "content": "Теперь наш сервис поддерживает редкие диалекты...", "date": "28.02.2026", "author": "К. Ли", "category": "Глобал", "color": "green"},
-    {"id": 6, "title": "Будущее подкастов", "slug": "podcast-future", "image": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800", "excerpt": "Куда движется индустрия...", "content": "Интерактивные подкасты станут нормой в ближайшие годы...", "date": "25.02.2026", "author": "Р. Грей", "category": "Тренды", "color": "purple"},
-    {"id": 7, "title": "YouTube без микрофона", "slug": "youtube-voiceover", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800", "excerpt": "Кейсы создания видео...", "content": "Как делать качественный контент, имея только текст...", "date": "22.02.2026", "author": "В. Кей", "category": "YouTube", "color": "red"},
-    {"id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "Критерии выбора идеального тембра для вашего проекта...", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"}
+    {
+        "id": 1, 
+        "title": "Как ИИ изменит ваш голос в 2026 году", 
+        "slug": "kak-ii-izmenit-vash-golos", 
+        "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
+        "excerpt": "Разбираемся в будущем клонирования...", 
+        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом. Теперь нейросети способны передавать не только тембр, но и эмоциональное состояние говорящего, сарказм, радость или усталость.</p><p>Основным трендом становится мгновенное клонирование голоса по короткому фрагменту записи всего в 3 секунды. Это открывает огромные возможности для индустрии кино, игр и личных помощников. Однако вместе с этим возрастают риски дипфейков, что требует внедрения цифровых водяных знаков в аудиопотоки.</p>", 
+        "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"
+    },
+    {
+        "id": 2, 
+        "title": "Секреты идеального подкаста", 
+        "slug": "sekrety-sozdaniya-podkasta-ii", 
+        "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", 
+        "excerpt": "Автоматизация монтажа...", 
+        "content": "<p>Создание подкаста всегда было трудоемким процессом. В 2026 году ИИ берет на себя 80% рутины. Инструменты автоматического монтажа удаляют паузы, слова-паразиты и выравнивают громкость всех участников диалога.</p><p>Кроме того, теперь возможно переводить подкаст на любой язык мира, сохраняя ваш оригинальный голос. Это позволяет авторам выходить на глобальную аудиторию без необходимости учить иностранные языки.</p>", 
+        "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"
+    },
+    {
+        "id": 3, 
+        "title": "ИИ в аудиокнигах", 
+        "slug": "ii-v-obrazovanii-audioknigi", 
+        "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800", 
+        "excerpt": "Революция в обучении...", 
+        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям. Раньше запись аудиокниги занимала недели работы в студии с профессиональным диктором. Теперь любой автор может выпустить аудиоверсию своего произведения за несколько часов.</p><p>Современные модели умеют менять интонацию в зависимости от контекста — будь то диалог персонажей в фэнтези или серьезное научное повествование.</p>", 
+        "date": "05.03.2026", "author": "С. Адамс", "category": "Образование", "color": "green"
+    },
+    {
+        "id": 4, 
+        "title": "Как нейронки понимают текст", 
+        "slug": "how-it-works", 
+        "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800", 
+        "excerpt": "Технический разбор...", 
+        "content": "<p>Архитектура трансформеров перевернула мир ИИ. Механизмы внимания (Attention mechanisms) позволяют моделям концентрироваться на важных частях предложения, понимая контекст и связи между словами.</p><p>Мы разберем, как именно текст превращается в векторы чисел, и каким образом нейросеть предсказывает следующее слово или генерирует звуковую волну из этих данных.</p>", 
+        "date": "01.03.2026", "author": "Д. Тэч", "category": "Разработка", "color": "indigo"
+    },
+    {
+        "id": 5, "title": "Озвучка на 20+ языках", "slug": "multilanguage-update", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Глобальное обновление...", "content": "<p>Наше последнее обновление расширило список поддерживаемых языков. Теперь SpeechClone говорит на 20+ языках, включая казахский, украинский, турецкий и многие другие.</p>", "date": "28.02.2026", "author": "К. Ли", "category": "Глобал", "color": "green"
+    },
+    {
+        "id": 6, "title": "Будущее подкастов", "slug": "podcast-future", "image": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800", "excerpt": "Куда движется индустрия...", "content": "<p>Интерактивные подкасты станут нормой. Слушатель сможет задавать вопросы в реальном времени, а ИИ-версия ведущего будет отвечать, основываясь на базе знаний автора.</p>", "date": "25.02.2026", "author": "Р. Грей", "category": "Тренды", "color": "purple"
+    },
+    {
+        "id": 7, "title": "YouTube без микрофона", "slug": "youtube-voiceover", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800", "excerpt": "Кейсы создания видео...", "content": "<p>Многие блогеры переходят на полную автоматизацию. Видеоряд создается ИИ, а голос — нашим сервисом. Это позволяет выпускать по 10 видео в день без потери качества.</p>", "date": "22.02.2026", "author": "В. Кей", "category": "YouTube", "color": "red"
+    },
+    {
+        "id": 8, "title": "Как выбрать ИИ-голос", "slug": "kak-vybrat-ii-golos", "image": "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800", "excerpt": "Советы по подбору...", "content": "<p>Для рекламы подходят энергичные голоса, для медитаций — спокойные и низкие. Мы собрали гайд, как не ошибиться с выбором тембра для вашего проекта.</p>", "date": "20.02.2026", "author": "М. Рид", "category": "Советы", "color": "blue"}
 ]
 
 VOICES = {
@@ -143,17 +183,15 @@ class TTSRequest(BaseModel): text: str; voice: str; mode: str
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(
-        request=request, 
         name="index.html", 
-        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+        context={"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     return templates.TemplateResponse(
-        request=request, 
         name="blog_index.html", 
-        context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
+        context={"request": request, "posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
     )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -163,22 +201,22 @@ async def read_post(request: Request, slug: str):
         raise HTTPException(status_code=404, detail="Статья не найдена")
     
     return templates.TemplateResponse(
-        request=request, 
         name="blog_index.html", 
-        context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER}
+        context={"request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER}
     )
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
+        # Используем современный вызов Gemini
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
-        if not response or not response.text:
+        if not response or not hasattr(response, 'text'):
             return JSONResponse(status_code=500, content={"reply": "ИИ не смог сформировать ответ."})
         return {"reply": response.text}
     except Exception as e:
         err_msg = str(e)
         if "429" in err_msg:
-            return JSONResponse(status_code=429, content={"reply": "Слишком много запросов. Попробуйте через минуту или напишите в Telegram!"})
+            return JSONResponse(status_code=429, content={"reply": "Слишком много запросов. Попробуйте через минуту!"})
         return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {err_msg}"})
 
 @app.post("/api/generate")
@@ -205,14 +243,12 @@ async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
     if os.path.exists(os.path.join(TEMPLATE_DIR, template_file)):
         return templates.TemplateResponse(
-            request=request, 
             name=template_file, 
-            context={"li_counter": LI_COUNTER}
+            context={"request": request, "li_counter": LI_COUNTER}
         )
     return templates.TemplateResponse(
-        request=request, 
         name="index.html", 
-        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+        context={"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
     )
 
 @app.on_event("startup")
