@@ -19,30 +19,42 @@ from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-# Исправляем здесь: читаем ту переменную, которая у тебя в системе
+# Используем твою переменную GEMINI_KEY
 GEMINI_API_KEY = os.getenv("GEMINI_KEY") 
 
 if not BOT_TOKEN or not GEMINI_API_KEY:
     print(f"⚠️ ВНИМАНИЕ: Данные не получены! BOT_TOKEN: {'OK' if BOT_TOKEN else 'MISSING'}, GEMINI_KEY: {'OK' if GEMINI_API_KEY else 'MISSING'}")
-
-# Инициализируем Google AI с ключом из GEMINI_KEY
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# Настройка Gemini с отключением фильтров контента
-genai.configure(api_key=GEMINI_API_KEY)
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-]
-model_ai = genai.GenerativeModel('gemini-2.0-flash-exp') 
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI ---
+model_ai = None
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+
+    try:
+        # Автоподбор доступной модели, чтобы избежать 404
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        selected_model = next((m for m in available_models if "gemini-2.0-flash" in m),
+                         next((m for m in available_models if "gemini-1.5-flash" in m),
+                         available_models[0] if available_models else "gemini-pro"))
+        
+        print(f"🚀 Использую модель: {selected_model}")
+        model_ai = genai.GenerativeModel(model_name=selected_model, safety_settings=safety_settings)
+    except Exception as e:
+        print(f"⚠️ Ошибка подбора модели: {e}")
+        # Фолбэк на стандартную, если список не подгрузился
+        model_ai = genai.GenerativeModel('gemini-1.5-flash', safety_settings=safety_settings)
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
