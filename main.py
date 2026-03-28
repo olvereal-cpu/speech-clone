@@ -27,14 +27,13 @@ LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img s
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-2.0-flash')
 
-# --- ОПРЕДЕЛЕНИЕ ПУТЕЙ (КРИТИЧНО ДЛЯ RENDER) ---
+# --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-# Создаем папки, если их нет
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Данные блога
@@ -133,26 +132,39 @@ async def handle_text(message: types.Message):
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# Монтируем статику через абсолютный путь
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
+# ИСПРАВЛЕННЫЕ РОУТЫ (TemplateResponse теперь с именованными аргументами)
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+    )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": BLOG_POSTS, "is_single": False, "li_counter": LI_COUNTER}
+    )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True, "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER}
+    )
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
@@ -184,10 +196,17 @@ async def download_file(file: str):
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    # ПРОВЕРКА: существует ли файл перед рендером
     if os.path.exists(os.path.join(TEMPLATE_DIR, f"{page}.html")):
-        return templates.TemplateResponse(f"{page}.html", {"request": request, "li_counter": LI_COUNTER})
-    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+        return templates.TemplateResponse(
+            request=request, 
+            name=f"{page}.html", 
+            context={"li_counter": LI_COUNTER}
+        )
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+    )
 
 @app.on_event("startup")
 async def startup_event():
