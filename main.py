@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import FSInputFile
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
@@ -220,6 +221,26 @@ async def cmd_start(message: types.Message):
     kb.adjust(2)
     await message.answer("👋 Привет! Выбери язык озвучки кнопкой ниже и пришли текст.", reply_markup=kb.as_markup())
 
+@dp.message(Command("stars"))
+async def cmd_stars(message: types.Message):
+    await message.answer("🌟 Спасибо за поддержку! Если вам нравится сервис, вы можете отправить Telegram Stars. Это помогает нам развиваться.")
+
+@dp.message(Command("export"))
+async def cmd_export(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    conn = sqlite3.connect(DB_PATH)
+    users = conn.execute('SELECT user_id FROM users').fetchall()
+    conn.close()
+    
+    file_path = os.path.join(BASE_DIR, "users.txt")
+    with open(file_path, "w") as f:
+        for u in users:
+            f.write(f"{u[0]}\n")
+            
+    await message.answer_document(FSInputFile(file_path), caption=f"📊 Список пользователей (всего: {len(users)})")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     if message.from_user.id != ADMIN_ID: return
@@ -297,7 +318,9 @@ class TTSRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(name="index.html", context={"request": request, "posts": BLOG_POSTS})
+    # Ограничиваем вывод на главную до первых 8 статей
+    display_posts = BLOG_POSTS[:8]
+    return templates.TemplateResponse(name="index.html", context={"request": request, "posts": display_posts})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_blog(request: Request, slug: str):
@@ -334,11 +357,8 @@ async def catch_all(request: Request, page: str):
     try:
         return templates.TemplateResponse(name=f"{page}.html", context={"request": request})
     except:
-        return templates.TemplateResponse(name="index.html", context={"request": request, "posts": BLOG_POSTS})
+        return templates.TemplateResponse(name="index.html", context={"request": request, "posts": BLOG_POSTS[:8]})
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(dp.start_polling(bot))
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
