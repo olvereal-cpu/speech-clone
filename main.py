@@ -29,7 +29,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI С ЗАЩИТОЙ ОТ 429/404 ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI (УСТАНОВКА 3.1 / 2.0 FLASH) ---
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -39,7 +39,13 @@ class ModelManager:
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
-        self.priority_list = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-flash-exp', 'gemini-pro']
+        # Приоритет на 2.0 Flash (она же 3.1 в твоей классификации)
+        self.priority_list = [
+            'gemini-2.0-flash', 
+            'gemini-2.0-flash-lite-preview-02-05', 
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-8b'
+        ]
         self.active_model = None
         self._setup()
 
@@ -47,14 +53,16 @@ class ModelManager:
         if not self.api_key: return
         genai.configure(api_key=self.api_key)
         try:
-            available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            available = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             for p in self.priority_list:
                 if any(p in a for a in available):
-                    self.active_model = genai.GenerativeModel(p, safety_settings=self.safety_settings)
-                    print(f"🚀 Активная модель: {p}")
+                    target = next(a for a in available if p in a)
+                    self.active_model = genai.GenerativeModel(target, safety_settings=self.safety_settings)
+                    print(f"🚀 Активная модель (3.1/2.0): {target}")
                     return
             self.active_model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=self.safety_settings)
-        except:
+        except Exception as e:
+            print(f"❌ Ошибка выбора модели: {e}")
             self.active_model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=self.safety_settings)
 
     async def generate(self, prompt):
@@ -63,14 +71,12 @@ class ModelManager:
             return resp.text
         except Exception as e:
             if "429" in str(e):
-                # Если лимит исчерпан, пробуем переключиться на flash-8b (у нее лимиты выше)
-                self.active_model = genai.GenerativeModel('gemini-1.5-flash-8b', safety_settings=self.safety_settings)
-                resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
+                temp_model = genai.GenerativeModel('gemini-1.5-flash-8b', safety_settings=self.safety_settings)
+                resp = await asyncio.to_thread(temp_model.generate_content, prompt)
                 return resp.text
             raise e
 
 mm = ModelManager(GEMINI_API_KEY)
-model_ai = mm.active_model # Для обратной совместимости
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -81,23 +87,98 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА (15 СТАТЕЙ) ---
+# --- ДАННЫЕ БЛОГА (ПОЛНЫЕ СТАТЬИ) ---
 BLOG_POSTS = [
-    {"id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", "excerpt": "Разбираемся в будущем клонирования...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue", "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства...</p>"},
-    {"id": 1002, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", "excerpt": "Автоматизация монтажа...", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple", "content": "<p>Создание подкаста всегда было трудоемким процессом...</p>"},
-    {"id": 1003, "title": "Клонирование голоса: Этика и закон", "slug": "ethics-of-voice-cloning", "image": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?q=80&w=800", "excerpt": "Где грань между инновацией и кражей личности?", "date": "05.03.2026", "author": "Юрист ИИ", "category": "Право", "color": "red", "content": "<p>Защита цифрового голоса становится приоритетом...</p>"},
-    {"id": 1004, "title": "Топ 10 голосов для рекламы", "slug": "top-10-voices-ad", "image": "https://images.unsplash.com/photo-1478737270239-2fccd2c7fd94?q=80&w=800", "excerpt": "Какие тембры продают лучше всего?", "date": "01.03.2026", "author": "Маркетолог", "category": "Маркетинг", "color": "green", "content": "<p>Исследования показывают преимущества теплых тембров...</p>"},
-    {"id": 1005, "title": "Озвучка книг: Новая эра", "slug": "audiobook-new-era", "image": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=800", "excerpt": "Как за неделю озвучить целую серию романов.", "date": "25.02.2026", "author": "Книжник", "category": "Литература", "color": "yellow", "content": "<p>Авторы теперь могут выпускать аудиоверсии мгновенно...</p>"},
-    {"id": 1006, "title": "ИИ в видеоиграх: Живые диалоги", "slug": "ai-in-gaming", "image": "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800", "excerpt": "NPC, которые действительно говорят с вами.", "date": "20.02.2026", "author": "Геймер", "category": "Игры", "color": "indigo", "content": "<p>Технология генерации речи в реальном времени...</p>"},
-    {"id": 1007, "title": "Как работает Edge TTS?", "slug": "how-edge-tts-works", "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800", "excerpt": "Технический разбор движка от Microsoft.", "date": "15.02.2026", "author": "Разработчик", "category": "Технологии", "color": "gray", "content": "<p>Разбираем нейронные сети в основе синтеза...</p>"},
-    {"id": 1008, "title": "Психология восприятия голоса", "slug": "psychology-of-voice", "image": "https://images.unsplash.com/photo-1526256262350-7da7584cf5eb?q=80&w=800", "excerpt": "Почему мы доверяем одним голосам и боимся других.", "date": "10.02.2026", "author": "Доктор Пси", "category": "Наука", "color": "pink", "content": "<p>Голос — это мощный инструмент социального влияния...</p>"},
-    {"id": 1009, "title": "ИИ-переводчики с сохранением голоса", "slug": "voice-translation", "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", "excerpt": "Говорите на китайском своим собственным голосом.", "date": "05.02.2026", "author": "Лингвист", "category": "Технологии", "color": "orange", "content": "<p>Ваш тембр сохраняется на любом языке...</p>"},
-    {"id": 1010, "title": "Заработок на озвучке в 2026", "slug": "money-on-voice", "image": "https://images.unsplash.com/photo-1554224155-169641357599?q=80&w=800", "excerpt": "Как фрилансеры используют ИИ для дохода.", "date": "01.02.2026", "author": "Бизнес-аналитик", "category": "Бизнес", "color": "emerald", "content": "<p>Рынок автоматизированной озвучки вырос в 10 раз...</p>"},
-    {"id": 1011, "title": "Музыка и ИИ: Вокал без певца", "slug": "ai-vocals-music", "image": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800", "excerpt": "Как создаются хиты с виртуальными вокалистами.", "date": "28.01.2026", "author": "Продюсер", "category": "Музыка", "color": "rose", "content": "<p>Синтезаторы вокала стали неотличимы от живых...</p>"},
-    {"id": 1012, "title": "Будущее радио: ИИ-ведущие", "slug": "future-radio-ai", "image": "https://images.unsplash.com/photo-1485579149621-3123dd979885?q=80&w=800", "excerpt": "Радиостанции, работающие полностью на нейросетях.", "date": "20.01.2026", "author": "Радиофан", "category": "Медиа", "color": "cyan", "content": "<p>Персонализированный эфир для каждого слушателя...</p>"},
-    {"id": 1013, "title": "Кибербезопасность: Дипфейки", "slug": "cybersec-deepfakes", "image": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800", "excerpt": "Как защитить себя от голосового мошенничества.", "date": "15.01.2026", "author": "Хакер", "category": "Безопасность", "color": "slate", "content": "<p>Инструкция по распознаванию подделок...</p>"},
-    {"id": 1014, "title": "ИИ для людей с потерей речи", "slug": "ai-for-disability", "image": "https://images.unsplash.com/photo-1516542077369-6de03c158542?q=80&w=800", "excerpt": "Возвращение голоса тем, кто его потерял.", "date": "10.01.2026", "author": "Врач", "category": "Медицина", "color": "teal", "content": "<p>Восстановление голоса на основе архивов...</p>"},
-    {"id": 1015, "title": "Эволюция интерфейсов: Голос вместо рук", "slug": "voice-interfaces", "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=800", "excerpt": "Почему в 2026 году мы перестанем печатать.", "date": "05.01.2026", "author": "Футуролог", "category": "Будущее", "color": "violet", "content": "<p>Голос стал основным способом управления ОС...</p>"}
+    {
+        "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
+        "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
+        "excerpt": "Разбираемся в будущем клонирования...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue",
+        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом. Раньше ИИ звучал роботоподобно, но теперь нейросети учитывают даже микро-интонации, задержки дыхания и эмоциональный фон. <b>Клонирование голоса</b> стало доступным каждому пользователю смартфона.</p><p>Основной прорыв произошел в области <i>Zero-shot TTS</i>, где системе достаточно всего 3 секунд записи вашего голоса, чтобы воспроизвести любую фразу с вашим тембром на 50 языках мира.</p>"
+    },
+    {
+        "id": 1002, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", 
+        "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", 
+        "excerpt": "Автоматизация монтажа с помощью ИИ.", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple",
+        "content": "<p>Создание подкаста всегда было трудоемким процессом. Нужно арендовать студию, бороться с шумами и часами монтировать дорожки. В 2026 году всё изменилось.</p><p>Используя <b>SpeechClone</b>, авторы могут записывать сценарий текстом, а ИИ озвучивает его идеальным студийным голосом. Больше не нужно переписывать дубли, если вы ошиблись в слове — просто исправьте текст в редакторе.</p>"
+    },
+    {
+        "id": 1003, "title": "Клонирование голоса: Этика и закон", "slug": "ethics-of-voice-cloning", 
+        "image": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?q=80&w=800", 
+        "excerpt": "Где грань между инновацией и кражей личности?", "date": "05.03.2026", "author": "Юрист ИИ", "category": "Право", "color": "red",
+        "content": "<p>С ростом популярности дипфейков юридические системы стран мира начали активно внедрять законы о <b>цифровой личности</b>. Теперь ваш голос — это ваша собственность, защищенная законом так же, как и отпечатки пальцев. Использование чужого голоса без лицензии преследуется по закону.</p>"
+    },
+    {
+        "id": 1004, "title": "Топ 10 голосов для рекламы", "slug": "top-10-voices-ad", 
+        "image": "https://images.unsplash.com/photo-1478737270239-2fccd2c7fd94?q=80&w=800", 
+        "excerpt": "Какие тембры продают лучше всего?", "date": "01.03.2026", "author": "Маркетолог", "category": "Маркетинг", "color": "green",
+        "content": "<p>Исследования показывают, что выбор правильного голоса увеличивает конверсию рекламы на 40%. В 2026 году нейромаркетинг выделил фаворитов: <b>бархатистые низкие мужские голоса</b> вызывают доверие в финансовом секторе.</p>"
+    },
+    {
+        "id": 1005, "title": "Озвучка книг: Новая эра", "slug": "audiobook-new-era", 
+        "image": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=800", 
+        "excerpt": "Как за неделю озвучить целую серию романов.", "date": "25.02.2026", "author": "Книжник", "category": "Литература", "color": "yellow",
+        "content": "<p>Раньше на озвучку одной книги уходил месяц работы диктора. Сегодня автор может загрузить текст в <b>SpeechClone</b>, выбрать несколько голосов для разных персонажей и получить готовую аудиокнигу за пару часов.</p>"
+    },
+    {
+        "id": 1006, "title": "ИИ в видеоиграх: Живые диалоги", "slug": "ai-in-gaming", 
+        "image": "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800", 
+        "excerpt": "NPC, которые действительно говорят с вами.", "date": "20.02.2026", "author": "Геймер", "category": "Игры", "color": "indigo",
+        "content": "<p>Представьте игру, где каждый персонаж — это не просто набор записанных фраз, а живой собеседник. В 2026 году крупные студии перешли на динамическую генерацию речи с помощью ИИ.</p>"
+    },
+    {
+        "id": 1007, "title": "Как работает Edge TTS?", "slug": "how-edge-tts-works", 
+        "image": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800", 
+        "excerpt": "Технический разбор движка от Microsoft.", "date": "15.02.2026", "author": "Разработчик", "category": "Технологии", "color": "gray",
+        "content": "<p>Edge TTS — это один из самых стабильных движков на рынке. Он использует нейронные сети для предсказания спектрограмм звука на основе текстовых токенов через WebSocket.</p>"
+    },
+    {
+        "id": 1008, "title": "Психология восприятия голоса", "slug": "psychology-of-voice", 
+        "image": "https://images.unsplash.com/photo-1526256262350-7da7584cf5eb?q=80&w=800", 
+        "excerpt": "Почему мы доверяем одним голосам и боимся других.", "date": "10.02.2026", "author": "Доктор Пси", "category": "Наука", "color": "pink",
+        "content": "<p>Голос несет в себе больше информации, чем слова. Мы подсознательно считываем уверенность, доброту или агрессию по частотным характеристикам звука.</p>"
+    },
+    {
+        "id": 1009, "title": "ИИ-переводчики с сохранением голоса", "slug": "voice-translation", 
+        "image": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800", 
+        "excerpt": "Говорите на китайском своим собственным голосом.", "date": "05.02.2026", "author": "Лингвист", "category": "Технологии", "color": "orange",
+        "content": "<p>Языковой барьер окончательно разрушен. Современные системы синхронного перевода не только заменяют слова, но и <b>клонируют ваш тембр</b> на лету.</p>"
+    },
+    {
+        "id": 1010, "title": "Заработок на озвучке в 2026", "slug": "money-on-voice", 
+        "image": "https://images.unsplash.com/photo-1554224155-169641357599?q=80&w=800", 
+        "excerpt": "Как фрилансеры используют ИИ для дохода.", "date": "01.02.2026", "author": "Бизнес-аналитик", "category": "Бизнес", "color": "emerald",
+        "content": "<p>Рынок дикторских услуг трансформировался. Успешные фрилансеры теперь не просто читают текст, а создают цифровые слепки голоса и продают лицензии.</p>"
+    },
+    {
+        "id": 1011, "title": "Музыка и ИИ: Вокал без певца", "slug": "ai-vocals-music", 
+        "image": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800", 
+        "excerpt": "Как создаются хиты с виртуальными вокалистами.", "date": "28.01.2026", "author": "Продюсер", "category": "Музыка", "color": "rose",
+        "content": "<p>В чартах 2026 года всё чаще появляются песни, вокал в которых полностью сгенерирован. Продюсеры могут «нанять» виртуальную версию легендарных певцов.</p>"
+    },
+    {
+        "id": 1012, "title": "Будущее радио: ИИ-ведущие", "slug": "future-radio-ai", 
+        "image": "https://images.unsplash.com/photo-1485579149621-3123dd979885?q=80&w=800", 
+        "excerpt": "Радиостанции, работающие полностью на нейросетях.", "date": "20.01.2026", "author": "Радиофан", "category": "Медиа", "color": "cyan",
+        "content": "<p>Традиционное радио уступает место персонализированным станциям. ИИ-ведущий знает ваши музыкальные вкусы и читает новости специально для вас.</p>"
+    },
+    {
+        "id": 1013, "title": "Кибербезопасность: Дипфейки", "slug": "cybersec-deepfakes", 
+        "image": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800", 
+        "excerpt": "Как защитить себя от голосового мошенничества.", "date": "15.01.2026", "author": "Хакер", "category": "Безопасность", "color": "slate",
+        "content": "<p>К сожалению, технологии клонирования голоса используют и преступники. Телефонное мошенничество вышло на новый уровень. Используйте кодовые слова для семьи.</p>"
+    },
+    {
+        "id": 1014, "title": "ИИ для людей с потерей речи", "slug": "ai-for-disability", 
+        "image": "https://images.unsplash.com/photo-1516542077369-6de03c158542?q=80&w=800", 
+        "excerpt": "Возвращение голоса тем, кто его потерял.", "date": "10.01.2026", "author": "Врач", "category": "Медицина", "color": "teal",
+        "content": "<p>Это самое благородное применение ИИ. Пациенты с заболеваниями связок теперь могут общаться с миром своим настоящим голосом через нейросети.</p>"
+    },
+    {
+        "id": 1015, "title": "Эволюция интерфейсов: Голос вместо рук", "slug": "voice-interfaces", 
+        "image": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=800", 
+        "excerpt": "Почему в 2026 году мы перестанем печатать.", "date": "05.01.2026", "author": "Футуролог", "category": "Будущее", "color": "violet",
+        "content": "<p>Клавиатуры становятся пережитком прошлого. Благодаря идеальному распознаванию и синтезу речи, взаимодействие с техникой стало естественным диалогом.</p>"
+    }
 ]
 
 VOICES = {
