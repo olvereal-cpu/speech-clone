@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile
+from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
@@ -26,7 +26,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('gemini-1.5-flash')
 
-# Данные блога (8 для главной, остальные в общем списке)
+# Данные блога
 BLOG_POSTS = [
     {"id": 1, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", "excerpt": "Разбираемся в будущем клонирования...", "content": "Полный текст статьи о будущем ИИ-голосов...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"},
     {"id": 2, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", "excerpt": "Автоматизация монтажа...", "content": "Как использовать ИИ для обработки звука в подкастах...", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple"},
@@ -86,13 +86,28 @@ async def cmd_start(message: types.Message):
     for name in VOICES.keys():
         kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
-    kb.row(types.InlineKeyboardButton(text="🌟 Помочь проекту (Stars)", callback_data="stars_info"))
+    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars (Поддержка)", callback_data="buy_stars"))
     await message.answer("👋 Привет! Выбери голос и пришли текст для озвучки:", reply_markup=kb.as_markup())
 
-@dp.callback_query(F.data == "stars_info")
-async def stars_info(call: types.CallbackQuery):
-    await call.message.answer("🌟 **Поддержка проекта**\n\nВы можете поддержать нас, отправив Telegram Stars. Это помогает оплачивать сервера!")
+@dp.callback_query(F.data == "buy_stars")
+async def send_invoice(call: types.CallbackQuery):
+    await bot.send_invoice(
+        chat_id=call.message.chat.id,
+        title="Поддержка проекта",
+        description="Покупка 50 Telegram Stars для поддержки развития сервиса озвучки.",
+        payload="stars_support_payload",
+        currency="XTR",
+        prices=[LabeledPrice(label="Stars", amount=50)],
+    )
     await call.answer()
+
+@dp.pre_checkout_query()
+async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+@dp.message(F.successful_payment)
+async def success_payment(message: types.Message):
+    await message.answer("🎉 Спасибо большое за поддержку! Ваши Stars получены, это очень помогает проекту.")
 
 # Админка: Выгрузка базы в TXT
 @dp.message(Command("export"))
@@ -101,12 +116,10 @@ async def cmd_export(message: types.Message):
     conn = sqlite3.connect(DB_PATH)
     users = conn.execute('SELECT user_id, voice FROM users').fetchall()
     conn.close()
-    
     file_path = "users_export.txt"
     with open(file_path, "w") as f:
         for u in users:
             f.write(f"ID: {u[0]} | Voice: {u[1]}\n")
-    
     await message.answer_document(document=FSInputFile(file_path), caption="📊 Список пользователей")
     os.remove(file_path)
 
@@ -133,26 +146,21 @@ async def set_voice(call: types.CallbackQuery):
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
-    
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
         return await message.answer("⚠️ Подпишись на канал, чтобы бот озвучил текст!", reply_markup=kb.as_markup())
-
     add_user(uid)
     msg = await message.answer("⏳ Генерирую...")
-    
     try:
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (uid,)).fetchone()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
-
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
         comm = edge_tts.Communicate(message.text, v_id)
         await comm.save(path)
-        
         await message.answer_voice(voice=FSInputFile(path))
         await msg.delete()
         if os.path.exists(path): os.remove(path)
@@ -173,29 +181,29 @@ class TTSRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Выводим на главную ровно 8 первых статей
     return templates.TemplateResponse(
+        request=request, 
         name="index.html", 
-        context={"request": request, "posts": BLOG_POSTS[:8]}
+        context={"posts": BLOG_POSTS[:8]}
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    # Страница со всеми статьями
     return templates.TemplateResponse(
+        request=request, 
         name="blog_index.html", 
-        context={"request": request, "posts": BLOG_POSTS, "is_single": False}
+        context={"posts": BLOG_POSTS, "is_single": False}
     )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # Поиск конкретной статьи
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post:
         raise HTTPException(status_code=404)
     return templates.TemplateResponse(
+        request=request, 
         name="blog_index.html", 
-        context={"request": request, "posts": [post], "is_single": True}
+        context={"posts": [post], "is_single": True}
     )
 
 @app.post("/api/chat")
@@ -220,14 +228,15 @@ async def generate(r: TTSRequest):
 
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
-    try: return templates.TemplateResponse(request=request, name=f"{page}.html")
-    except: return templates.TemplateResponse(request=request, name="index.html")
+    try: return templates.TemplateResponse(request=request, name=f"{page}.html", context={})
+    except: return templates.TemplateResponse(request=request, name="index.html", context={})
 
 # --- СТАРТ ---
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
 
 
 
