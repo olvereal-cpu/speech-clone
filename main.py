@@ -180,13 +180,21 @@ class AdminGenRequest(BaseModel): message: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(request, name="index.html", context={"posts": BLOG_POSTS[:8]})
 
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait_page(request: Request, file: str):
     # Эта страница рендерит таймер и рекламу
     file_url = f"/download?file={file}"
-    return templates.TemplateResponse(request, name="wait_page.html", context={"file_url": file_url, "li_counter": LI_COUNTER})
+    
+    # Убираем "li_counter": LI_COUNTER, так как переменная больше не существует
+    return templates.TemplateResponse(
+        "wait_page.html", 
+        {
+            "request": request, 
+            "file_url": file_url
+        }
+    )
 
 @app.get("/download")
 async def download_file(file: str):
