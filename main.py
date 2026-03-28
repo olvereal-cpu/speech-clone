@@ -31,7 +31,7 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        self.target_model = 'gemini-3.1-flash-lite'
+        self.target_model = 'gemini-3.1-flash-lite-preview'
         self.safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
