@@ -18,7 +18,7 @@ from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
-GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
+GEMINI_API_KEY = "AIzaSyCQ3JD4Fot7wV3oVklOxPU96jH6sNDoIoE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 
