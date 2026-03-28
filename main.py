@@ -22,7 +22,8 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyCQ3JD4Fot7wV3oVklOxPU96jH6sNDoIoE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
-SITE_URL = "https://speechclone.online/"  # ЗАМЕНИ НА СВОЙ АДРЕС САЙТА 
+# Убрал лишние пробелы в адресе
+SITE_URL = "https://speechclone.online" 
 
 # Счетчик LiveInternet
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
@@ -40,7 +41,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА (Глобальный список) ---
+# --- ДАННЫЕ БЛОГА ---
 BLOG_POSTS = [
     {
         "id": 1, 
@@ -48,7 +49,7 @@ BLOG_POSTS = [
         "slug": "kak-ii-izmenit-vash-golos", 
         "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
         "excerpt": "Разбираемся в будущем клонирования...", 
-        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом. Теперь нейросети способны передавать не только тембр, но и эмоциональное состояние говорящего.</p>", 
+        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства с человеческим голосом...</p>", 
         "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue"
     },
     {
@@ -66,7 +67,7 @@ BLOG_POSTS = [
         "slug": "ii-v-obrazovanii-audioknigi", 
         "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800", 
         "excerpt": "Революция в обучении...", 
-        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям. Раньше запись аудиокниги занимала недели работы.</p>", 
+        "content": "<p>Озвучка книг стала доступнее благодаря нейросетям.</p>", 
         "date": "05.03.2026", "author": "С. Адамс", "category": "Образование", "color": "green"
     },
     {
@@ -75,7 +76,7 @@ BLOG_POSTS = [
         "slug": "how-it-works", 
         "image": "https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800", 
         "excerpt": "Технический разбор...", 
-        "content": "<p>Архитектура трансформеров перевернула мир ИИ. Механизмы внимания позволяют моделям понимать контекст.</p>", 
+        "content": "<p>Архитектура трансформеров перевернула мир ИИ.</p>", 
         "date": "01.03.2026", "author": "Д. Тэч", "category": "Разработка", "color": "indigo"
     }
 ]
@@ -154,7 +155,7 @@ async def handle_text(message: types.Message):
         comm = edge_tts.Communicate(message.text, v_id)
         await comm.save(path)
         
-        # Генерируем ссылку на страницу ожидания на сайте
+        # Ссылка на страницу ожидания
         download_link = f"{SITE_URL}/wait-download?file={fid}"
         
         kb = InlineKeyboardBuilder()
@@ -184,7 +185,7 @@ async def home(request: Request):
 
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait_page(request: Request, file: str):
-    # Эта страница рендерит таймер и рекламу, а потом дает скачать файл
+    # Эта страница рендерит таймер и рекламу
     file_url = f"/download?file={file}"
     return templates.TemplateResponse(request, name="wait_page.html", context={"file_url": file_url, "li_counter": LI_COUNTER})
 
@@ -193,7 +194,7 @@ async def download_file(file: str):
     file_path = os.path.join(AUDIO_DIR, file)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
-    return HTMLResponse("Файл не найден. Срок жизни ссылки истек.", status_code=404)
+    return HTMLResponse("Файл не найден. Попробуйте создать его заново.", status_code=404)
 
 @app.post("/api/admin/generate-post")
 async def admin_generate_post(req: AdminGenRequest):
@@ -235,7 +236,7 @@ async def api_generate_web(r: TTSRequest):
         rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
         comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
         await comm.save(path)
-        # Для веб-версии тоже используем страницу ожидания
+        # Для веб-версии возвращаем URL страницы ожидания
         return {"audio_url": f"/wait-download?file={fid}"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
@@ -259,7 +260,8 @@ async def catch_all(request: Request, page: str):
 
 @app.on_event("startup")
 async def startup_event():
-    # Запуск бота в фоновом режиме при старте сервера
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
+
 
