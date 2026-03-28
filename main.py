@@ -251,24 +251,28 @@ async def blog_list(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Уточняем промпт, чтобы ИИ не тупил с разметкой
+        # 1. Улучшенный промпт (просим ИИ не использовать разметку Markdown)
         prompt = (
-            f"Напиши статью на тему: {req.message}. "
+            f"Напиши информативную статью на тему: {req.message}. "
             "Используй только HTML теги <p>, <b>, <i>. "
-            "НЕ ПИШИ слово 'html' и не используй обратные кавычки ```. "
-            "Просто чистый текст с тегами."
+            "ВАЖНО: Не пиши слово 'html', не используй обратные кавычки ```. "
+            "Просто текст статьи."
         )
         
-        # Генерируем контент
-        text = await mm.generate(prompt)
+        # 2. Получаем ответ
+        raw_text = await mm.generate(prompt)
         
-        # Очистка от мусора (на всякий случай)
-        content = text.replace("```html", "").replace("```", "").strip()
+        # 3. Жесткая очистка контента от мусора
+        clean_content = raw_text.replace("```html", "").replace("```", "").strip()
         
-        # Генерируем уникальный слаг
-        unique_slug = f"post-{uuid.uuid4().hex[:8]}"
+        # 4. Генерируем данные для вставки
+        post_title = req.message
+        post_slug = f"post-{uuid.uuid4().hex[:8]}"
+        post_date = datetime.now().strftime("%d.%m.%Y")
+        # Ставим дефолтную картинку, если в запросе нет своей
+        post_image = "[https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800](https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800)"
         
-        # Используем контекстный менеджер для БД, чтобы не вешать замок
+        # 5. Запись в БД с использованием контекстного менеджера (безопасно)
         with sqlite3.connect(DB_PATH, timeout=20) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -276,25 +280,27 @@ async def api_admin_gen(req: AdminGenRequest):
                 (title, slug, image, excerpt, content, date, author, category, color) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                req.message, 
-                unique_slug, 
-                "https://images.unsplash.com/photo-1614064641935-4476e83bb023", # Прямая ссылка
-                "Материал подготовлен искусственным интеллектом Gemini 3.1", 
-                content, 
-                datetime.now().strftime("%d.%m.%Y"), 
-                "Gemini AI", 
+                post_title, 
+                post_slug, 
+                post_image, 
+                "Статья создана нейросетью Gemini 3.1 Flash-Lite.", 
+                clean_content, 
+                post_date, 
+                "AI Editor", 
                 req.category, 
                 req.color
             ))
             conn.commit()
             
-        return {"status": "success", "slug": unique_slug}
+        print(f"--- Статья успешно создана: {post_title} ---")
+        return {"status": "success", "slug": post_slug}
         
     except Exception as e:
-        print(f"ОШИБКА ГЕНЕРАЦИИ: {e}") # Это упадет в логи Render
+        # Печатаем ошибку в логи Render, чтобы ты мог ее прочитать
+        print(f"!!! КРИТИЧЕСКАЯ ОШИБКА ГЕНЕРАЦИИ: {str(e)}")
         return JSONResponse(
             status_code=500, 
-            content={"status": "error", "message": str(e)}
+            content={"status": "error", "message": f"Ошибка на стороне сервера: {str(e)}"}
         )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
