@@ -92,17 +92,18 @@ async def check_sub(uid):
     try:
         m = await bot.get_chat_member(CHANNEL_ID, uid)
         return m.status not in ["left", "kicked"]
-    except: return False
+    except Exception:
+        return False
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
-    for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
+    for name in VOICES.keys():
+        kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2)
     await message.answer("👋 Привет! Выбери голос и пришли текст для озвучки.", reply_markup=kb.as_markup())
 
-@dp.message(Command("stars"))
-@dp.message(Command("help"))
+@dp.message(Command("stars", "help"))
 async def cmd_stars_help(message: types.Message):
     await message.answer("🌟 **Поддержка проекта (Stars)**\n\nВы можете поддержать сервис с помощью Telegram Stars. Это помогает нам развивать проект!\n\n/start — Настройка голоса\n/stars — Помощь проекту")
 
@@ -120,6 +121,8 @@ async def set_voice(call: types.CallbackQuery):
 async def handle_text(message: types.Message):
     if message.text.startswith("/"): return
     uid = message.from_user.id
+    
+    # Проверка подписки
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
@@ -134,56 +137,87 @@ async def handle_text(message: types.Message):
         
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
-        comm = edge_tts.Communicate(message.text, v_id)
-        await comm.save(path)
+        
+        # Генерация аудио
+        communicate = edge_tts.Communicate(message.text, v_id)
+        await communicate.save(path)
+        
+        # Отправка и удаление
         await message.answer_voice(voice=FSInputFile(path))
         await msg.delete()
-        if os.path.exists(path): os.remove(path)
+        
+        if os.path.exists(path):
+            os.remove(path)
     except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
+        await message.answer(f"❌ Ошибка озвучки: {e}")
+        if 'msg' in locals(): await msg.delete()
 
 # --- FASTAPI (САЙТ) ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Монтирование статики (убедитесь, что папка static существует)
+if not os.path.exists(os.path.join(BASE_DIR, "static")):
+    os.makedirs(os.path.join(BASE_DIR, "static"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-class ChatRequest(BaseModel): message: str
+class ChatRequest(BaseModel):
+    message: str
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(
+        name="index.html", 
+        context={"request": request, "posts": BLOG_POSTS[:8], "li_counter": LI_COUNTER}
+    )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_index_list(request: Request):
-    # Общий список статей
-    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": BLOG_POSTS, "li_counter": LI_COUNTER})
+    return templates.TemplateResponse(
+        name="blog_index.html", 
+        context={
+            "request": request, 
+            "posts": BLOG_POSTS, 
+            "is_single": False, 
+            "li_counter": LI_COUNTER
+        }
+    )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_blog_post(request: Request, slug: str):
-    # Ищем пост
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: 
+    if not post:
         raise HTTPException(status_code=404)
-    # Используем blog_index.html, но передаем только один пост в списке или отдельной переменной
-    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": [post], "is_single": True, "li_counter": LI_COUNTER})
+    
+    return templates.TemplateResponse(
+        name="blog_index.html", 
+        context={
+            "request": request, 
+            "posts": [post], 
+            "is_single": True, 
+            "li_counter": LI_COUNTER
+        }
+    )
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Улучшенный вызов Gemini с таймаутом и обработкой
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
         if not response or not response.text:
-            return JSONResponse(status_code=200, content={"reply": "ИИ задумался, попробуйте еще раз."})
+            return {"reply": "ИИ задумался, попробуйте еще раз."}
         return {"reply": response.text}
     except Exception as e:
         print(f"Gemini Error: {e}")
-        return JSONResponse(status_code=500, content={"reply": "Извините, сейчас ИИ не может ответить (проблема с API)."})
+        return JSONResponse(status_code=500, content={"reply": "Извините, сейчас ИИ не доступен."})
 
 @app.on_event("startup")
 async def startup_event():
+    # Удаляем вебхуки и запускаем поллинг бота в фоне
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
 
 if __name__ == "__main__":
+    # Запуск на порту 10000 (стандарт для многих хостингов)
     uvicorn.run(app, host="0.0.0.0", port=10000)
