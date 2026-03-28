@@ -19,10 +19,15 @@ from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Исправляем здесь: читаем ту переменную, которая у тебя в системе
+GEMINI_API_KEY = os.getenv("GEMINI_KEY") 
 
 if not BOT_TOKEN or not GEMINI_API_KEY:
-    print("⚠️ ВНИМАНИЕ: BOT_TOKEN или GEMINI_API_KEY не установлены!")
+    print(f"⚠️ ВНИМАНИЕ: Данные не получены! BOT_TOKEN: {'OK' if BOT_TOKEN else 'MISSING'}, GEMINI_KEY: {'OK' if GEMINI_API_KEY else 'MISSING'}")
+
+# Инициализируем Google AI с ключом из GEMINI_KEY
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
