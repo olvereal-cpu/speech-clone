@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ваш файл почти готов | SpeechClone 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-mesh { background-color: #f8fafc; background-image: radial-gradient(at 0% 0%, hsla(220,100%,95%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(260,100%,95%,1) 0, transparent 50%); }
+    </style>
+</head>
+<body class="bg-mesh min-h-screen flex flex-col items-center">
+
+    <!-- ВЕРХНИЙ РЕКЛАМНЫЙ БЛОК -->
+    <div class="w-full max-w-4xl mt-6 px-4">
+        <div class="bg-white/50 backdrop-blur-md border border-gray-200 rounded-3xl p-4 text-center">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Рекламная пауза</p>
+            <div class="min-h-[90px] flex items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl">
+                <!-- ВСТАВЬ КОД РЕКЛАМЫ (РСЯ/ADSENSE) ТУТ -->
+                <span class="text-gray-300 italic text-sm">Место для вашего баннера 728x90</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="flex-grow flex flex-col items-center justify-center w-full px-4 py-12 text-center">
+        <div class="bg-white rounded-[50px] shadow-2xl shadow-blue-100 p-10 md:p-16 border border-gray-100 w-full max-w-2xl flex flex-col items-center relative overflow-hidden">
+            
+            <h1 id="main-title" class="text-3xl font-black text-gray-900 uppercase mb-8 tracking-tighter">Генерация ссылки...</h1>
+
+            <!-- ТАЙМЕР С SVG ПРОГРЕССОМ -->
+            <div id="timer-container" class="relative flex items-center justify-center mb-8" style="width: 220px; height: 220px;">
+                <svg class="w-full h-full rotate-[-90deg]">
+                    <circle cx="110" cy="110" r="100" stroke="#f1f5f9" stroke-width="14" fill="transparent"/>
+                    <circle id="progress-bar" cx="110" cy="110" r="100" stroke="#2563eb" stroke-width="14" fill="transparent" 
+                            stroke-dasharray="628.3" stroke-dashoffset="628.3" 
+                            style="transition: stroke-dashoffset 1s linear; stroke-linecap: round;"/>
+                </svg>
+                <div class="absolute text-5xl font-black text-gray-900" id="countdown">30</div>
+            </div>
+
+            <p id="wait-text" class="text-[11px] uppercase tracking-[0.2em] text-blue-500 mb-4 font-black animate-pulse">Пожалуйста, не закрывайте вкладку</p>
+            <p class="text-gray-400 text-sm mb-8">Искусственный интеллект финализирует аудиопоток для лучшего качества.</p>
+
+            <!-- КНОПКА СКАЧИВАНИЯ (СКРЫТА) -->
+            <div id="download-block" class="hidden w-full transform transition-all duration-500 scale-95 opacity-0">
+                <a href="{{ file_url }}" download class="w-full py-6 bg-blue-600 text-white font-black rounded-[30px] hover:bg-black hover:shadow-2xl transition-all uppercase tracking-widest text-sm inline-block">
+                    💾 Скачать готовый MP3
+                </a>
+                <p class="mt-4 text-[10px] text-gray-400 uppercase">Ссылка активна 24 часа</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- НИЖНИЙ РЕКЛАМНЫЙ БЛОК -->
+    <div class="w-full max-w-4xl mb-10 px-4">
+        <div class="bg-gray-900 rounded-[40px] p-8 text-center shadow-2xl border border-gray-800">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-6 text-center">Спонсорский блок</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="h-40 bg-gray-800 rounded-2xl flex items-center justify-center border border-gray-700">
+                     <!-- ВСТАВЬ КОД РЕКЛАМЫ ТУТ -->
+                     <span class="text-gray-600 italic">Баннер 300x250</span>
+                </div>
+                <div class="text-left px-4">
+                    <h3 class="text-blue-400 font-black text-lg mb-2 italic">SpeechClone Pro</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">Получите доступ к клонированию голоса по 3 секундам записи. Без очередей и без рекламы.</p>
+                    <a href="https://t.me/speechclone" class="mt-4 inline-block text-white font-bold border-b-2 border-blue-500 pb-1 hover:text-blue-400 transition-colors uppercase text-xs">Узнать больше →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- СЧЕТЧИК LIVEINTERNET -->
+    <div class="mb-8 opacity-40 hover:opacity-100 transition-opacity">
+        {{ li_counter | safe }}
+    </div>
+
+    <script>
+        let timeLeft = 30;
+        const totalTime = 30;
+        const circumference = 628.3; 
+        const progressBar = document.getElementById('progress-bar');
+        const countdownEl = document.getElementById('countdown');
+
+        const timer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft >= 0) {
+                countdownEl.innerText = timeLeft;
+                const offset = circumference - ((totalTime - timeLeft) / totalTime) * circumference;
+                progressBar.style.strokeDashoffset = offset;
+            }
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                document.getElementById('timer-container').classList.add('hidden');
+                document.getElementById('wait-text').classList.add('hidden');
+                document.getElementById('main-title').innerText = "Готово к загрузке!";
+                
+                const db = document.getElementById('download-block');
+                db.classList.remove('hidden');
+                setTimeout(() => { db.classList.replace('scale-95', 'scale-100'); db.classList.replace('opacity-0', 'opacity-100'); }, 10);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
