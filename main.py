@@ -41,10 +41,12 @@ BLOG_POSTS = [
 
 VOICES = {
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇺🇸 Guy (EN)": "en-US-GuyNeural",
-    "🇺🇦 Остап": "uk-UA-OstapNeural", "🇵🇱 Marek": "pl-PL-MarekNeural",
-    "🇫🇷 Remy": "fr-FR-RemyNeural", "🇯🇵 Keita": "ja-JP-KeitaNeural",
-    "🇨🇳 Yunxi": "zh-CN-YunxiNeural"
+    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇰🇿 Айгуль": "kk-KZ-AigulNeural",
+    "🇺🇸 Guy (EN)": "en-US-GuyNeural", "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
+    "🇹🇷 Ahmet (TR)": "tr-TR-AhmetNeural", "🇪🇸 Alvaro (ES)": "es-ES-AlvaroNeural",
+    "🇩🇪 Conrad (DE)": "de-DE-ConradNeural", "🇵🇱 Marek (PL)": "pl-PL-MarekNeural",
+    "🇫🇷 Remy (FR)": "fr-FR-RemyNeural", "🇯🇵 Keita (JP)": "ja-JP-KeitaNeural",
+    "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
 
 # --- ПУТИ И БД ---
