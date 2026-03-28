@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+
 {% block content %}
 <main class="max-w-7xl mx-auto px-4 py-16">
 
     {% if is_single %}
         <!-- ==========================================
-             РЕЖИМ ОТКРЫТОЙ СТАТЬИ (Показывается при клике)
+             РЕЖИМ ОТКРЫТОЙ СТАТЬИ
              ========================================== -->
         {% set post = posts[0] %}
         <div class="max-w-4xl mx-auto">
@@ -24,7 +25,6 @@
             </h1>
 
             <div class="prose prose-xl max-w-none text-gray-600 font-medium leading-relaxed mb-20">
-                <!-- Сюда попадет основной текст из переменной content в main.py -->
                 {{ post.content | safe }}
             </div>
 
@@ -37,7 +37,7 @@
 
     {% else %}
         <!-- ==========================================
-             РЕЖИМ СПИСКА (Твой оригинальный дизайн)
+             РЕЖИМ СПИСКА СТАТЕЙ
              ========================================== -->
         <div class="max-w-3xl mb-20">
             <span class="text-blue-600 font-black uppercase text-[10px] tracking-[0.3em] mb-4 block">База знаний</span>
@@ -45,7 +45,7 @@
                 Голос <span class="italic text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">будущего</span> здесь.
             </h1>
             <p class="text-xl text-gray-500 font-medium leading-relaxed">
-                15 экспертных материалов о том, как нейросети превращают текст в искусство и почему ваш бизнес больше не будет прежним.
+                15 экспертных материалов о том, как нейросети превращают текст в искусство.
             </p>
         </div>
 
@@ -63,7 +63,6 @@
                             <span class="text-[10px] text-gray-300 font-bold">10.02.2026 • 12 мин</span>
                         </div>
                         <h2 class="text-3xl font-black text-gray-900 mb-6 leading-tight tracking-tight">Как ИИ изменит ваш голос в 2026 году</h2>
-                        <p class="text-gray-500 mb-8 text-sm leading-relaxed">Разбираемся, почему цифровой двойник будет звучать убедительнее.</p>
                         <a href="/blog/kak-ii-izmenit-vash-golos" class="inline-block text-[11px] font-black uppercase tracking-widest text-blue-600 group-hover:translate-x-2 transition-transform">Читать статью →</a>
                     </div>
                 </div>
@@ -79,7 +78,7 @@
                 <a href="mailto:ads@speechclone.online" class="relative z-10 w-full text-center bg-white text-gray-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Узнать условия</a>
             </div>
 
-            <!-- ПОДКАСТЫ -->
+            <!-- КАРТОЧКА: ПОДКАСТЫ -->
             <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
                 <div class="h-56 rounded-[30px] overflow-hidden mb-6">
                     <img src="https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500">
@@ -89,12 +88,12 @@
                         <span>Подкастинг</span>
                         <span class="text-gray-400">08.02.2026</span>
                     </div>
-                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight italic">Секреты создания идеального подкаста с помощью ИИ</h2>
+                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight italic">Секреты создания идеального подкаста с ИИ</h2>
                     <a href="/blog/sekrety-sozdaniya-podkasta-ii" class="text-[11px] font-black uppercase text-gray-900 group-hover:text-purple-600 transition-colors">Перейти →</a>
                 </div>
             </article>
 
-            <!-- ОБРАЗОВАНИЕ -->
+            <!-- КАРТОЧКА: ОБРАЗОВАНИЕ -->
             <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
                 <div class="h-56 rounded-[30px] overflow-hidden mb-6">
                     <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500">
@@ -104,12 +103,12 @@
                         <span>Образование</span>
                         <span class="text-gray-400">05.02.2026</span>
                     </div>
-                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">ИИ в аудиокнигах: Как обучать тысячи людей одновременно</h2>
+                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">ИИ в аудиокнигах: Обучение тысяч людей</h2>
                     <a href="/blog/ii-v-obrazovanii-audioknigi" class="text-[11px] font-black uppercase text-gray-900 group-hover:text-green-600 transition-colors">Перейти →</a>
                 </div>
             </article>
 
-            <!-- РАЗРАБОТКА -->
+            <!-- КАРТОЧКА: РАЗРАБОТКА -->
             <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
                 <div class="h-56 rounded-[30px] overflow-hidden mb-6">
                     <img src="https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500">
@@ -119,92 +118,14 @@
                         <span>Разработка</span>
                         <span class="text-gray-400">01.02.2026</span>
                     </div>
-                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">За кулисами: Как нейронки «понимают» ваш текст</h2>
+                    <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">Как нейронки «понимают» ваш текст</h2>
                     <a href="/blog/how-it-works" class="text-[11px] font-black uppercase text-gray-900 group-hover:text-indigo-600 transition-colors">Перейти →</a>
-                </div>
-            </article>
-
-            <!-- ПРОМО-БЛОК (ШИРОКИЙ) -->
-            <article class="md:col-span-2 lg:col-span-2 bg-blue-50 rounded-[40px] border border-blue-100 p-10 flex items-center justify-between overflow-hidden relative group">
-                <img src="https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=800" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-105 transition-transform duration-1000">
-                <div class="relative z-10 max-w-lg">
-                    <h3 class="text-3xl font-black text-blue-900 mb-4">Станьте голосом поколения</h3>
-                    <p class="text-blue-700 mb-6 text-sm">Присоединяйтесь к нашей программе для креаторов.</p>
-                    <a href="/" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-900 transition-all inline-block">Попробовать бесплатно</a>
-                </div>
-                <div class="hidden md:block relative z-10 text-8xl grayscale group-hover:grayscale-0 transition-all duration-700">🎙️</div>
-            </article>
-
-            <!-- ГЛОБАЛ -->
-            <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
-                <div class="h-40 rounded-[25px] overflow-hidden mb-4">
-                    <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110">
-                </div>
-                <div class="px-4 pb-4">
-                    <div class="flex justify-between items-center mb-2 text-[8px] font-black uppercase text-green-600">
-                        <span>Глобал • 28.01.2026</span>
-                    </div>
-                    <h2 class="text-lg font-black text-gray-900 mb-2 leading-tight">Озвучка на 20+ языках: Глобальный апдейт</h2>
-                    <a href="/blog/multilanguage-update" class="text-[10px] font-black text-gray-400 group-hover:text-green-600">Читать →</a>
-                </div>
-            </article>
-
-            <!-- YOUTUBE -->
-            <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
-                <div class="h-40 rounded-[25px] overflow-hidden mb-4">
-                    <img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110">
-                </div>
-                <div class="px-4 pb-4">
-                    <div class="flex justify-between items-center mb-2 text-[8px] font-black uppercase text-red-600">
-                        <span>YouTube • 22.01.2026</span>
-                    </div>
-                    <h2 class="text-lg font-black text-gray-900 mb-2 leading-tight">YouTube-революция без микрофона</h2>
-                    <a href="/blog/youtube-voiceover" class="text-[10px] font-black text-gray-400 group-hover:text-red-600">Читать →</a>
-                </div>
-            </article>
-
-            <!-- СОВЕТЫ -->
-            <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
-                <div class="h-40 rounded-[25px] overflow-hidden mb-4">
-                    <img src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110">
-                </div>
-                <div class="px-4 pb-4">
-                    <div class="flex justify-between items-center mb-2 text-[8px] font-black uppercase text-blue-600">
-                        <span>Советы • 20.01.2026</span>
-                    </div>
-                    <h2 class="text-lg font-black text-gray-900 mb-2 leading-tight">Как выбрать идеальный ИИ-голос</h2>
-                    <a href="/blog/kak-vybrat-ii-golos" class="text-[10px] font-black text-gray-400 group-hover:text-blue-600">Читать →</a>
-                </div>
-            </article>
-
-            <!-- КАЗАХСКИЙ ЯЗЫК -->
-            <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
-                <div class="h-40 rounded-[25px] overflow-hidden mb-4">
-                    <img src="https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?q=80&w=800" class="w-full h-full object-cover group-hover:scale-110">
-                </div>
-                <div class="px-4 pb-4">
-                    <div class="flex justify-between items-center mb-2 text-[8px] font-black uppercase text-blue-600">
-                        <span>Қазақ тілі • 11.02.2026</span>
-                    </div>
-                    <h2 class="text-lg font-black text-gray-900 mb-2 leading-tight">Жасанды интеллект қазақ тілінде</h2>
-                    <a href="/blog/ii-kazakh-language" class="text-[10px] font-black text-gray-400 group-hover:text-blue-600">Оқу →</a>
                 </div>
             </article>
 
         </div>
     {% endif %}
 
-    <!-- ==========================================
-         СЧЕТЧИК (В самом низу всей страницы)
-         ========================================== -->
-    <div class="mt-24 pt-10 border-t border-gray-100 flex justify-center opacity-70 hover:opacity-100 transition-opacity">
-        {{ li_counter | safe }}
-    </div>
-
-</main>
-{% endblock %}
-
-    </div>
 </main>
 {% endblock %}
 
