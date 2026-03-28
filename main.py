@@ -21,11 +21,12 @@ BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
+# Счетчик LiveInternet (передаем в контекст для вставки в футер шаблона)
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini 2.0
+# Настройка Gemini 1.5 Flash (более стабильная квота для бесплатного уровня)
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('gemini-2.0-flash')
+model_ai = genai.GenerativeModel('gemini-1.5-flash')
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -137,7 +138,7 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str
 
-# --- ИСПРАВЛЕННЫЕ МАРШРУТЫ ---
+# --- МАРШРУТЫ ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -149,7 +150,6 @@ async def home(request: Request):
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    # Явно передаем список всех постов
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
@@ -158,12 +158,10 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # Поиск поста по слагу
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post:
         raise HTTPException(status_code=404, detail="Статья не найдена")
     
-    # Передаем список из ОДНОГО поста и флаг is_single=True
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
@@ -173,18 +171,15 @@ async def read_post(request: Request, slug: str):
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Для Gemini 2.0 Flash используем запуск в потоке или прямой вызов
-        # Исправлено: добавление обработки исключения пустого ответа
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
-        
         if not response or not response.text:
             return JSONResponse(status_code=500, content={"reply": "ИИ не смог сформировать ответ."})
-            
         return {"reply": response.text}
     except Exception as e:
-        print(f"AI ERROR: {str(e)}")
-        # Возвращаем детали ошибки для отладки
-        return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {str(e)}"})
+        err_msg = str(e)
+        if "429" in err_msg:
+            return JSONResponse(status_code=429, content={"reply": "Слишком много запросов. Попробуйте через минуту или напишите в Telegram!"})
+        return JSONResponse(status_code=500, content={"reply": f"Ошибка ИИ: {err_msg}"})
 
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
@@ -205,7 +200,6 @@ async def download_file(file: str):
         return FileResponse(path=file_path, filename="speechclone.mp3", media_type='audio/mpeg')
     return HTMLResponse("Файл не найден", status_code=404)
 
-# Важно: catch_all должен быть последним
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     template_file = f"{page}.html"
@@ -215,7 +209,6 @@ async def catch_all(request: Request, page: str):
             name=template_file, 
             context={"li_counter": LI_COUNTER}
         )
-    # Если страница не найдена, кидаем на главную
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
