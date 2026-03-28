@@ -16,10 +16,15 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 
-# --- КОНФИГУРАЦИЯ ---
-ADMIN_ID = 430747895
-BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
-GEMINI_API_KEY = "AIzaSyCQ3JD4Fot7wV3oVklOxPU96jH6sNDoIoE"
+# --- КОНФИГУРАЦИЯ (БЕЗОПАСНАЯ) ---
+# os.getenv ищет переменную в системе, если не находит — берет второй аргумент (None)
+ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Проверка, что ключи загружены (опционально, для отладки)
+if not BOT_TOKEN or not GEMINI_API_KEY:
+    print("⚠️ ВНИМАНИЕ: BOT_TOKEN или GEMINI_API_KEY не установлены в переменных окружения!")
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
