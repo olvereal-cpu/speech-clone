@@ -16,7 +16,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
-ADMIN_ID = 430747895  
+ADMIN_ID = 430747895
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
 GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
@@ -25,7 +25,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 # Счетчик LiveInternet
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini (используем обновленный идентификатор модели)
+# Настройка Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model_ai = genai.GenerativeModel('models/gemini-1.5-flash-latest')
 
@@ -38,7 +38,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# Данные блога (Наполнены контентом для корректного отображения)
+# Данные блога
 BLOG_POSTS = [
     {
         "id": 1, 
@@ -208,7 +208,6 @@ async def read_post(request: Request, slug: str):
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Используем современный вызов Gemini
         response = await asyncio.to_thread(model_ai.generate_content, req.message)
         if not response or not hasattr(response, 'text'):
             return JSONResponse(status_code=500, content={"reply": "ИИ не смог сформировать ответ."})
