@@ -17,19 +17,22 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <select id="voice-select" class="bg-gray-100 p-5 rounded-2xl font-black text-[11px] uppercase tracking-widest outline-none border-2 border-transparent focus:border-blue-600 transition-all">
                 <optgroup label="Русский (RU)">
-                    <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
                     <option value="ru-RU-DmitryNeural">Дмитрий (Мужской)</option>
-                    <option value="ru-RU-DariyaNeural">Дарья (Женский)</option>
+                    <option value="ru-RU-SvetlanaNeural">Светлана (Женский)</option>
                 </optgroup>
-                <optgroup label="English (US/UK)">
-                    <option value="en-US-GuyNeural">Guy (Male - US)</option>
-                    <option value="en-US-JennyNeural">Jenny (Female - US)</option>
-                    <option value="en-GB-SoniaNeural">Sonia (Female - UK)</option>
-                    <option value="en-GB-RyanNeural">Ryan (Male - UK)</option>
+                <optgroup label="English (US)">
+                    <option value="en-US-GuyNeural">Guy (Male)</option>
+                    <option value="en-US-JennyNeural">Jenny (Female)</option>
                 </optgroup>
                 <optgroup label="Қазақша (KZ)">
-                    <option value="kk-KZ-AigulNeural">Айгүл (Әйел)</option>
                     <option value="kk-KZ-DauletNeural">Дәулет (Ер)</option>
+                </optgroup>
+                <optgroup label="Другие языки">
+                    <option value="tr-TR-AhmetNeural">Турецкий</option>
+                    <option value="es-ES-AlvaroNeural">Испанский</option>
+                    <option value="de-DE-ConradNeural">Немецкий</option>
+                    <option value="uk-UA-OstapNeural">Украинский</option>
+                    <option value="pl-PL-MarekNeural">Польский</option>
                 </optgroup>
             </select>
             
@@ -48,7 +51,27 @@
         </div>
     </div>
 
-    <!-- СЕКЦИЯ СТАТЬИ / ИНФО -->
+    <!-- СЕКЦИЯ СТАТЬИ ИЗ БЛОГА (НОВОЕ) -->
+    <div class="mb-16">
+        <h2 class="text-3xl font-black mb-10 text-center uppercase tracking-tighter text-gray-900">Полезные статьи</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {% for post in posts %}
+            <div class="bg-white rounded-[35px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+                <div class="h-48 bg-gray-200 overflow-hidden">
+                    <img src="{{ post.image }}" alt="{{ post.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                </div>
+                <div class="p-6">
+                    <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest">{{ post.date }}</span>
+                    <h3 class="text-xl font-black mt-2 mb-3 leading-tight uppercase tracking-tighter text-gray-900">{{ post.title }}</h3>
+                    <p class="text-gray-500 text-sm mb-6 line-clamp-3 font-medium">{{ post.excerpt }}</p>
+                    <a href="/blog/{{ post.slug }}" class="inline-block bg-gray-100 text-gray-900 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Читать статью</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- СЕКЦИЯ ИНФО -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <div class="bg-gray-900 rounded-[40px] p-8 text-white shadow-xl">
             <h3 class="text-2xl font-black mb-4 uppercase tracking-tighter">Как работает SpeechClone?</h3>
@@ -72,28 +95,18 @@
                 <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Это полностью бесплатно?</p>
                 <p class="text-gray-500 text-sm">Да! Основной функционал озвучки текста доступен всем пользователям SpeechClone без оплаты.</p>
             </div>
-            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm transition-hover hover:shadow-md">
-                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Какое ограничение на длину текста?</p>
-                <p class="text-gray-500 text-sm">В текущей версии мы рекомендуем вставлять тексты до 5000 символов за один раз для стабильной работы.</p>
-            </div>
         </div>
     </div>
 </div>
 
-<!-- ВИДЖЕТ ЧАТА В УГЛУ -->
+<!-- ВИДЖЕТ ЧАТА -->
 <div id="chat-widget" class="fixed bottom-6 right-6 z-[999]">
-    <!-- Кнопка вызова -->
     <button onclick="toggleChat()" class="bg-gray-900 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-600 transition-all border-4 border-white group">
         <svg id="chat-icon" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
         </svg>
-        <span class="absolute -top-1 -right-1 flex h-4 w-4">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
-        </span>
     </button>
 
-    <!-- Окно чата -->
     <div id="chat-window" class="hidden absolute bottom-20 right-0 w-[350px] max-w-[90vw] bg-gray-900 rounded-[30px] shadow-2xl overflow-hidden border border-gray-800 animate-fade-in flex flex-col">
         <div class="p-6 bg-gray-800 flex justify-between items-center border-b border-gray-700">
             <div>
@@ -107,7 +120,7 @@
         
         <div id="chat-box" class="h-80 overflow-y-auto p-6 space-y-4 text-xs font-medium">
             <div class="text-left">
-                <p class="bg-gray-800 text-gray-300 p-4 rounded-2xl inline-block leading-relaxed">Йо! 👋 Я твой бро по звуку. Напиши, если надо поправить текст или подсказать голос!</p>
+                <p class="bg-gray-800 text-gray-300 p-4 rounded-2xl inline-block leading-relaxed">Йо! 👋 Я твой бро по звуку. Напиши, если надо подсказать что-то по озвучке!</p>
             </div>
         </div>
 
@@ -121,7 +134,6 @@
 <script>
 let currentAudioUrl = "";
 
-// Логика чата
 function toggleChat() {
     document.getElementById('chat-window').classList.toggle('hidden');
 }
@@ -143,14 +155,15 @@ async function sendChat() {
             body: JSON.stringify({message: text})
         });
         const data = await response.json();
-        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-400 p-3 rounded-2xl inline-block text-[11px] font-bold">Бро: ${data.reply}</p></div>`;
+        // ИСПРАВЛЕНО: берем data.reply вместо data.response
+        const reply = data.reply || "Бро, что-то я завис. Повтори?";
+        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-400 p-3 rounded-2xl inline-block text-[11px] font-bold">Бро: ${reply}</p></div>`;
         box.scrollTop = box.scrollHeight;
     } catch (e) {
         box.innerHTML += `<p class="text-red-500 text-[10px] text-center uppercase font-black">Сбой связи...</p>`;
     }
 }
 
-// Логика озвучки
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
     const text = document.getElementById('text-input').value;
@@ -158,7 +171,7 @@ async function generateAudio() {
     const mode = document.getElementById('mode-select').value;
 
     if (!text) {
-        alert("Бро, введи хоть какой-то текст!");
+        alert("Бро, введи текст!");
         return;
     }
 
@@ -178,9 +191,11 @@ async function generateAudio() {
             document.getElementById('result-audio').classList.remove('hidden');
             document.getElementById('player').src = data.audio_url;
             document.getElementById('player').play();
+        } else {
+            alert("Ошибка сервера");
         }
     } catch (e) {
-        alert("Ошибка связи с сервером");
+        alert("Ошибка связи");
     } finally {
         btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
         btn.disabled = false;
@@ -193,7 +208,7 @@ function goToDownload() {
     window.location.href = `/download?file=${fileName}`;
 }
 
-document.getElementById('chat-input').addEventListener('keypress', function (e) {
+document.getElementById('chat-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendChat();
 });
 </script>
