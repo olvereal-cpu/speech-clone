@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import FSInputFile
 
@@ -96,7 +96,7 @@ async def cmd_start(message: types.Message):
 
 @dp.message(Command("stars"))
 async def cmd_stars(message: types.Message):
-    await message.answer("🌟 Спасибо за поддержку! Вы можете отправить Telegram Stars для развития проекта.")
+    await message.answer("🌟 **Поддержка проекта**\n\nВы можете поддержать сервис отправив Telegram Stars. Это поможет нам добавлять новые голоса и улучшать качество озвучки!")
 
 @dp.message(Command("export"))
 async def cmd_export(message: types.Message):
@@ -165,7 +165,6 @@ class ChatRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Исправлена передача request (обязательно в FastAPI/Starlette)
     return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8]})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -173,6 +172,14 @@ async def read_blog(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404)
     return templates.TemplateResponse(request=request, name="blog.html", context={"post": post})
+
+# Универсальный роут для остальных страниц (о нас, услуги и т.д.)
+@app.get("/{page}", response_class=HTMLResponse)
+async def get_page(request: Request, page: str):
+    try:
+        return templates.TemplateResponse(request=request, name=f"{page}.html", context={})
+    except:
+        return templates.TemplateResponse(request=request, name="index.html", context={"posts": BLOG_POSTS[:8]})
 
 @app.post("/api/chat")
 async def chat(r: ChatRequest):
@@ -184,6 +191,10 @@ async def chat(r: ChatRequest):
 
 @app.on_event("startup")
 async def startup_event():
+    # Очистка вебхуков для предотвращения ConflictError
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=10000)
 
