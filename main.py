@@ -251,22 +251,51 @@ async def blog_list(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        prompt = f"Напиши статью на тему: {req.message}. Формат HTML (только p, b, i). Не используй ```html, просто текст."
+        # Уточняем промпт, чтобы ИИ не тупил с разметкой
+        prompt = (
+            f"Напиши статью на тему: {req.message}. "
+            "Используй только HTML теги <p>, <b>, <i>. "
+            "НЕ ПИШИ слово 'html' и не используй обратные кавычки ```. "
+            "Просто чистый текст с тегами."
+        )
+        
+        # Генерируем контент
         text = await mm.generate(prompt)
+        
+        # Очистка от мусора (на всякий случай)
         content = text.replace("```html", "").replace("```", "").strip()
-
-        conn = sqlite3.connect(DB_PATH, timeout=10)
-        conn.execute('''INSERT INTO posts 
-                        (title, slug, image, excerpt, content, date, author, category, color) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-                     (req.message, f"post-{uuid.uuid4().hex[:6]}", 
-                      "[https://images.unsplash.com/photo-1614064641935-4476e83bb023](https://images.unsplash.com/photo-1614064641935-4476e83bb023)", 
-                      "Сгенерировано нейросетью", content, 
-                      datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
-        conn.commit(); conn.close()
-        return {"status": "success"}
+        
+        # Генерируем уникальный слаг
+        unique_slug = f"post-{uuid.uuid4().hex[:8]}"
+        
+        # Используем контекстный менеджер для БД, чтобы не вешать замок
+        with sqlite3.connect(DB_PATH, timeout=20) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO posts 
+                (title, slug, image, excerpt, content, date, author, category, color) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                req.message, 
+                unique_slug, 
+                "https://images.unsplash.com/photo-1614064641935-4476e83bb023", # Прямая ссылка
+                "Материал подготовлен искусственным интеллектом Gemini 3.1", 
+                content, 
+                datetime.now().strftime("%d.%m.%Y"), 
+                "Gemini AI", 
+                req.category, 
+                req.color
+            ))
+            conn.commit()
+            
+        return {"status": "success", "slug": unique_slug}
+        
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
+        print(f"ОШИБКА ГЕНЕРАЦИИ: {e}") # Это упадет в логи Render
+        return JSONResponse(
+            status_code=500, 
+            content={"status": "error", "message": str(e)}
+        )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
