@@ -25,9 +25,9 @@ CHANNEL_URL = "https://t.me/speechclone"
 # Счетчик LiveInternet
 LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
 
-# Настройка Gemini
+# Настройка Gemini - Переход на новую модель Gemini 3.1 Flash-Lite
 genai.configure(api_key=GEMINI_API_KEY)
-model_ai = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+model_ai = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
