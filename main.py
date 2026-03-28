@@ -129,7 +129,7 @@ BLOG_POSTS = [
         "slug": "ii-ozvuchka-dlya-blogerov",
         "image": "https://images.unsplash.com/photo-1533750349088-cd871a92f311?q=80&w=800",
         "excerpt": "Как масштабировать личный бренд через аудио-платформы.",
-        "content": "Маркетинговая стратегия для блогеров в 2026 году...",
+        "content": "Маркетинговая стратегия для blogerov в 2026 году...",
         "date": "10.01.2026", "author": "Э. Миллер", "category": "Блогинг", "color": "yellow"
     },
     {
@@ -297,14 +297,14 @@ class TTSRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "posts": BLOG_POSTS})
+    return templates.TemplateResponse(name="index.html", context={"request": request, "posts": BLOG_POSTS})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_blog(request: Request, slug: str):
     post = next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post:
         raise HTTPException(status_code=404, detail="Статья не найдена")
-    return templates.TemplateResponse("blog.html", {"request": request, "post": post})
+    return templates.TemplateResponse(name="blog.html", context={"request": request, "post": post})
 
 @app.post("/api/chat")
 async def chat(r: ChatRequest):
@@ -332,10 +332,13 @@ async def generate(r: TTSRequest):
 @app.get("/{page}", response_class=HTMLResponse)
 async def catch_all(request: Request, page: str):
     try:
-        return templates.TemplateResponse(request=request, name=f"{page}.html")
+        return templates.TemplateResponse(name=f"{page}.html", context={"request": request})
     except:
-        return templates.TemplateResponse(request=request, name="index.html")
+        return templates.TemplateResponse(name="index.html", context={"request": request, "posts": BLOG_POSTS})
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(dp.start_polling(bot))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
