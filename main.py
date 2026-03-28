@@ -3,6 +3,8 @@ import uuid
 import asyncio
 import sqlite3
 import edge_tts
+import google.generativeai
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,14 +18,44 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = 430747895  
 BOT_TOKEN = "8337208157:AAGHm9p3hgMZc4oBepEkM4_Pt5DC_EqG-mw"
+GEMINI_API_KEY = "AIzaSyBUfpWakwPK3ECR83Ou8L81C0yKa_gnIOE"
 CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 
-# ПОЛНЫЙ СПИСОК ГОЛОСОВ (включая новые)
+# --- ДАННЫЕ БЛОГА (Для вывода на главную) ---
+# Добавь сюда свои реальные статьи. Шаблон index.html должен уметь их отображать.
+BLOG_POSTS = [
+    {
+        "id": 1,
+        "title": "Как нейросети меняют озвучку",
+        "slug": "kak-neyroseti-menyayut-ozvuchku",
+        "image": "/static/img/blog1.jpg", # Путь к картинке (создай папку static/img)
+        "excerpt": "Разбираемся, как технологии AI делают синтез речи неотличимым от человеческого голоса...",
+        "date": "15.10.2023"
+    },
+    {
+        "id": 2,
+        "title": "5 лучших голосов Speech Clone",
+        "slug": "5-luchshih-golosov-speech-clone",
+        "image": "/static/img/blog2.jpg",
+        "excerpt": "Обзор самых популярных и реалистичных голосов на нашем сервисе для разных задач...",
+        "date": "10.10.2023"
+    },
+    {
+        "id": 3,
+        "title": "Озвучка книг с помощью ИИ",
+        "slug": "ozvuchka-knig-s-pomoshchyu-ii",
+        "image": "/static/img/blog3.jpg",
+        "excerpt": "Пошаговое руководство, как быстро и качественно озвучить целую книгу, используя Speech Clone...",
+        "date": "05.10.2023"
+    }
+]
+
+# Все доступные голоса
 VOICES = {
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural",
     "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет (KZ)": "kk-KZ-DauletNeural",
+    "🇰🇿 Даулет": "kk-KZ-DauletNeural",
     "🇺🇸 Guy (EN)": "en-US-GuyNeural",
     "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
     "🇹🇷 Ahmet (TR)": "tr-TR-AhmetNeural",
@@ -34,6 +66,11 @@ VOICES = {
     "🇯🇵 Keita (JP)": "ja-JP-KeitaNeural",
     "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
 }
+
+# --- ИНИЦИАЛИЗАЦИЯ ИИ (Gemini) ---
+google.generativeai.configure(api_key=GEMINI_API_KEY)
+# Используем flash модель для скорости
+model_ai = google.generativeai.GenerativeModel('gemini-1.5-flash')
 
 # --- ПУТИ И БД ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -71,26 +108,8 @@ async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys():
         kb.button(text=name, callback_data=f"v_{name}")
-    kb.button(text="⭐ Поддержать (50 Stars)", callback_data="donate_stars")
     kb.adjust(2)
-    await message.answer("👋 Привет! Выбери язык озвучки и пришли текст. Не забудь подписаться на канал!", reply_markup=kb.as_markup())
-
-# --- ДОНАТЫ (ЗВЕЗДЫ) ---
-@dp.callback_query(F.data == "donate_stars")
-async def process_donate(call: types.CallbackQuery):
-    await bot.send_invoice(
-        call.from_user.id,
-        title="Поддержка проекта",
-        description="Донат 50 звезд на развитие Speech Clone",
-        payload="stars_donate",
-        currency="XTR",
-        prices=[types.LabeledPrice(label="Звезды", amount=50)]
-    )
-    await call.answer()
-
-@dp.pre_checkout_query()
-async def pre_checkout(query: types.PreCheckoutQuery):
-    await query.answer(ok=True)
+    await message.answer("👋 Привет! Выбери язык озвучки кнопку ниже и пришли текст. Не забудь подписаться на канал!", reply_markup=kb.as_markup())
 
 # --- АДМИН-ПАНЕЛЬ ---
 @dp.message(Command("stats"))
@@ -124,13 +143,15 @@ async def set_voice(call: types.CallbackQuery):
     conn.execute('UPDATE users SET voice = ? WHERE user_id = ?', (v_id, call.from_user.id))
     conn.commit()
     conn.close()
-    await call.message.answer(f"✅ Выбран голос: {v_name}")
+    await call.message.answer(f"✅ Голос изменен на: {v_name}")
     await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     uid = message.from_user.id
     if message.text.startswith("/"): return
+    
+    # Обязательная подписка
     if uid != ADMIN_ID and not await check_sub(uid):
         kb = InlineKeyboardBuilder()
         kb.row(types.InlineKeyboardButton(text="💎 Подписаться", url=CHANNEL_URL))
@@ -151,37 +172,74 @@ async def handle_text(message: types.Message):
         await message.answer_voice(voice=types.FSInputFile(path))
         await msg.delete()
     except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+        await message.answer(f"Ошибка озвучки: {e}")
 
-# --- FASTAPI (САЙТ) ---
+# --- FASTAPI (САЙТ И API) ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+# Модели запросов
+class ChatRequest(BaseModel):
+    message: str
+
 class TTSRequest(BaseModel):
     text: str; voice: str; mode: str
 
+# 1. ГЛАВНАЯ СТРАНИЦА: Теперь с передачей статей блога
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    # Передаем список статей BLOG_POSTS в шаблон
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"posts": BLOG_POSTS} # <--- СЮДА ПЕРЕДАЕМ СТАТЬИ
+    )
 
-@app.get("/blog", response_class=HTMLResponse)
-async def blog_page(request: Request):
-    return templates.TemplateResponse(request=request, name="blog.html")
+# 2. ПОЧИНЕННЫЙ РОУТ ЧАТА: Больше не будет undefined
+@app.post("/api/chat")
+async def chat(r: ChatRequest):
+    try:
+        # Генерация ответа через Gemini в отдельном потоке (чтобы не вешать сервер)
+        response = await asyncio.to_thread(model_ai.generate_content, r.message)
+        
+        # ВАЖНО: возвращаем {"reply": ...}, JS на сайте ищет это поле
+        if response and response.text:
+            return {"reply": response.text}
+        else:
+            return {"reply": "ИИ не смог сгенерировать ответ. Попробуйте другой запрос."}
+            
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        # Если ИИ упал, возвращаем понятную ошибку в том же формате
+        return JSONResponse(status_code=500, content={"reply": "Ошибка соединения с ИИ. Попробуйте позже."})
 
+# API для генерации аудио на сайте (Speech Clone)
 @app.post("/api/generate")
 async def generate(r: TTSRequest):
     try:
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
+        # Настройка скорости
         rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
         comm = edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%"))
         await comm.save(path)
+        # Возвращаем URL файла
         return {"audio_url": f"/static/audio/{fid}"}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        return JSONResponse(status_code=500, content={"detail": f"Ошибка генерации: {e}"})
 
+# Перехват всех остальных страниц (если есть)
+@app.get("/{page}", response_class=HTMLResponse)
+async def catch_all(request: Request, page: str):
+    try:
+        return templates.TemplateResponse(request=request, name=f"{page}.html")
+    except:
+        return templates.TemplateResponse(request=request, name="index.html")
+
+# --- ЗАПУСК БОТА В ФОНЕ ---
 @app.on_event("startup")
 async def startup_event():
+    # Запускаем поллинг бота в фоне при старте FastAPI
     asyncio.create_task(dp.start_polling(bot))
