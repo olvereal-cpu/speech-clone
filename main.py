@@ -25,8 +25,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 # Убрал лишние пробелы в адресе
 SITE_URL = "https://speechclone.online" 
 
-# Счетчик LiveInternet
-LI_COUNTER = '<a href="https://www.liveinternet.ru/click" target="_blank"><img src="https://counter.yadro.ru/logo?27.1" title="LiveInternet" alt="" border="0" width="88" height="31"/></a>'
+
 
 # Настройка Gemini 3.1 Flash-Lite
 genai.configure(api_key=GEMINI_API_KEY)
