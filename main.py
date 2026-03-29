@@ -246,45 +246,33 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # 1. Поиск в базе данных
+    # 1. Защита от ошибки: принудительно превращаем slug в строку
+    # Это уберет ошибку "unhashable type: 'dict'"
+    safe_slug = str(slug)
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    db_row = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
+    # Используем safe_slug для запроса
+    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (safe_slug,)).fetchone()
     conn.close()
 
+    # 2. Если в базе нет, ищем в списке BLOG_POSTS (ваши 15 статей)
     post = None
-    if db_row:
-        post = dict(db_row)
+    if db_post:
+        post = dict(db_post)
     else:
-        # 2. Если в базе нет, ищем файл в папке blog (твои 15 статей)
-        safe_slug = str(slug)
-        filename = safe_slug if safe_slug.endswith('.html') else f"{safe_slug}.html"
-        file_path = os.path.join(BLOG_FOLDER, filename)
-        
-        if os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            
-            if len(lines) >= 2:
-                # Простая логика: Заголовок, Картинка, Текст
-                raw_content = "".join(lines[2:])
-                # Фикс "простыни": меняем переносы на HTML теги
-                formatted_body = raw_content.replace("\n", "<br>").replace("<br><br>", "</p><p>")
-                
-                post = {
-                    "title": lines[0].strip(),
-                    "image": lines[1].strip(),
-                    "content": f"<p>{formatted_body}</p>",
-                    "category": "Нейросети",
-                    "date": "2024",
-                    "author": "Admin",
-                    "slug": safe_slug
-                }
+        # Ищем в локальном списке (ваши файлы/память)
+        post = next((p for p in BLOG_POSTS if p["slug"] == safe_slug), None)
 
     if not post:
         raise HTTPException(status_code=404, detail="Статья не найдена")
 
-    # ВНИМАНИЕ: Все скобки ниже должны быть закрыты!
+    # 3. Исправляем "простыню" текста (простой перевод строк в абзацы)
+    if "content" in post:
+        # Заменяем переносы на HTML теги, чтобы текст не слипался
+        post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
+
+    # 4. Возвращаем ответ (ВАЖНО: здесь закрыты все скобки)
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
