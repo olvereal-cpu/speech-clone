@@ -7,6 +7,7 @@ import edge_tts
 import google.generativeai as genai
 import re
 import markdown
+import random
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
@@ -236,48 +237,97 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     all_posts = get_all_blog_posts()
-    # Ищем пост по слагу (имени файла без .html)
     post = next((p for p in all_posts if p["slug"] == slug), None)
+    if not post: raise HTTPException(status_code=404)
     
-    if not post:
-        raise HTTPException(status_code=404, detail="Статья не найдена")
+    content = post["content"]
     
-    # Форматирование текста, если нет тегов
-    if "<p>" not in post["content"]:
-        post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
-        post["content"] = f"<p>{post['content']}</p>"
+    # Очеловечивание: Добавляем блок автора в конец, если его нет
+    if "Автор статьи" not in content:
+        content += f"""
+        <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
+            <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{CHANNEL_ID}">Telegram</a>!
+        </div>
+        """
+    post["content"] = content
 
     return templates.TemplateResponse(
-    request=request, 
-    name="blog_index.html", 
-    context={"posts": [post], "is_single": True}
-)
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": [post], "is_single": True}
+    )
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        prompt = f"""Напиши SEO-статью на тему: {req.message}.
-        Верни JSON: {{"title": "Заголовок", "content": "Текст с HTML <h2> и <p>", "keyword": "english_noun_for_photo"}}"""
+        # Промпт с жестким уклоном в SEO и человеческий стиль
+        prompt = f"""
+        Напиши экспертную, глубокую и человечную статью на тему: {req.message}.
+        
+        ТРЕБОВАНИЯ К СТИЛЮ:
+        - Никакой "воды" и шаблонных фраз вроде "в современном мире".
+        - Используй сторителлинг: начни с реальной проблемы или интригующего факта.
+        - Обращайся к читателю на "вы", задавай риторические вопросы.
+        - Чередуй короткие и длинные предложения (создавай ритм текста).
+        - Добавь немного юмора или уместной иронии.
+        
+        SEO-ПАРАМЕТРЫ:
+        - Заголовок (Title) должен содержать ключевое слово и быть кликабельным (Clickbait-style, но честный).
+        - Используй подзаголовки <h2> с ключевыми словами.
+        - Добавь в текст LSI-фразы (тематические слова, связанные с {req.message}).
+        - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
+
+        Верни ответ СТРОГО в формате JSON:
+        {{
+          "title": "Заголовок статьи",
+          "excerpt": "Мета-описание (150-160 символов) для поисковиков, которое заставляет кликнуть.",
+          "content": "HTML-текст: вступление, <h2> подзаголовки с эмодзи, списки <ul>, акценты <strong>, FAQ блок и заключение с призывом.",
+          "photo_keywords": "3-4 английских слова через запятую для максимально точного поиска фото"
+        }}
+        """
         
         raw_res = await mm.generate(prompt)
-        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
+        # Очистка JSON от возможных артефактов Markdown
+        clean_json = re.sub(r'```json|```', '', raw_res).strip()
         data = json.loads(clean_json)
         
+        # Генерация URL и параметров фото
         slug_name = slugify(data['title'])
         img_id = abs(hash(slug_name)) % 1000
-        img_url = f"https://loremflickr.com/800/600/{data.get('keyword', 'tech')}?lock={img_id}"
         
-        # Сохранение (3 строки: Заголовок, Картинка, Тело)
+        # --- Запасные варианты тем для картинок ---
+        fallback_themes = [
+            'technology,future,ai',
+            'cyberpunk,neon,digital',
+            'office,startup,people',
+            'microphone,podcast,studio',
+            'brain,education,minimalist',
+            'success,mountain,achievement',
+            'soundwave,music,abstract'
+        ]
+        # Выбираем случайную тему на случай, если ИИ не выдаст ключи
+        default_keywords = random.choice(fallback_themes)
+        
+        # Берем ключевые слова от ИИ или ставим случайный дефолт
+        keywords = data.get('photo_keywords', default_keywords)
+        # Очищаем от пробелов для корректной ссылки
+        keywords_url = ",".join([k.strip() for k in keywords.split(',')])
+        
+        img_url = f"https://loremflickr.com/800/600/{keywords_url}?lock={img_id}"
+        
+        # Сохранение (теперь сохраняем и excerpt для SEO-превью на главной)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
+            f.write(f"{data.get('excerpt', '')}\n") # Новая строка для краткого описания
             f.write(f"{data['content']}")
             
         return {"status": "success", "url": f"/blog/{slug_name}"}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        print(f"Ошибка генерации: {e}")
+        return JSONResponse(status_code=500, content={"error": "Ошибка при создании статьи. Попробуйте другой запрос."})
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
