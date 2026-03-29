@@ -329,8 +329,8 @@ async def api_admin_gen(req: AdminGenRequest):
             f.write(f"{img_url}\n")
             f.write(f"{data.get('excerpt', '')}\n")
             f.write(f"{data['content']}")
-       return {"status": "success", "url": f"/blog/{slug_name}"}
-    except Exception as e:
+         return {"status": "success", "url": f"/blog/{slug_name}"}
+        except Exception as e:
         print(f"Ошибка генерации: {e}")
         return JSONResponse(status_code=500, content={"error": "Ошибка при создании статьи. Попробуйте другой запрос."})
 
