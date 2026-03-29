@@ -243,7 +243,7 @@ async def home(request: Request):
         request=request, 
         name="index.html", 
         context={"posts": all_posts[:15]}
-    )
+ 
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
