@@ -281,11 +281,12 @@ async def read_post(request: Request, slug: str):
         raise HTTPException(status_code=404, detail="Статья не найдена")
 
     # 3. Исправляем "простыню" текста (простой перевод строк в абзацы)
-    if "content" in post:
+    if "content" in post and post["content"]:
         # Заменяем переносы на HTML теги, чтобы текст не слипался
         post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
 
-    # 4. Возвращаем ответ (ВАЖНО: здесь закрыты все скобки)
+    # 4. Возвращаем ответ
+    # ВАЖНО: Проверьте, что после True стоят '}' и ')'
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
