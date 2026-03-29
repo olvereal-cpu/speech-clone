@@ -186,25 +186,45 @@ class AdminGenRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall()]
-    conn.close()
-    all_posts = db_posts + BLOG_POSTS
-    # ИСПРАВЛЕНИЕ: Используем именованные параметры request и name
+    # Получаем список файлов из папки blog
+    posts = []
+    if os.path.exists(BLOG_FOLDER):
+        filenames = [f for f in os.listdir(BLOG_FOLDER) if f.endswith('.html')]
+        for name in filenames:
+            path = os.path.join(BLOG_FOLDER, name)
+            with open(path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                if len(lines) >= 3:
+                    posts.append({
+                        "title": lines[0].strip(),
+                        "image": lines[1].strip(),
+                        "excerpt": lines[2][:150].strip() + "...", # Берем начало контента для превью
+                        "slug": name
+                    })
+    
+    # Можно добавить сюда и старые BLOG_POSTS, если они нужны
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
-        context={"posts": all_posts[:15]}
+        context={"posts": posts[:15]} 
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
-    conn.close()
-    all_posts = db_posts + BLOG_POSTS
+    all_posts = []
+    if os.path.exists(BLOG_FOLDER):
+        for name in os.listdir(BLOG_FOLDER):
+            if name.endswith('.html'):
+                with open(os.path.join(BLOG_FOLDER, name), 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    if len(lines) >= 3:
+                        all_posts.append({
+                            "title": lines[0].strip(),
+                            "image": lines[1].strip(),
+                            "excerpt": lines[2][:200].strip() + "...",
+                            "slug": name
+                        })
+    
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
