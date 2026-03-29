@@ -246,16 +246,50 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
+    # 1. Поиск в базе данных
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
+    db_row = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
     conn.close()
-    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
+
+    post = None
+    if db_row:
+        post = dict(db_row)
+    else:
+        # 2. Если в базе нет, ищем файл в папке blog (твои 15 статей)
+        safe_slug = str(slug)
+        filename = safe_slug if safe_slug.endswith('.html') else f"{safe_slug}.html"
+        file_path = os.path.join(BLOG_FOLDER, filename)
+        
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            if len(lines) >= 2:
+                # Простая логика: Заголовок, Картинка, Текст
+                raw_content = "".join(lines[2:])
+                # Фикс "простыни": меняем переносы на HTML теги
+                formatted_body = raw_content.replace("\n", "<br>").replace("<br><br>", "</p><p>")
+                
+                post = {
+                    "title": lines[0].strip(),
+                    "image": lines[1].strip(),
+                    "content": f"<p>{formatted_body}</p>",
+                    "category": "Нейросети",
+                    "date": "2024",
+                    "author": "Admin",
+                    "slug": safe_slug
+                }
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Статья не найдена")
+
+    # ВНИМАНИЕ: Все скобки ниже должны быть закрыты!
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
         context={"posts": [post], "is_single": True}
+    )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
