@@ -231,9 +231,9 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # Принудительно превращаем slug в строку, чтобы избежать ошибки unhashable type
-    safe_slug = str(slug)
-    filename = safe_slug if safe_slug.endswith('.html') else f"{safe_slug}.html"
+    # 1. Генерируем имя файла. Принудительно делаем slug строкой.
+    clean_slug = str(slug) 
+    filename = clean_slug if clean_slug.endswith('.html') else f"{clean_slug}.html"
     file_path = os.path.join(BLOG_FOLDER, filename)
     
     if not os.path.exists(file_path):
@@ -241,67 +241,44 @@ async def read_post(request: Request, slug: str):
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            # Читаем все строки и сразу убираем лишние пробелы по краям
-            lines = [line.strip() for line in f.readlines()]
+            lines = f.readlines()
 
-        if not lines:
-            raise ValueError("Файл пуст")
+        if len(lines) < 2:
+            return HTMLResponse(content="Ошибка: Файл слишком короткий", status_code=500)
 
-        # 1. Заголовок — всегда первая строка
-        title = lines[0]
+        # 2. Чистим данные от лишних пробелов
+        title = lines[0].strip()
+        image_url = lines[1].strip()
         
-        # 2. Логика определения картинки и начала контента
-        image_url = ""
-        content_start_index = 1
-        
-        # Используем безопасную строку для генерации ID картинки
-        img_id = abs(hash(filename)) % 1000
-
-        if len(lines) > 1:
-            # Если вторая строка — ссылка, берем её
-            if lines[1].startswith("http"):
-                image_url = lines[1]
-                content_start_index = 2
-            else:
-                # Если второй строки нет или это текст, создаем ссылку сами
-                image_url = f"https://loremflickr.com/800/600/ai,tech?lock={img_id}"
-                content_start_index = 1
+        # Если во второй строке не ссылка, создаем её сами (простой фикс)
+        if not image_url.startswith("http"):
+            # Используем хеш от строки названия файла
+            img_id = abs(hash(str(filename))) % 1000
+            image_url = f"https://loremflickr.com/800/600/ai?lock={img_id}"
+            content_raw = "".join(lines[1:])
         else:
-            image_url = f"https://loremflickr.com/800/600/tech?lock={img_id}"
+            content_raw = "".join(lines[2:])
 
-        # 3. Формируем контент
-        # Соединяем оставшиеся строки через двойной перенос для корректного Markdown
-        raw_content = "\n\n".join(lines[content_start_index:])
-        
-        # Превращаем Markdown в HTML (уберет решетки ## и сделает абзацы)
-        html_content = markdown.markdown(
-            raw_content, 
-            extensions=['extra', 'nl2br'] # nl2br помогает сохранять переносы строк
-        )
+        # 3. Форматируем текст (простая замена переносов на абзацы)
+        # Это уберет "простыню" без использования сторонних библиотек
+        formatted_content = content_raw.replace("\n", "<br>").replace("<br><br>", "</p><p>")
+        final_html = f"<p>{formatted_content}</p>"
 
-        # Собираем данные для шаблона
         post = {
             "title": title,
             "image": image_url,
-            "content": html_content,
+            "content": final_html,
             "category": "Нейросети",
             "date": "2024",
-            "author": "Gemini AI",
-            "slug": filename
+            "author": "Admin"
         }
 
         return templates.TemplateResponse(
             "blog_index.html", 
             {"request": request, "posts": [post], "is_single": True}
         )
-
     except Exception as e:
-        # Логируем ошибку в консоль сервера для отладки
-        print(f"КРИТИЧЕСКАЯ ОШИБКА ОБРАБОТКИ: {str(e)}")
-        return HTMLResponse(
-            content=f"<h1>Ошибка в структуре файла</h1><p>{str(e)}</p>", 
-            status_code=500
-        )
+        return HTMLResponse(content=f"Ошибка: {str(e)}", status_code=500)
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
