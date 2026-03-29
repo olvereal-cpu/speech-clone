@@ -28,11 +28,16 @@ def slugify(text: str) -> str:
         'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
         'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
         'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-    }
+   }
     text = text.lower().strip()
     result = "".join(chars.get(c, c) for c in text)
     result = re.sub(r'[^a-z0-9]+', '-', result)
     return result.strip('-')
+
+def clean_html(raw_html: str) -> str:
+    """Удаляет теги для анонса"""
+    cleanr = re.compile('<.*?>')
+    return re.sub(cleanr, '', raw_html).strip()
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
@@ -105,36 +110,41 @@ def init_db():
 init_db()
 
 # --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ БЛОГА ---
-def get_all_posts():
-    """Собирает посты из всех источников: Файлы, БД, BLOG_POSTS"""
-    all_posts = []
-    
-    # 1. Из файлов (ваши 15 статей)
+def get_all_blog_posts():
+    posts = []
+    # 1. Читаем файлы из папки blog
     if os.path.exists(BLOG_FOLDER):
-        for filename in os.listdir(BLOG_FOLDER):
-            if filename.endswith(".html"):
-                try:
-                    with open(os.path.join(BLOG_FOLDER, filename), 'r', encoding='utf-8') as f:
-                        lines = f.readlines()
-                    if len(lines) >= 3:
-                        all_posts.append({
-                            "title": lines[0].strip(),
-                            "image": lines[1].strip(),
-                            "content": "".join(lines[2:]),
-                            "excerpt": "".join(lines[2:])[:150] + "...",
-                            "slug": filename.replace(".html", ""),
-                            "date": "12.03.2026", "author": "Admin", "category": "AI", "color": "indigo"
-                        })
-                except: continue
-
-    # 2. Из базы данных
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
-    conn.close()
+        files = [f for f in os.listdir(BLOG_FOLDER) if f.endswith(".html")]
+        for f in files:
+            try:
+                with open(os.path.join(BLOG_FOLDER, f), 'r', encoding='utf-8') as file:
+                    lines = file.readlines()
+                if len(lines) >= 3:
+                    title = lines[0].strip()
+                    image = lines[1].strip()
+                    # Собираем ВЕСЬ остальной текст (не только одну строку)
+                    content_html = "".join(lines[2:]).strip()
+                    
+                    posts.append({
+                        "title": title,
+                        "image": image,
+                        "content": content_html,
+                        "excerpt": clean_html(content_html)[:160] + "...",
+                        "slug": f.replace(".html", ""),
+                        "date": "20.03.2026", "author": "Admin", "category": "AI", "color": "purple"
+                    })
+            except Exception as e:
+                print(f"Ошибка чтения {f}: {e}")
     
-    # 3. Объединяем
-    return db_posts + all_posts + BLOG_POSTS
+    # 2. Из базы данных
+    try:
+        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
+        conn.close()
+    except: db_posts = []
+    
+    # Склеиваем: Файлы + БД + Встроенные
+    return posts + db_posts + BLOG_POSTS
 
 # --- БОТ ---
 bot = Bot(token=BOT_TOKEN)
@@ -206,78 +216,56 @@ class AdminGenRequest(BaseModel):
 # --- МАРШРУТЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    posts = get_all_posts()
-    # Выводим только 6 на главную
-    return templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"posts": posts[:6]}
-    )
+    all_posts = get_all_blog_posts()
+    # Берем первые 6 для главной
+    return templates.TemplateResponse("index.html", {"request": request, "posts": all_posts[:6]})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    posts = get_all_posts()
-    return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": posts, "is_single": False}
-    )
+    all_posts = get_all_blog_posts()
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": all_posts, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    posts = get_all_posts()
-    # Принудительно ищем по слагу как по строке
-    post = next((p for p in posts if str(p["slug"]) == str(slug)), None)
+    all_posts = get_all_blog_posts()
+    # Ищем пост по слагу (имени файла без .html)
+    post = next((p for p in all_posts if p["slug"] == slug), None)
     
-    if not post: raise HTTPException(status_code=404)
+    if not post:
+        raise HTTPException(status_code=404, detail="Статья не найдена")
     
-    # Исправление "простыни": если это чистый текст, делаем абзацы
+    # Форматирование текста, если нет тегов
     if "<p>" not in post["content"]:
         post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
         post["content"] = f"<p>{post['content']}</p>"
 
-    return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": [post], "is_single": True}
-    )
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        prompt = f"""
-        Напиши полноценную SEO статью на тему: {req.message}.
-        Верни ответ СТРОГО в формате JSON:
-        {{
-          "title": "Заголовок статьи",
-          "excerpt": "Краткий анонс для главной страницы (200 знаков)",
-          "content": "Полный текст с HTML разметкой. Используй <h2> для заголовков и <p> для абзацев.",
-          "keyword": "one specific English noun for Unsplash photo search"
-        }}
-        """
+        prompt = f"""Напиши SEO-статью на тему: {req.message}.
+        Верни JSON: {{"title": "Заголовок", "content": "Текст с HTML <h2> и <p>", "keyword": "english_noun_for_photo"}}"""
+        
         raw_res = await mm.generate(prompt)
         clean_json = raw_res.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
         
         slug_name = slugify(data['title'])
-        filename = f"{slug_name}.html"
+        img_id = abs(hash(slug_name)) % 1000
+        img_url = f"https://loremflickr.com/800/600/{data.get('keyword', 'tech')}?lock={img_id}"
         
-        # Уникальная картинка по ключевому слову
-        img_id = abs(hash(filename)) % 1000
-        keyword = data.get('keyword', 'tech')
-        img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
-
-        # Сохранение в папку блога
-        file_path = os.path.join(BLOG_FOLDER, filename)
+        # Сохранение (3 строки: Заголовок, Картинка, Тело)
+        file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
             f.write(f"{data['content']}")
-
+            
         return {"status": "success", "url": f"/blog/{slug_name}"}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
@@ -343,8 +331,12 @@ async def api_generate_web(r: TTSRequest):
         
 @app.on_event("startup")
 async def startup_event():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
+    conn.execute('CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)')
+    conn.commit(); conn.close()
     await bot.delete_webhook(drop_pending_updates=True)
-    asyncio.create_task(dp.start_polling(bot, skip_updates=True))
+    asyncio.create_task(dp.start_polling(bot))
 
 
 
