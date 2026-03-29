@@ -29,7 +29,7 @@ SITE_URL = "https://speechclone.online"
 class ModelManager:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
+        self.model = genai.GenerativeModel('gemini-1.5-flash') # Стабильная версия
         
     async def generate(self, prompt):
         try:
@@ -77,20 +77,17 @@ def slugify(text):
 
 def get_posts_from_folder():
     folder_posts = []
-    target_dir = os.path.abspath(BLOG_DIR)
-    if not os.path.exists(target_dir): return []
+    if not os.path.exists(BLOG_DIR): return []
     
-    files = [f for f in os.listdir(target_dir) if f.endswith((".html", ".txt", ".md"))]
+    files = [f for f in os.listdir(BLOG_DIR) if f.endswith((".html", ".txt", ".md"))]
     for fn in sorted(files, reverse=True):
         try:
-            path = os.path.join(target_dir, fn)
+            path = os.path.join(BLOG_DIR, fn)
             with open(path, "r", encoding="utf-8") as f:
                 raw = f.read()
             slug = fn.rsplit(".", 1)[0]
-            # ОЧИСТКА ЗАГОЛОВКА
             title = slug.replace("-", " ").replace("_", " ").replace("*", "").capitalize()
             content_html = markdown.markdown(raw) if not fn.endswith(".html") else raw
-            # ОЧИСТКА АНОНСА
             excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
             
             folder_posts.append({
@@ -156,7 +153,6 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 class ChatReq(BaseModel): message: str
 class GenReq(BaseModel): message: str; category: str = "ИИ"; color: str = "blue"
 
-# ИСПРАВЛЕННЫЕ РОУТЫ (FIX 500 ERROR)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     posts = get_merged_posts()
@@ -190,11 +186,9 @@ async def api_gen(req: GenReq):
     raw = await mm.generate(prompt)
     if not raw: return JSONResponse(status_code=500, content={"error": "No AI response"})
     try:
-        title_raw = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip()
-        title = title_raw.replace("*", "").replace("#", "")
-        kw_raw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip()
-        kw = kw_raw.replace("*", "")
-        content_raw = raw.split("CONTENT:")[1].strip() if "CONTENT:" in raw else raw
+        title = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).replace("*", "").replace("#", "").strip()
+        kw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).replace("*", "").strip()
+        content_raw = raw.split("CONTENT:")[1].strip()
         content_html = markdown.markdown(content_raw)
         excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
         slug = slugify(title)
@@ -217,8 +211,12 @@ async def dl(file: str):
     p = os.path.join(AUDIO_DIR, file)
     return FileResponse(p, filename="speechclone.mp3") if os.path.exists(p) else HTMLResponse("404", 404)
 
-@app.get("/{path}")
+# ИСПРАВЛЕННЫЙ РОУТ СТАТИЧЕСКИХ СТРАНИЦ
+@app.get("/{path}", response_class=HTMLResponse)
 async def static_pages(request: Request, path: str):
+    # Исключаем системные файлы (например favicon.ico), чтобы не было 500 ошибки
+    if "." in path: raise HTTPException(404)
+    
     valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
     if path in valid:
         return templates.TemplateResponse(f"{path}.html", {"request": request})
@@ -228,6 +226,7 @@ async def static_pages(request: Request, path: str):
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
 
 
 
