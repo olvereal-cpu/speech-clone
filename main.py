@@ -222,6 +222,22 @@ async def premium_page(request: Request):
 async def about_page(request: Request):
     return templates.TemplateResponse(request=request, name="about.html")
 
+@app.get("/guide", response_class=HTMLResponse)
+async def about_page(request: Request):
+    return templates.TemplateResponse(request=request, name="guide.html")
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def about_page(request: Request):
+    return templates.TemplateResponse(request=request, name="privacy.html")
+
+@app.get("/disclaimer", response_class=HTMLResponse)
+async def about_page(request: Request):
+    return templates.TemplateResponse(request=request, name="disclaimer.html")
+
+@app.get("/guide", response_class=HTMLResponse)
+async def about_page(request: Request):
+    return templates.TemplateResponse(request=request, name="guide.html")
+
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_gen_page(request: Request):
     return templates.TemplateResponse(request=request, name="admin_generate.html")
