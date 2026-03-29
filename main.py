@@ -218,12 +218,20 @@ class AdminGenRequest(BaseModel):
 async def home(request: Request):
     all_posts = get_all_blog_posts()
     # Берем первые 6 для главной
-    return templates.TemplateResponse("index.html", {"request": request, "posts": all_posts[:6]})
+    return templates.TemplateResponse(
+    request=request, 
+    name="index.html", 
+    context={"posts": all_posts[:6]}
+)
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     all_posts = get_all_blog_posts()
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": all_posts, "is_single": False})
+    return templates.TemplateResponse(
+    request=request, 
+    name="blog_index.html", 
+    context={"posts": all_posts, "is_single": False}
+)
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
@@ -239,7 +247,11 @@ async def read_post(request: Request, slug: str):
         post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
         post["content"] = f"<p>{post['content']}</p>"
 
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
+    return templates.TemplateResponse(
+    request=request, 
+    name="blog_index.html", 
+    context={"posts": [post], "is_single": True}
+)
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---
 @app.post("/api/admin/generate-post")
