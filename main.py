@@ -214,13 +214,17 @@ async def dl(file: str):
 # ИСПРАВЛЕННЫЙ РОУТ СТАТИЧЕСКИХ СТРАНИЦ
 @app.get("/{path}", response_class=HTMLResponse)
 async def static_pages(request: Request, path: str):
-    # Исключаем системные файлы (например favicon.ico), чтобы не было 500 ошибки
-    if "." in path: raise HTTPException(404)
+    # Защита от запросов типа favicon.ico или других файлов с точкой
+    if "." in path: 
+        raise HTTPException(status_code=404)
     
-    valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
-    if path in valid:
+    valid_pages = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
+    
+    if path in valid_pages:
+        # ВАЖНО: Сначала имя файла, потом словарь контекста!
         return templates.TemplateResponse(f"{path}.html", {"request": request})
-    raise HTTPException(404)
+    
+    raise HTTPException(status_code=404)
 
 @app.on_event("startup")
 async def startup():
