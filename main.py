@@ -184,66 +184,68 @@ class AdminGenRequest(BaseModel):
 
 # --- МАРШРУТЫ САЙТА (ИСПРАВЛЕНЫ) ---
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    # Получаем список файлов из папки blog
+def get_posts_from_folder():
     posts = []
-    if os.path.exists(BLOG_FOLDER):
-        filenames = [f for f in os.listdir(BLOG_FOLDER) if f.endswith('.html')]
-        for name in filenames:
-            path = os.path.join(BLOG_FOLDER, name)
-            with open(path, 'r', encoding='utf-8') as f:
+    if not os.path.exists(BLOG_FOLDER):
+        return posts
+    
+    # Читаем все .html файлы
+    files = [f for f in os.listdir(BLOG_FOLDER) if f.endswith('.html')]
+    
+    for filename in files:
+        try:
+            with open(os.path.join(BLOG_FOLDER, filename), 'r', encoding='utf-8') as f:
                 lines = f.readlines()
                 if len(lines) >= 3:
+                    title = lines[0].strip()
+                    image_url = lines[1].strip()
+                    content = "".join(lines[2:])
+                    # Делаем короткое превью для главной
+                    excerpt = content[:200].replace('<h2>', '').replace('<p>', '')[:150] + "..."
+                    
                     posts.append({
-                        "title": lines[0].strip(),
-                        "image": lines[1].strip(),
-                        "excerpt": lines[2][:150].strip() + "...", # Берем начало контента для превью
-                        "slug": name
+                        "title": title,
+                        "image": image_url,
+                        "content": content,
+                        "excerpt": excerpt,
+                        "slug": filename # передаем имя файла целиком
                     })
-    
-    # Можно добавить сюда и старые BLOG_POSTS, если они нужны
-    return templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"posts": posts[:15]} 
-    )
+        except Exception as e:
+            print(f"Ошибка чтения файла {filename}: {e}")
+            
+    # Сортируем: новые файлы (по дате создания) будут первыми
+    posts.sort(key=lambda x: os.path.getmtime(os.path.join(BLOG_FOLDER, x['slug'])), reverse=True)
+    return posts
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    all_posts = get_posts_from_folder()
+    # Передаем список постов в шаблон index.html
+    return templates.TemplateResponse(request=request, name="index.html", context={"posts": all_posts[:15]})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    all_posts = []
-    if os.path.exists(BLOG_FOLDER):
-        for name in os.listdir(BLOG_FOLDER):
-            if name.endswith('.html'):
-                with open(os.path.join(BLOG_FOLDER, name), 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                    if len(lines) >= 3:
-                        all_posts.append({
-                            "title": lines[0].strip(),
-                            "image": lines[1].strip(),
-                            "excerpt": lines[2][:200].strip() + "...",
-                            "slug": name
-                        })
-    
-    return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": all_posts, "is_single": False}
-    )
+    all_posts = get_posts_from_folder()
+    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": all_posts, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
-    conn.close()
-    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse(
-        request=request, 
-        name="blog_index.html", 
-        context={"posts": [post], "is_single": True}
-    )
+    # Если slug пришел без .html, добавляем его
+    filename = slug if slug.endswith('.html') else f"{slug}.html"
+    file_path = os.path.join(BLOG_FOLDER, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Статья не найдена")
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        
+    post = {
+        "title": lines[0].strip(),
+        "image": lines[1].strip(),
+        "content": "".join(lines[2:])
+    }
+    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": [post], "is_single": True})
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
