@@ -22,10 +22,10 @@ from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
 # --- 1. КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_KEY") 
+GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 SITE_URL = "https://speechclone.online"
 
-# --- 2. GEMINI 3.1 FLASH LITE PREVIEW ---
+# --- 2. GEMINI MANAGER ---
 class ModelManager:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
@@ -41,13 +41,13 @@ class ModelManager:
 
 mm = ModelManager(GEMINI_API_KEY)
 
-# --- 3. ПУТИ И ДАННЫЕ ---
+# --- 3. ДАННЫЕ И БД ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-BLOG_DIR = os.path.join(BASE_DIR, "blog") # Твоя папка с 15 статьями
+BLOG_DIR = os.path.join(BASE_DIR, "blog")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_DIR, exist_ok=True)
@@ -76,7 +76,6 @@ def slugify(text):
     return res if len(res) > 2 else f"post-{uuid.uuid4().hex[:5]}"
 
 def get_posts_from_folder():
-    """Считывает все файлы из папки blog"""
     folder_posts = []
     if not os.path.exists(BLOG_DIR): return []
     for fn in sorted(os.listdir(BLOG_DIR), reverse=True):
@@ -86,17 +85,15 @@ def get_posts_from_folder():
                 raw = f.read()
             slug = fn.rsplit(".", 1)[0]
             title = slug.replace("-", " ").replace("_", " ").capitalize()
-            # Конвертируем в HTML если это Markdown
             content = markdown.markdown(raw) if fn.endswith((".md", ".txt")) else raw
             folder_posts.append({
                 "title": title, "slug": slug, "image": f"https://images.unsplash.com/featured/?ai,tech&sig={slug}",
-                "excerpt": "Статья из коллекции блога.", "content": content, 
+                "excerpt": raw[:200].replace('#', '').strip() + "...", "content": content, 
                 "date": "Архив", "author": "Admin", "category": "Блог", "color": "blue"
             })
     return folder_posts
 
 def get_merged_posts():
-    """Объединяет БД и папку blog"""
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]; conn.close()
     return db_posts + get_posts_from_folder()
@@ -162,19 +159,14 @@ async def blog_one(request: Request, slug: str):
     if not p: raise HTTPException(404)
     return templates.TemplateResponse(request, "blog_index.html", {"request": request, "posts": [p], "is_single": True})
 
-# РОУТЫ МЕНЮ
-@app.get("/{path}")
-async def static_pages(request: Request, path: str):
-    valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact"]
-    if path in valid: return templates.TemplateResponse(request, f"{path}.html", {"request": request})
-    if path == "admin-generate": return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
-    raise HTTPException(404)
-
+# --- ЧАТ БОТ API ---
 @app.post("/api/chat")
 async def api_chat(req: ChatReq):
-    ans = await mm.generate(f"Ты ассистент сайта SpeechClone. Ответь кратко: {req.message}")
-    return {"reply": ans or "ИИ временно не на связи."}
+    if not req.message.strip(): return {"reply": "Чем могу помочь?"}
+    ans = await mm.generate(f"Ты ИИ-ассистент SpeechClone. Ответь кратко на русском: {req.message}")
+    return {"reply": ans or "ИИ временно недоступен."}
 
+# --- АДМИНКА ---
 @app.post("/api/admin/generate-post")
 async def api_gen(req: GenReq):
     prompt = f"Напиши SEO статью про {req.message}. Формат TITLE:.. KEYWORD:.. CONTENT:.."
@@ -189,12 +181,13 @@ async def api_gen(req: GenReq):
         img = f"https://images.unsplash.com/featured/?{kw}&sig={uuid.uuid4().hex[:5]}"
         conn = sqlite3.connect(DB_PATH)
         conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
-                     (title, slug, img, "Новая статья от ИИ", content, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
+                     (title, slug, img, content_raw[:150] + "...", content, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
         conn.commit(); conn.close()
         return {"status": "success", "slug": slug}
     except Exception as e:
         return JSONResponse(500, {"error": str(e)})
 
+# --- ВСПОМОГАТЕЛЬНЫЕ РОУТЫ ---
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait(request: Request, file: str):
     return templates.TemplateResponse(request, "wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
@@ -204,10 +197,21 @@ async def dl(file: str):
     p = os.path.join(AUDIO_DIR, file)
     return FileResponse(p, filename="speechclone.mp3") if os.path.exists(p) else HTMLResponse("404", 404)
 
+# --- ГЛОБАЛЬНЫЙ РОУТ ДЛЯ СТРАНИЦ ---
+@app.get("/{path}")
+async def static_pages(request: Request, path: str):
+    # Если путь ведет в блог, он обработается выше. Здесь только статика.
+    valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
+    if path == "admin-generate": return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
+    if path in valid: return templates.TemplateResponse(request, f"{path}.html", {"request": request})
+    raise HTTPException(404)
+
 @app.on_event("startup")
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
+
 
 
 
