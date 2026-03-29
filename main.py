@@ -76,22 +76,65 @@ def slugify(text):
     return res if len(res) > 2 else f"post-{uuid.uuid4().hex[:5]}"
 
 def get_posts_from_folder():
+    """Считывает все файлы из папки blog с проверкой существования"""
     folder_posts = []
-    if not os.path.exists(BLOG_DIR): return []
-    for fn in sorted(os.listdir(BLOG_DIR), reverse=True):
-        if fn.endswith((".html", ".txt", ".md")):
-            path = os.path.join(BLOG_DIR, fn)
+    # Важно: проверяем абсолютный путь
+    target_dir = os.path.join(BASE_DIR, "blog")
+    
+    if not os.path.exists(target_dir):
+        print(f"⚠️ ПАПКА НЕ НАЙДЕНА: {target_dir}")
+        return []
+
+    files = [f for f in os.listdir(target_dir) if f.endswith((".html", ".txt", ".md"))]
+    print(f"📂 Найдено файлов в blog: {len(files)}") # Увидишь в логах
+
+    for fn in sorted(files, reverse=True):
+        try:
+            path = os.path.join(target_dir, fn)
             with open(path, "r", encoding="utf-8") as f:
                 raw = f.read()
+            
             slug = fn.rsplit(".", 1)[0]
+            # Делаем красивый заголовок из имени файла
             title = slug.replace("-", " ").replace("_", " ").capitalize()
-            content = markdown.markdown(raw) if fn.endswith((".md", ".txt")) else raw
+            
+            # Конвертируем контент
+            content_html = markdown.markdown(raw) if fn.endswith((".md", ".txt")) else raw
+            
+            # Чистим текст для превью (excerpt)
+            clean_text = re.sub(r'<[^>]+>', '', content_html) # убираем HTML теги для превью
+            
             folder_posts.append({
-                "title": title, "slug": slug, "image": f"https://images.unsplash.com/featured/?ai,tech&sig={slug}",
-                "excerpt": raw[:200].replace('#', '').strip() + "...", "content": content, 
-                "date": "Архив", "author": "Admin", "category": "Блог", "color": "blue"
+                "title": title,
+                "slug": slug,
+                "image": f"https://images.unsplash.com/featured/?ai,technology&sig={slug}",
+                "excerpt": clean_text[:180].strip() + "...",
+                "content": content_html,
+                "date": "Архив",
+                "author": "Admin",
+                "category": "Блог",
+                "color": "blue"
             })
+        except Exception as e:
+            print(f"❌ Ошибка чтения файла {fn}: {e}")
+            
     return folder_posts
+
+def get_merged_posts():
+    """Объединяет данные из БД и папки blog"""
+    all_posts = []
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
+        all_posts = [dict(p) for p in db_data]
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ Ошибка БД: {e}")
+
+    # Добавляем посты из папки
+    folder_data = get_posts_from_folder()
+    return all_posts + folder_data
 
 def get_merged_posts():
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
