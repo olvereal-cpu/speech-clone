@@ -2,6 +2,7 @@ import os
 import uuid
 import asyncio
 import sqlite3
+import json
 import edge_tts
 import google.generativeai as genai
 from datetime import datetime
@@ -15,7 +16,7 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
+from aiogram.types import LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
@@ -31,7 +32,6 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        # Используем актуальную модель 3.1 Flash-Lite
         self.target_model = 'gemini-3.1-flash-lite-preview'
         self.safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -47,7 +47,6 @@ class ModelManager:
 
     async def generate(self, prompt):
         try:
-            # Вызываем через to_thread для асинхронности
             resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
             return resp.text if resp else "Ошибка: ИИ не вернул ответ"
         except Exception as e:
@@ -64,7 +63,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА ---
+# --- ДАННЫЕ БЛОГА (СТАТИКА) ---
 BLOG_POSTS = [
     {
         "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
@@ -78,11 +77,10 @@ BLOG_POSTS = [
         "excerpt": "Автоматизация монтажа с помощью ИИ.", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple",
         "content": "<p>Создание подкаста всегда было трудоемким процессом...</p>"
     }
-    # ... остальные посты (для краткости пропущены, сохрани их из своего кода)
 ]
 
 VOICES = {
-   "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
+    "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
     "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇰🇿 Айгуль": "kk-KZ-AigulNeural",
     "🇺🇸 Guy (EN)": "en-US-GuyNeural", "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
     "🇹🇷 Ahmet (TR)": "tr-TR-AhmetNeural", "🇪🇸 Alvaro (ES)": "es-ES-AlvaroNeural",
@@ -99,14 +97,11 @@ def init_db():
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
                      excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
     
-    # ПРОВЕРКА КОЛОНОК (Миграция)
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(posts)")
     cols = [c[1] for c in cursor.fetchall()]
-    if 'category' not in cols:
-        conn.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Технологии'")
-    if 'color' not in cols:
-        conn.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
+    if 'category' not in cols: conn.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Технологии'")
+    if 'color' not in cols: conn.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
     
     conn.commit()
     conn.close()
@@ -127,8 +122,7 @@ async def check_sub(uid):
 async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2)
-    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
+    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
     await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data == "buy_stars")
@@ -163,60 +157,29 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
-# МОДЕЛИ ДАННЫХ (Optional исправляет ошибку 422)
 class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
 class KeyCheck(BaseModel): key: str
 class AdminGenRequest(BaseModel): 
     message: str
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
 
-# --- МАРШРУТЫ ---
+# --- МАРШРУТЫ САЙТА ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall(); conn.close()
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "index.html", {"posts": all_posts[:15]})
+    return templates.TemplateResponse("index.html", {"request": request, "posts": all_posts[:15]})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall(); conn.close()
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
-
-@app.post("/api/admin/generate-post")
-async def api_admin_gen(req: AdminGenRequest):
-    conn = None
-    try:
-        prompt = f"Напиши интересную статью на тему: {req.message}. Используй теги <p>, <b>. Без Markdown!"
-        raw_content = await mm.generate(prompt)
-        
-        if "Ошибка" in raw_content:
-            return JSONResponse(status_code=500, content={"message": raw_content})
-            
-        clean_content = raw_content.replace("```html", "").replace("```", "").strip()
-        new_slug = f"post-{uuid.uuid4().hex[:6]}"
-
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        cursor = conn.cursor()
-        
-        cursor.execute('''INSERT INTO posts 
-            (title, slug, image, excerpt, content, date, author, category, color) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-            (req.message, new_slug, "https://images.unsplash.com/photo-1614064641935-4476e83bb023", 
-             "AI Generated Content", clean_content, datetime.now().strftime("%d.%m.%Y"), 
-             "Gemini AI", req.category, req.color))
-        
-        conn.commit()
-        return {"status": "success", "slug": new_slug}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-    finally:
-        if conn: conn.close()
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": all_posts, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
@@ -224,15 +187,50 @@ async def read_post(request: Request, slug: str):
     db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone(); conn.close()
     post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse(request, "blog_index.html", {"posts": [post], "is_single": True})
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
 
+# Дополнительные страницы
+@app.get("/voices", response_class=HTMLResponse)
+async def voices_page(request: Request): return templates.TemplateResponse("voices.html", {"request": request})
 @app.get("/premium", response_class=HTMLResponse)
-async def premium_page(request: Request):
-    return templates.TemplateResponse(request, "premium.html")
-
+async def premium_page(request: Request): return templates.TemplateResponse("premium.html", {"request": request})
+@app.get("/about", response_class=HTMLResponse)
+async def about_page(request: Request): return templates.TemplateResponse("about.html", {"request": request})
 @app.get("/admin/generate", response_class=HTMLResponse)
-async def admin_gen_page(request: Request):
-    return templates.TemplateResponse(request, "admin_generate.html")
+async def admin_gen_page(request: Request): return templates.TemplateResponse("admin_generate.html", {"request": request})
+
+# --- API ---
+
+@app.post("/api/admin/generate-post")
+async def api_admin_gen(req: AdminGenRequest):
+    try:
+        prompt = f"""Напиши статью на тему: {req.message}. 
+        Ответ верни строго в формате JSON без разметки markdown:
+        {{
+          "title": "заголовок",
+          "excerpt": "краткий анонс для главной страницы (200-250 символов)",
+          "content": "полный текст статьи с HTML тегами <p> <b> <ul>",
+          "photo_topic": "one English word for theme photo"
+        }}"""
+        
+        raw_res = await mm.generate(prompt)
+        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean_json)
+        
+        new_slug = f"post-{uuid.uuid4().hex[:6]}"
+        # Используем современный рандомайзер картинок
+        img_url = f"https://loremflickr.com/800/600/{data.get('photo_topic', 'tech')}"
+
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''INSERT INTO posts 
+            (title, slug, image, excerpt, content, date, author, category, color) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
+            (data['title'], new_slug, img_url, data['excerpt'], data['content'], 
+             datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
+        conn.commit(); conn.close()
+        return {"status": "success", "slug": new_slug}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
@@ -244,7 +242,7 @@ async def wait_page(request: Request, file: str, key: str = None):
     if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
         if os.path.exists(os.path.join(AUDIO_DIR, file)):
             return FileResponse(path=os.path.join(AUDIO_DIR, file), filename="speechclone.mp3")
-    return templates.TemplateResponse(request, "wait_page.html", {"file_url": f"/download?file={file}"})
+    return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
 
 @app.get("/download")
 async def download_file(file: str):
@@ -270,6 +268,8 @@ async def api_generate_web(r: TTSRequest):
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot, skip_updates=True))
+
+
 
 
 
