@@ -4,7 +4,6 @@ import asyncio
 import sqlite3
 import edge_tts
 import re
-import urllib.parse
 import google.generativeai as genai
 from datetime import datetime
 from typing import Optional
@@ -17,7 +16,7 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
+from aiogram.types import LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
@@ -29,7 +28,7 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+# --- ФУНКЦИИ ---
 def slugify(text):
     chars = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya"}
     text = text.lower()
@@ -71,17 +70,17 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА ---
+# --- ДАННЫЕ БЛОГА (СТАТИКА) ---
 BLOG_POSTS = [
     {
         "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
-        "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
+        "image": "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800", 
         "excerpt": "Разбираемся в будущем клонирования...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue",
         "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства...</p>"
     },
     {
         "id": 1002, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", 
-        "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", 
+        "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=800", 
         "excerpt": "Автоматизация монтажа с помощью ИИ.", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple",
         "content": "<p>Создание подкаста всегда было трудоемким процессом...</p>"
     }
@@ -186,35 +185,37 @@ async def home(request: Request):
 async def blog_list(request: Request):
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall(); conn.close()
-    # В блоге отображаем ВСЕ статьи
+    # В блоге отображаются вообще все статьи
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
     return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
 
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
-    conn = None
     try:
-        # 1. Ключевое слово для фото
-        kw_prompt = f"Provide 1 English keyword for photo search for topic: {req.message}. ONLY WORD."
-        kw = await mm.generate(kw_prompt)
-        clean_kw = re.sub(r'[^a-zA-Z]', '', kw).strip() or "technology"
-        img_url = f"https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800&auto=format&fit=crop" # Фолбэк
-        # Попытка сделать динамическую ссылку
-        dynamic_img = f"https://source.unsplash.com/800x600/?{clean_kw}"
+        # Прямые ссылки на фото (source.unsplash отключен)
+        images = [
+            "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800",
+            "https://images.unsplash.com/photo-1620712943543-bcc4628c6757?w=800",
+            "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
+            "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800"
+        ]
+        import random
+        img_url = random.choice(images)
 
-        # 2. Текст статьи
         prompt = (
-            f"Напиши статью на тему: {req.message}. Формат строго:\n"
-            f"EXCERPT: [анонс 15 слов]\n"
+            f"Напиши статью про {req.message}. Формат строго:\n"
+            f"EXCERPT: [кратко 15 слов]\n"
             f"CONTENT: [полный текст с тегами <p>, <b>]"
         )
         raw_content = await mm.generate(prompt)
+        
         if "Ошибка" in raw_content: return JSONResponse(status_code=500, content={"message": raw_content})
         
-        res_excerpt = "Интересная статья об ИИ и будущем."
+        # Парсинг
+        res_excerpt = "Интересный материал об ИИ."
         res_content = raw_content
-        if "EXCERPT:" in raw_content and "CONTENT:" in raw_content:
-            res_excerpt = raw_content.split("EXCERPT:")[1].split("CONTENT:")[0].strip()
+        if "CONTENT:" in raw_content:
+            res_excerpt = raw_content.split("CONTENT:")[0].replace("EXCERPT:", "").strip()
             res_content = raw_content.split("CONTENT:")[1].strip().replace("```html", "").replace("```", "")
 
         new_slug = slugify(req.message)
@@ -223,14 +224,13 @@ async def api_admin_gen(req: AdminGenRequest):
         conn.execute('''INSERT INTO posts 
             (title, slug, image, excerpt, content, date, author, category, color) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-            (req.message, new_slug, dynamic_img, res_excerpt, res_content, 
+            (req.message, new_slug, img_url, res_excerpt, res_content, 
              datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
         conn.commit()
+        conn.close()
         return {"status": "success", "slug": new_slug}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-    finally:
-        if conn: conn.close()
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
