@@ -185,52 +185,6 @@ class AdminGenRequest(BaseModel):
 
 # --- МАРШРУТЫ САЙТА (ИСПРАВЛЕНЫ) ---
 
-def get_posts_from_folder():
-    posts = []
-    if not os.path.exists(BLOG_FOLDER):
-        return posts
-    
-    files = [f for f in os.listdir(BLOG_FOLDER) if f.endswith('.html')]
-    
-    for filename in files:
-        try:
-            # Принудительно делаем имя файла строкой
-            file_str = str(filename)
-            path = os.path.join(BLOG_FOLDER, file_str)
-            
-            with open(path, 'r', encoding='utf-8') as f:
-                lines = [line.strip() for line in f.readlines()]
-            
-            if len(lines) >= 2:
-                title = lines[0]
-                image_url = lines[1]
-                
-                # Если во второй строке не ссылка, создаем заглушку
-                if not image_url.startswith("http"):
-                    image_url = f"https://loremflickr.com/800/600/ai?lock={abs(hash(file_str)) % 1000}"
-                    content_raw = "\n".join(lines[1:])
-                else:
-                    content_raw = "\n".join(lines[2:])
-
-                # Чистим превью от тегов для главной страницы
-                excerpt = content_raw[:150].replace('<h2>', '').replace('<p>', '').strip() + "..."
-                
-                posts.append({
-                    "title": title,
-                    "image": image_url,
-                    "content": content_raw,
-                    "excerpt": excerpt,
-                    "slug": file_str,
-                    "date": "2024",
-                    "category": "Нейросети"
-                })
-        except Exception as e:
-            print(f"Ошибка файла {filename}: {e}")
-            
-    # Сортировка (безопасная)
-    posts.sort(key=lambda x: os.path.getmtime(os.path.join(BLOG_FOLDER, str(x['slug']))), reverse=True)
-    return posts
-
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     conn = sqlite3.connect(DB_PATH)
@@ -243,7 +197,7 @@ async def home(request: Request):
         request=request, 
         name="index.html", 
         context={"posts": all_posts[:15]}
- 
+    )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
@@ -256,42 +210,20 @@ async def blog_list(request: Request):
         request=request, 
         name="blog_index.html", 
         context={"posts": all_posts, "is_single": False}
+    )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # 1. Защита от ошибки: принудительно превращаем slug в строку
-    # Это уберет ошибку "unhashable type: 'dict'"
-    safe_slug = str(slug)
-    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    # Используем safe_slug для запроса
-    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (safe_slug,)).fetchone()
+    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
     conn.close()
-
-    # 2. Если в базе нет, ищем в списке BLOG_POSTS (ваши 15 статей)
-    post = None
-    if db_post:
-        post = dict(db_post)
-    else:
-        # Ищем в локальном списке (ваши файлы/память)
-        post = next((p for p in BLOG_POSTS if p["slug"] == safe_slug), None)
-
-    if not post:
-        raise HTTPException(status_code=404, detail="Статья не найдена")
-
-    # 3. Исправляем "простыню" текста (простой перевод строк в абзацы)
-    if "content" in post and post["content"]:
-        # Заменяем переносы на HTML теги, чтобы текст не слипался
-        post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
-
-    # 4. Возвращаем ответ
-    # ВАЖНО: Проверьте, что после True стоят '}' и ')'
+    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
+    if not post: raise HTTPException(status_code=404)
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
         context={"posts": [post], "is_single": True}
-    )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
