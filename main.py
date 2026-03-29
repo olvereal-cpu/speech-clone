@@ -29,10 +29,11 @@ SITE_URL = "https://speechclone.online"
 class ModelManager:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash') # Стабильная версия
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
     async def generate(self, prompt):
         try:
+            # Запуск в потоке, так как библиотека genai синхронная
             resp = await asyncio.to_thread(self.model.generate_content, prompt)
             return resp.text if resp else ""
         except Exception as e:
@@ -68,7 +69,8 @@ def init_db():
     conn.execute('''CREATE TABLE IF NOT EXISTS posts 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
                      excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def slugify(text):
     text = re.sub(r'[*_#]', '', text)
@@ -102,9 +104,11 @@ def get_posts_from_folder():
 def get_merged_posts():
     all_posts = []
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
         db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
-        all_posts = [dict(p) for p in db_data]; conn.close()
+        all_posts = [dict(p) for p in db_data]
+        conn.close()
     except: pass
     all_posts += get_posts_from_folder()
     return all_posts
@@ -133,14 +137,22 @@ async def pre_check(q: PreCheckoutQuery): await bot.answer_pre_checkout_query(q.
 @dp.callback_query(F.data.startswith("v_"))
 async def set_v(call: types.CallbackQuery):
     v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
-    conn = sqlite3.connect(DB_PATH); conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id)); conn.commit(); conn.close()
-    await call.message.answer(f"✅ Голос: {v_id}"); await call.answer()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
+    conn.commit()
+    conn.close()
+    await call.message.answer(f"✅ Голос: {v_id}")
+    await call.answer()
 
 @dp.message(F.text)
 async def tts_msg(message: types.Message):
     if message.text.startswith("/"): return
-    conn = sqlite3.connect(DB_PATH); res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone(); v_id = res[0] if res else "ru-RU-DmitryNeural"; conn.close()
-    fid = f"{uuid.uuid4()}.mp3"; path = os.path.join(AUDIO_DIR, fid)
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
+    v_id = res[0] if res else "ru-RU-DmitryNeural"
+    conn.close()
+    fid = f"{uuid.uuid4()}.mp3"
+    path = os.path.join(AUDIO_DIR, fid)
     await edge_tts.Communicate(message.text, v_id).save(path)
     await message.answer_audio(audio=FSInputFile(path), reply_markup=InlineKeyboardBuilder().button(text="📥 Скачать", url=f"{SITE_URL}/wait-download?file={fid}").as_markup())
 
@@ -192,12 +204,13 @@ async def api_gen(req: GenReq):
         content_html = markdown.markdown(content_raw)
         excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
         slug = slugify(title)
-        img = f"https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800"
+        img = "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800"
         
         conn = sqlite3.connect(DB_PATH)
         conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
                      (title, slug, img, excerpt, content_html, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
-        conn.commit(); conn.close()
+        conn.commit()
+        conn.close()
         return {"status": "success", "slug": slug}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -211,25 +224,22 @@ async def dl(file: str):
     p = os.path.join(AUDIO_DIR, file)
     return FileResponse(p, filename="speechclone.mp3") if os.path.exists(p) else HTMLResponse("404", 404)
 
-# ИСПРАВЛЕННЫЙ РОУТ СТАТИЧЕСКИХ СТРАНИЦ
 @app.get("/{path}", response_class=HTMLResponse)
 async def static_pages(request: Request, path: str):
-    # Защита от запросов типа favicon.ico или других файлов с точкой
     if "." in path: 
         raise HTTPException(status_code=404)
-    
     valid_pages = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
-    
     if path in valid_pages:
-        # ВАЖНО: Сначала имя файла, потом словарь контекста!
         return templates.TemplateResponse(f"{path}.html", {"request": request})
-    
     raise HTTPException(status_code=404)
 
 @app.on_event("startup")
 async def startup():
+    # Очистка старых соединений с Telegram, чтобы избежать ConflictError
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
+
 
 
 
