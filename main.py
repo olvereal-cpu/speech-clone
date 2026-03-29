@@ -47,7 +47,7 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-BLOG_DIR = os.path.join(BASE_DIR, "blog")
+BLOG_DIR = os.path.join(BASE_DIR, "blog") # Папка со статьями
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_DIR, exist_ok=True)
@@ -77,20 +77,29 @@ def slugify(text):
 
 def get_posts_from_folder():
     folder_posts = []
-    if not os.path.exists(BLOG_DIR): return []
-    files = [f for f in os.listdir(BLOG_DIR) if f.endswith((".html", ".txt", ".md"))]
+    # Используем абсолютный путь для надежности
+    target_dir = os.path.abspath(BLOG_DIR)
+    if not os.path.exists(target_dir): return []
+    
+    files = [f for f in os.listdir(target_dir) if f.endswith((".html", ".txt", ".md"))]
     for fn in sorted(files, reverse=True):
         try:
-            path = os.path.join(BLOG_DIR, fn)
+            path = os.path.join(target_dir, fn)
             with open(path, "r", encoding="utf-8") as f:
                 raw = f.read()
             slug = fn.rsplit(".", 1)[0]
-            title = slug.replace("-", " ").replace("_", " ").capitalize()
+            # Убираем разметку из заголовка
+            title = slug.replace("-", " ").replace("_", " ").replace("*", "").capitalize()
             content_html = markdown.markdown(raw) if not fn.endswith(".html") else raw
-            excerpt = re.sub(r'<[^>]+>', '', content_html)[:150].strip() + "..."
+            # Чистим анонс от тегов и звезд
+            excerpt = re.sub(r'<[^>]+>', '', content_html)
+            excerpt = excerpt.replace("*", "").replace("#", "").strip()[:150] + "..."
+            
             folder_posts.append({
-                "title": title, "slug": slug, "image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800",
-                "excerpt": excerpt, "content": content_html, "date": "Архив", "author": "Система", "category": "Блог", "color": "blue"
+                "title": title, "slug": slug, 
+                "image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800",
+                "excerpt": excerpt, "content": content_html, "date": "Архив", 
+                "author": "Система", "category": "Блог", "color": "blue"
             })
         except: continue
     return folder_posts
@@ -98,18 +107,20 @@ def get_posts_from_folder():
 def get_merged_posts():
     all_posts = []
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
         db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
-        all_posts = [dict(p) for p in db_data]
-        conn.close()
+        all_posts = [dict(p) for p in db_data]; conn.close()
     except: pass
+    
     all_posts += get_posts_from_folder()
+    
     if not all_posts:
         all_posts.append({
-            "title": "Статей пока нет", "slug": "welcome", "image": "https://images.unsplash.com/photo-1618401471353-b98aade25588?q=80&w=800",
-            "excerpt": "База данных и папка 'blog' пусты.", "content": "Добавьте посты через админку.",
-            "date": datetime.now().strftime("%d.%m.%Y"), "author": "Admin", "category": "Инфо", "color": "red"
+            "title": "Статей пока нет", "slug": "welcome", 
+            "image": "https://images.unsplash.com/photo-1618401471353-b98aade25588?q=80&w=800",
+            "excerpt": "Блог пуст. Добавьте файлы в папку blog или используйте админку.", 
+            "content": "Ожидаем контент...", "date": datetime.now().strftime("%d.%m.%Y"), 
+            "author": "Admin", "category": "Инфо", "color": "red"
         })
     return all_posts
 
@@ -186,18 +197,28 @@ async def admin_page(request: Request):
 
 @app.post("/api/admin/generate-post")
 async def api_gen(req: GenReq):
-    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE: текст KEYWORD: текст CONTENT: текст"
+    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE: текст KEYWORD: одно_слово CONTENT: текст"
     raw = await mm.generate(prompt)
     if not raw: return JSONResponse(status_code=500, content={"error": "No AI response"})
     try:
-        title = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip() if "TITLE:" in raw else req.message
-        kw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip() if "KEYWORD:" in raw else "ai"
+        title_raw = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip()
+        title = title_raw.replace("*", "").replace("#", "") # Чистим заголовок
+        
+        kw_raw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip()
+        kw = kw_raw.replace("*", "")
+        
         content_raw = raw.split("CONTENT:")[1].strip() if "CONTENT:" in raw else raw
-        content = markdown.markdown(content_raw); slug = slugify(title)
-        img = f"https://images.unsplash.com/featured/?{kw}&sig={uuid.uuid4().hex[:5]}"
+        content_html = markdown.markdown(content_raw)
+        
+        # Чистый анонс без Markdown
+        excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
+        
+        slug = slugify(title)
+        img = f"https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800"
+        
         conn = sqlite3.connect(DB_PATH)
         conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
-                     (title, slug, img, content_raw[:150].strip() + "...", content, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
+                     (title, slug, img, excerpt, content_html, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
         conn.commit(); conn.close()
         return {"status": "success", "slug": slug}
     except Exception as e:
@@ -223,6 +244,8 @@ async def static_pages(request: Request, path: str):
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
+
 
 
 
