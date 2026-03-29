@@ -3,10 +3,9 @@ import uuid
 import asyncio
 import sqlite3
 import edge_tts
-import re
 import google.generativeai as genai
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +15,7 @@ from pydantic import BaseModel
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import FSInputFile, LabeledPrice, PreCheckoutQuery
+from aiogram.types import LabeledPrice, PreCheckoutQuery
 
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
@@ -28,19 +27,17 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI 3.1 FLASH LITE ---
 class ModelManager:
     def __init__(self, api_key):
-        self.api_key = api_key
-        # Используем актуальную модель
-        self.target_model = 'gemini-3.1-flash-lite-preview' 
+        genai.configure(api_key=api_key)
+        self.target_model = 'gemini-3.1-flash-lite-preview'
         self.safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
-        genai.configure(api_key=self.api_key)
         self.active_model = genai.GenerativeModel(
             model_name=self.target_model, 
             safety_settings=self.safety_settings
@@ -48,7 +45,6 @@ class ModelManager:
 
     async def generate(self, prompt):
         try:
-            # Вызываем через to_thread для асинхронности
             resp = await asyncio.to_thread(self.active_model.generate_content, prompt)
             return resp.text if resp else "Ошибка: ИИ не вернул ответ"
         except Exception as e:
@@ -58,14 +54,21 @@ mm = ModelManager(GEMINI_API_KEY)
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА ---
+# --- ГОЛОСА И КОНТЕНТ ---
+VOICES = {
+    "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", 
+    "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
+    "🇰🇿 Даулет": "kk-KZ-DauletNeural", 
+    "🇺🇸 Guy (EN)": "en-US-GuyNeural"
+}
+
 BLOG_POSTS = [
     {
         "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
@@ -80,11 +83,6 @@ BLOG_POSTS = [
         "content": "<p>Создание подкаста всегда было трудоемким процессом...</p>"
     }
 ]
-
-VOICES = {
-    "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇺🇸 Guy (EN)": "en-US-GuyNeural"
-}
 
 # --- БД С АВТО-МИГРАЦИЕЙ ---
 def init_db():
@@ -121,8 +119,7 @@ async def check_sub(uid):
 async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2)
-    kb.row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
+    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
     await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
 
 @dp.callback_query(F.data == "buy_stars")
@@ -137,14 +134,19 @@ async def pre_checkout(query: PreCheckoutQuery):
 @dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
     v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
-    conn = sqlite3.connect(DB_PATH); conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id)); conn.commit(); conn.close()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
+    conn.commit(); conn.close()
     await call.message.answer("✅ Голос установлен!"); await call.answer()
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): return
     try:
-        conn = sqlite3.connect(DB_PATH); res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone(); v_id = res[0] if res else "ru-RU-DmitryNeural"; conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
+        v_id = res[0] if res else "ru-RU-DmitryNeural"
+        conn.close()
         fid = f"{uuid.uuid4()}.mp3"; path = os.path.join(AUDIO_DIR, fid)
         await edge_tts.Communicate(message.text, v_id).save(path)
         kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ", url=f"{SITE_URL}/wait-download?file={fid}")
@@ -158,14 +160,12 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: str = None
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
 class KeyCheck(BaseModel): key: str
 class AdminGenRequest(BaseModel): 
     message: str
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
-
-# --- МАРШРУТЫ ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -183,33 +183,21 @@ async def blog_list(request: Request):
 
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
-    conn = None
     try:
         prompt = f"Напиши интересную статью на тему: {req.message}. Используй теги <p>, <b>. Без Markdown!"
         raw_content = await mm.generate(prompt)
-        
-        if "Ошибка" in raw_content:
-            return JSONResponse(status_code=500, content={"message": raw_content})
-            
         clean_content = raw_content.replace("```html", "").replace("```", "").strip()
         new_slug = f"post-{uuid.uuid4().hex[:6]}"
-
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        cursor = conn.cursor()
-        
-        cursor.execute('''INSERT INTO posts 
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''INSERT INTO posts 
             (title, slug, image, excerpt, content, date, author, category, color) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
             (req.message, new_slug, "https://images.unsplash.com/photo-1614064641935-4476e83bb023", 
              "AI Generated Content", clean_content, datetime.now().strftime("%d.%m.%Y"), 
              "Gemini AI", req.category, req.color))
-        
-        conn.commit()
+        conn.commit(); conn.close()
         return {"status": "success", "slug": new_slug}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-    finally:
-        if conn: conn.close()
+    except Exception as e: return JSONResponse(status_code=500, content={"message": str(e)})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
@@ -233,11 +221,7 @@ async def verify_key(data: KeyCheck):
     return {"success": False}
 
 @app.get("/wait-download", response_class=HTMLResponse)
-async def wait_page(request: Request, file: str, key: str = None):
-    if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
-        file_path = os.path.join(AUDIO_DIR, file)
-        if os.path.exists(file_path):
-            return FileResponse(path=file_path, filename="speechclone.mp3")
+async def wait_page(request: Request, file: str):
     return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
 
 @app.get("/download")
@@ -263,7 +247,9 @@ async def api_generate_web(r: TTSRequest):
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
-    asyncio.create_task(dp.start_polling(bot, skip_updates=True))
+    asyncio.create_task(dp.start_polling(bot))
+
+
 
 
 
