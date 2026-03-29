@@ -228,6 +228,8 @@ async def blog_list(request: Request):
     all_posts = get_posts_from_folder()
     return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": all_posts, "is_single": False})
 
+
+
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     # Убеждаемся, что расширение .html есть
@@ -239,27 +241,38 @@ async def read_post(request: Request, slug: str):
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            lines = [line.strip() for line in f.readlines()]
+            lines = f.readlines()
             
-        # Проверяем, что в файле достаточно строк
-        if len(lines) < 3:
-            # Если файл "битый", пробуем создать данные на лету
-            title = lines[0] if len(lines) > 0 else "Без названия"
-            image = f"https://loremflickr.com/800/600/music?lock={abs(hash(filename)) % 1000}"
-            content = lines[1] if len(lines) > 1 else ""
-        else:
-            title = lines[0]
-            image = lines[1]
-            content = "\n".join(lines[2:])
+        if not lines: raise HTTPException(status_code=500, detail="Файл пуст")
 
-        # Если во второй строке не ссылка, а текст, заменяем на рабочую ссылку
-        if not image.startswith("http"):
-            image = f"https://loremflickr.com/800/600/ai?lock={abs(hash(filename)) % 1000}"
+        # 1. Заголовок - всегда первая строка
+        title = lines[0].strip()
+        
+        # 2. ФИКСИРУЕМ КАРТИНКУ (если её нет во 2-й строке)
+        # Хешируем имя файла, чтобы lock всегда был одинаковым для этой статьи
+        img_id = abs(hash(filename)) % 1000
+        # Определяем категорию по названию файла (например, ai-voice -> ai)
+        category = filename.split('-')[0] if '-' in filename else 'tech'
+        
+        # Картинка теперь гарантированно будет и не будет меняться
+        image_url = f"https://loremflickr.com/800/600/{category}?lock={img_id}"
+
+        # 3. ФОРМАТИРУЕМ ТЕКСТ (делаем абзацы)
+        raw_body = "".join(lines[1:]) # Весь текст кроме заголовка
+        
+        # Очищаем от старых тегов, если они вдруг есть
+        clean_body = re.sub('<[^<]+?>', '', raw_body)
+        
+        # Разбиваем текст на абзацы по переносу строки
+        paragraphs = [p.strip() for p in clean_body.split('\n') if p.strip()]
+        
+        # Обертываем каждый абзац в тег <p>
+        formatted_content = "".join(f"<p style='margin-bottom: 1.2rem;'>{p}</p>" for p in paragraphs)
 
         post = {
             "title": title,
-            "image": image,
-            "content": content
+            "image": image_url,
+            "content": formatted_content
         }
 
         return templates.TemplateResponse(
@@ -269,7 +282,7 @@ async def read_post(request: Request, slug: str):
         )
     except Exception as e:
         print(f"Ошибка при открытии статьи: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка чтения файла")
+        raise HTTPException(status_code=500, detail=f"Ошибка чтения: {str(e)}")
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
