@@ -190,32 +190,45 @@ def get_posts_from_folder():
     if not os.path.exists(BLOG_FOLDER):
         return posts
     
-    # Читаем все .html файлы
     files = [f for f in os.listdir(BLOG_FOLDER) if f.endswith('.html')]
     
     for filename in files:
         try:
-            with open(os.path.join(BLOG_FOLDER, filename), 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                if len(lines) >= 3:
-                    title = lines[0].strip()
-                    image_url = lines[1].strip()
-                    content = "".join(lines[2:])
-                    # Делаем короткое превью для главной
-                    excerpt = content[:200].replace('<h2>', '').replace('<p>', '')[:150] + "..."
-                    
-                    posts.append({
-                        "title": title,
-                        "image": image_url,
-                        "content": content,
-                        "excerpt": excerpt,
-                        "slug": filename # передаем имя файла целиком
-                    })
-        except Exception as e:
-            print(f"Ошибка чтения файла {filename}: {e}")
+            # Принудительно делаем имя файла строкой
+            file_str = str(filename)
+            path = os.path.join(BLOG_FOLDER, file_str)
             
-    # Сортируем: новые файлы (по дате создания) будут первыми
-    posts.sort(key=lambda x: os.path.getmtime(os.path.join(BLOG_FOLDER, x['slug'])), reverse=True)
+            with open(path, 'r', encoding='utf-8') as f:
+                lines = [line.strip() for line in f.readlines()]
+            
+            if len(lines) >= 2:
+                title = lines[0]
+                image_url = lines[1]
+                
+                # Если во второй строке не ссылка, создаем заглушку
+                if not image_url.startswith("http"):
+                    image_url = f"https://loremflickr.com/800/600/ai?lock={abs(hash(file_str)) % 1000}"
+                    content_raw = "\n".join(lines[1:])
+                else:
+                    content_raw = "\n".join(lines[2:])
+
+                # Чистим превью от тегов для главной страницы
+                excerpt = content_raw[:150].replace('<h2>', '').replace('<p>', '').strip() + "..."
+                
+                posts.append({
+                    "title": title,
+                    "image": image_url,
+                    "content": content_raw,
+                    "excerpt": excerpt,
+                    "slug": file_str,
+                    "date": "2024",
+                    "category": "Нейросети"
+                })
+        except Exception as e:
+            print(f"Ошибка файла {filename}: {e}")
+            
+    # Сортировка (безопасная)
+    posts.sort(key=lambda x: os.path.getmtime(os.path.join(BLOG_FOLDER, str(x['slug']))), reverse=True)
     return posts
 
 @app.get("/", response_class=HTMLResponse)
