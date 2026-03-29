@@ -5,6 +5,7 @@ import sqlite3
 import json
 import edge_tts
 import google.generativeai as genai
+import markdown
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
@@ -232,7 +233,7 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # Убеждаемся, что расширение .html есть
+    # 1. Формируем путь к файлу
     filename = slug if slug.endswith('.html') else f"{slug}.html"
     file_path = os.path.join(BLOG_FOLDER, filename)
     
@@ -242,47 +243,41 @@ async def read_post(request: Request, slug: str):
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-            
-        if not lines: raise HTTPException(status_code=500, detail="Файл пуст")
 
-        # 1. Заголовок - всегда первая строка
+        if len(lines) < 2:
+            raise HTTPException(status_code=500, detail="Файл поврежден")
+
+        # 2. Чистим данные
         title = lines[0].strip()
         
-        # 2. ФИКСИРУЕМ КАРТИНКУ (если её нет во 2-й строке)
-        # Хешируем имя файла, чтобы lock всегда был одинаковым для этой статьи
-        img_id = abs(hash(filename)) % 1000
-        # Определяем категорию по названию файла (например, ai-voice -> ai)
-        category = filename.split('-')[0] if '-' in filename else 'tech'
-        
-        # Картинка теперь гарантированно будет и не будет меняться
-        image_url = f"https://loremflickr.com/800/600/{category}?lock={img_id}"
+        # Проверяем вторую строку на наличие ссылки
+        potential_img = lines[1].strip()
+        if potential_img.startswith("http"):
+            image_url = potential_img
+            content_raw = "".join(lines[2:])
+        else:
+            # Если ссылки нет, генерируем её по названию (Способ 1)
+            img_id = abs(hash(filename)) % 1000
+            image_url = f"https://loremflickr.com/800/600/ai,tech?lock={img_id}"
+            content_raw = "".join(lines[1:])
 
-        # 3. ФОРМАТИРУЕМ ТЕКСТ (делаем абзацы)
-        raw_body = "".join(lines[1:]) # Весь текст кроме заголовка
-        
-        # Очищаем от старых тегов, если они вдруг есть
-        clean_body = re.sub('<[^<]+?>', '', raw_body)
-        
-        # Разбиваем текст на абзацы по переносу строки
-        paragraphs = [p.strip() for p in clean_body.split('\n') if p.strip()]
-        
-        # Обертываем каждый абзац в тег <p>
-        formatted_content = "".join(f"<p style='margin-bottom: 1.2rem;'>{p}</p>" for p in paragraphs)
+        # 3. ПРЕВРАЩАЕМ МАРКДАУН В HTML
+        # Это уберет видимые ## и сделает текст чистым
+        formatted_html = markdown.markdown(content_raw)
 
         post = {
             "title": title,
             "image": image_url,
-            "content": formatted_content
+            "content": formatted_html
         }
 
         return templates.TemplateResponse(
-            request=request, 
-            name="blog_index.html", 
-            context={"posts": [post], "is_single": True}
+            "blog_index.html", 
+            {"request": request, "posts": [post], "is_single": True}
         )
     except Exception as e:
-        print(f"Ошибка при открытии статьи: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения: {str(e)}")
+        print(f"Ошибка: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка обработки статьи")
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
