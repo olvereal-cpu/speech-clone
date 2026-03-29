@@ -53,7 +53,20 @@ class ModelManager:
             return f"Ошибка ИИ: {str(e)}"
 
 mm = ModelManager(GEMINI_API_KEY)
+import re
 
+def slugify(text: str) -> str:
+    """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
+    chars = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+        'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
+    text = text.lower().strip()
+    result = "".join(chars.get(c, c) for c in text)
+    result = re.sub(r'[^a-z0-9]+', '-', result)
+    return result.strip('-')
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
@@ -247,53 +260,45 @@ async def admin_gen_page(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Улучшенный промпт для SEO, структуры и качественного подбора фото
+        # 1. Промпт для качественной SEO-структуры
         prompt = f"""
         Напиши профессиональную SEO-статью на тему: {req.message}.
-        Статья должна быть на русском языке, иметь четкую структуру.
+        Статья должна быть на русском языке.
         
-        Верни ответ СТРОГО в формате JSON без разметки markdown:
+        Верни ответ СТРОГО в формате JSON:
         {{
-          "title": "Заголовок статьи",
-          "excerpt": "Краткий анонс для главной страницы (150-200 символов)",
-          "content": "Полный текст статьи. Обязательно используй HTML-теги: <h2> для подзаголовков, <p> для абзацев, <b> для акцентов.",
-          "photo_keyword": "one specific English noun for a relevant high-quality photo"
+          "title": "Заголовок статьи на русском",
+          "excerpt": "Краткий анонс (150-200 символов)",
+          "content": "Полный текст. Обязательно используй <h2> для подзаголовков и <p> для абзацев.",
+          "photo_keyword": "one specific English noun for a relevant photo"
         }}
         """
         
         raw_res = await mm.generate(prompt)
-        # Очистка от возможных артефактов markdown
         clean_json = raw_res.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
         
-        # Генерация URL и подготовка данных
-        new_slug = f"post-{uuid.uuid4().hex[:8]}"
-        
-        # АЛЬТЕРНАТИВА UNSPLASH: LoremFlickr (бесплатно, быстро, по ключевым словам)
-        # Ключевое слово из ИИ подставляется в конец URL
-        keyword = data.get('photo_keyword', 'technology').lower()
-        img_url = f"https://loremflickr.com/800/600/{keyword}"
-        
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute('''INSERT INTO posts 
-            (title, slug, image, excerpt, content, date, author, category, color) 
-            VALUES (?,?,?,?,?,?,?,?,?)''', 
-            (
-                data['title'], 
-                new_slug, 
-                img_url, 
-                data['excerpt'], 
-                data['content'], 
-                datetime.now().strftime("%d.%m.%Y"), 
-                "Gemini AI", 
-                req.category, 
-                req.color
-            )
-        )
-        conn.commit()
-        conn.close()
-        
-        return {"status": "success", "slug": new_slug}
+        # 2. Генерируем ЧПУ (транслит) и имя файла
+        slug_name = slugify(data['title'])
+        filename = f"{slug_name}.html"
+        file_path = os.path.join(BLOG_FOLDER, filename)
+
+        # 3. Фиксируем картинку (Способ 1 с lock)
+        # Хешируем имя файла, чтобы получить уникальное ID для картинки
+        img_id = abs(hash(filename)) % 1000
+        keyword = data.get('photo_keyword', 'tech').lower()
+        # Эта ссылка не будет меняться при перезагрузке страницы
+        img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
+
+        # 4. Сохраняем статью в файл (а не в базу)
+        # Формат: Первая строка - Заголовок, Вторая - Ссылка на картинку, Далее - Контент
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(f"{data['title']}\n")
+            f.write(f"{img_url}\n")
+            f.write(f"{data['content']}")
+            
+        return {"status": "success", "slug": filename, "url": f"/blog/{filename}"}
+
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
