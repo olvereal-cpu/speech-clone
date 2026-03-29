@@ -63,7 +63,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# --- СТАТИЧЕСКИЕ ДАННЫЕ БЛОГА ---
+# --- ДАННЫЕ БЛОГА ---
 BLOG_POSTS = [
     {
         "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
@@ -167,7 +167,7 @@ class AdminGenRequest(BaseModel):
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
 
-# --- МАРШРУТЫ САЙТА ---
+# --- МАРШРУТЫ САЙТА (ИСПРАВЛЕНЫ) ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -176,8 +176,12 @@ async def home(request: Request):
     db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall()]
     conn.close()
     all_posts = db_posts + BLOG_POSTS
-    # ПРАВКА: Передаем request первым аргументом в контекст или позиционно
-    return templates.TemplateResponse("index.html", {"request": request, "posts": all_posts[:15]})
+    # ИСПРАВЛЕНИЕ: Используем именованные параметры request и name
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"posts": all_posts[:15]}
+    )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
@@ -186,7 +190,11 @@ async def blog_list(request: Request):
     db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
     conn.close()
     all_posts = db_posts + BLOG_POSTS
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": all_posts, "is_single": False})
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": all_posts, "is_single": False}
+    )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
@@ -196,23 +204,27 @@ async def read_post(request: Request, slug: str):
     conn.close()
     post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
     if not post: raise HTTPException(status_code=404)
-    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [post], "is_single": True})
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": [post], "is_single": True}
+    )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
-    return templates.TemplateResponse("voices.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="voices.html")
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
-    return templates.TemplateResponse("premium.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="premium.html")
 
 @app.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request):
-    return templates.TemplateResponse("about.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="about.html")
 
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_gen_page(request: Request):
-    return templates.TemplateResponse("admin_generate.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="admin_generate.html")
 
 # --- API ---
 
@@ -241,11 +253,11 @@ async def verify_key(data: KeyCheck):
 
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait_page(request: Request, file: str, key: str = None):
-    if key and key.upper() in [k.upper() for k in PREMIUM_KEYS]:
-        path = os.path.join(AUDIO_DIR, file)
-        if os.path.exists(path):
-            return FileResponse(path=path, filename="speechclone.mp3")
-    return templates.TemplateResponse("wait_page.html", {"request": request, "file": file})
+    return templates.TemplateResponse(
+        request=request, 
+        name="wait_page.html", 
+        context={"file": file}
+    )
 
 @app.get("/download")
 async def download_file(file: str):
