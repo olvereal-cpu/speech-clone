@@ -70,8 +70,6 @@ mm = ModelManager(GEMINI_API_KEY)
 
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BLOG_FOLDER = os.path.join(BASE_DIR, "blog")
-os.makedirs(BLOG_FOLDER, exist_ok=True)
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
@@ -184,7 +182,6 @@ class AdminGenRequest(BaseModel):
     color: Optional[str] = "blue"
 
 # --- МАРШРУТЫ САЙТА (ИСПРАВЛЕНЫ) ---
-
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     conn = sqlite3.connect(DB_PATH)
@@ -263,64 +260,47 @@ async def admin_gen_page(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # 1. Проверяем/создаем папку блога прямо перед записью
-        if not os.path.exists(BLOG_FOLDER):
-            os.makedirs(BLOG_FOLDER, exist_ok=True)
-
-        # 2. Промпт с требованием чистого JSON
+        # 1. Промпт для качественной SEO-структуры
         prompt = f"""
         Напиши профессиональную SEO-статью на тему: {req.message}.
+        Статья должна быть на русском языке.
+        
         Верни ответ СТРОГО в формате JSON:
         {{
-          "title": "Заголовок статьи",
-          "excerpt": "Краткий анонс",
-          "content": "Текст с тегами <h2> и <p>",
-          "photo_keyword": "english_keyword"
+          "title": "Заголовок статьи на русском",
+          "excerpt": "Краткий анонс (150-200 символов)",
+          "content": "Полный текст. Обязательно используй <h2> для подзаголовков и <p> для абзацев.",
+          "photo_keyword": "one specific English noun for a relevant photo"
         }}
         """
         
         raw_res = await mm.generate(prompt)
-        
-        # 3. Улучшенная очистка JSON от мусора ИИ
-        clean_json = raw_res.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
+        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
         
-        # 4. Формируем имя файла через транслит
-        title_rus = data.get('title', 'bez-nazvaniya')
-        slug_name = slugify(title_rus)
-        
-        # Если вдруг заголовок пустой или slugify не сработал
-        if not slug_name:
-            slug_name = f"article-{uuid.uuid4().hex[:6]}"
-            
+        # 2. Генерируем ЧПУ (транслит) и имя файла
+        slug_name = slugify(data['title'])
         filename = f"{slug_name}.html"
         file_path = os.path.join(BLOG_FOLDER, filename)
 
-        # 5. Фиксируем картинку
+        # 3. Фиксируем картинку (Способ 1 с lock)
+        # Хешируем имя файла, чтобы получить уникальное ID для картинки
         img_id = abs(hash(filename)) % 1000
-        keyword = data.get('photo_keyword', 'technology').lower()
+        keyword = data.get('photo_keyword', 'tech').lower()
+        # Эта ссылка не будет меняться при перезагрузке страницы
         img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
 
-        # 6. Запись в файл (Заголовок | Картинка | Контент)
-        # Используем разделитель ||| для надежного чтения в будущем
+        # 4. Сохраняем статью в файл (а не в базу)
+        # Формат: Первая строка - Заголовок, Вторая - Ссылка на картинку, Далее - Контент
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
             f.write(f"{data['content']}")
             
-        print(f"Статья успешно создана: {filename}") # Увидите в логах Render
-        return {"status": "success", "slug": filename}
+        return {"status": "success", "slug": filename, "url": f"/blog/{filename}"}
 
-    except json.JSONDecodeError:
-        return JSONResponse(status_code=500, content={"status": "error", "message": "ИИ вернул некорректный формат данных. Попробуйте еще раз."})
     except Exception as e:
-        print(f"КРИТИЧЕСКАЯ ОШИБКА: {str(e)}") # Важно для логов!
-        return JSONResponse(status_code=500, content={"status": "error", "message": f"Ошибка сервера: {str(e)}"})
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
