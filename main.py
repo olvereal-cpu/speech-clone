@@ -167,27 +167,51 @@ async def api_chat(req: ChatReq):
     return {"reply": ans or "ИИ временно недоступен."}
 
 # --- АДМИНКА ---
+
+# 1. Страница админки (GET)
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_page(request: Request):
     return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
+
+# 2. Логика генерации (POST) - ТУТ БЫЛА ОШИБКА (пропущен декоратор)
+@app.post("/api/admin/generate-post")
 async def api_gen(req: GenReq):
     prompt = f"Напиши SEO статью про {req.message}. Формат TITLE:.. KEYWORD:.. CONTENT:.."
     raw = await mm.generate(prompt)
-    if not raw: return JSONResponse(500, {"error": "No AI response"})
+    
+    if not raw: 
+        return JSONResponse(status_code=500, content={"error": "No AI response"})
+    
     try:
+        # Безопасное извлечение данных
         title = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip() if "TITLE:" in raw else req.message
         kw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip() if "KEYWORD:" in raw else "ai"
-        content_raw = raw.split("CONTENT:")[1].strip() if "CONTENT:" in raw else raw
+        
+        if "CONTENT:" in raw:
+            content_raw = raw.split("CONTENT:")[1].strip()
+        else:
+            content_raw = raw
+            
         content = markdown.markdown(content_raw)
         slug = slugify(title)
         img = f"https://images.unsplash.com/featured/?{kw}&sig={uuid.uuid4().hex[:5]}"
+        
+        # Сохранение в БД
         conn = sqlite3.connect(DB_PATH)
-        conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
-                     (title, slug, img, content_raw[:150] + "...", content, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
-        conn.commit(); conn.close()
+        conn.execute('''INSERT INTO posts 
+                        (title, slug, image, excerpt, content, date, author, category, color) 
+                        VALUES (?,?,?,?,?,?,?,?,?)''', 
+                     (title, slug, img, content_raw[:150].strip() + "...", 
+                      content, datetime.now().strftime("%d.%m.%Y"), 
+                      "Gemini AI", req.category, req.color))
+        conn.commit()
+        conn.close()
+        
         return {"status": "success", "slug": slug}
+        
     except Exception as e:
-        return JSONResponse(500, {"error": str(e)})
+        print(f"Admin Gen Error: {e}") # Лог в консоль сервера
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- ВСПОМОГАТЕЛЬНЫЕ РОУТЫ ---
 @app.get("/wait-download", response_class=HTMLResponse)
