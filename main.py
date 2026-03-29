@@ -165,7 +165,7 @@ async def blog_one(request: Request, slug: str):
 # РОУТЫ МЕНЮ
 @app.get("/{path}")
 async def static_pages(request: Request, path: str):
-    valid = ["voices", "about", "instructions", "privacy", "disclaimer", "faq", "premium", "contact"]
+    valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact"]
     if path in valid: return templates.TemplateResponse(request, f"{path}.html", {"request": request})
     if path == "admin-generate": return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
     raise HTTPException(404)
