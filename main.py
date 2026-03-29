@@ -231,7 +231,9 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    filename = slug if slug.endswith('.html') else f"{slug}.html"
+    # Принудительно превращаем slug в строку, чтобы избежать ошибки unhashable type
+    safe_slug = str(slug)
+    filename = safe_slug if safe_slug.endswith('.html') else f"{safe_slug}.html"
     file_path = os.path.join(BLOG_FOLDER, filename)
     
     if not os.path.exists(file_path):
@@ -239,50 +241,67 @@ async def read_post(request: Request, slug: str):
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
+            # Читаем все строки и сразу убираем лишние пробелы по краям
+            lines = [line.strip() for line in f.readlines()]
 
         if not lines:
             raise ValueError("Файл пуст")
 
-        # Чистим заголовок
-        title = lines[0].strip()
+        # 1. Заголовок — всегда первая строка
+        title = lines[0]
         
-        # Проверяем, есть ли ссылка на картинку во второй строке
+        # 2. Логика определения картинки и начала контента
         image_url = ""
         content_start_index = 1
         
+        # Используем безопасную строку для генерации ID картинки
+        img_id = abs(hash(filename)) % 1000
+
         if len(lines) > 1:
-            second_line = lines[1].strip()
-            if second_line.startswith("http"):
-                image_url = second_line
+            # Если вторая строка — ссылка, берем её
+            if lines[1].startswith("http"):
+                image_url = lines[1]
                 content_start_index = 2
             else:
-                # Если ссылки нет, создаем её сами
-                image_url = f"https://loremflickr.com/800/600/tech?lock={abs(hash(filename)) % 1000}"
+                # Если второй строки нет или это текст, создаем ссылку сами
+                image_url = f"https://loremflickr.com/800/600/ai,tech?lock={img_id}"
                 content_start_index = 1
+        else:
+            image_url = f"https://loremflickr.com/800/600/tech?lock={img_id}"
 
-        # Собираем оставшийся текст и превращаем Markdown в HTML
-        raw_content = "".join(lines[content_start_index:])
-        # Это уберет решетки ## и сделает красивые заголовки и абзацы
-        html_content = markdown.markdown(raw_content)
+        # 3. Формируем контент
+        # Соединяем оставшиеся строки через двойной перенос для корректного Markdown
+        raw_content = "\n\n".join(lines[content_start_index:])
+        
+        # Превращаем Markdown в HTML (уберет решетки ## и сделает абзацы)
+        html_content = markdown.markdown(
+            raw_content, 
+            extensions=['extra', 'nl2br'] # nl2br помогает сохранять переносы строк
+        )
 
+        # Собираем данные для шаблона
         post = {
             "title": title,
             "image": image_url,
             "content": html_content,
-            "category": "Нейросети", # Заглушки, чтобы шаблон не ругался
+            "category": "Нейросети",
             "date": "2024",
-            "author": "Gemini AI"
+            "author": "Gemini AI",
+            "slug": filename
         }
 
         return templates.TemplateResponse(
             "blog_index.html", 
             {"request": request, "posts": [post], "is_single": True}
         )
+
     except Exception as e:
-        print(f"Ошибка обработки: {e}")
-        # Если всё совсем плохо, отдаем хотя бы заголовок
-        return HTMLResponse(content=f"<h1>Ошибка в структуре файла {filename}</h1><p>{str(e)}</p>", status_code=500)
+        # Логируем ошибку в консоль сервера для отладки
+        print(f"КРИТИЧЕСКАЯ ОШИБКА ОБРАБОТКИ: {str(e)}")
+        return HTMLResponse(
+            content=f"<h1>Ошибка в структуре файла</h1><p>{str(e)}</p>", 
+            status_code=500
+        )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
