@@ -76,52 +76,26 @@ def slugify(text):
     return res if len(res) > 2 else f"post-{uuid.uuid4().hex[:5]}"
 
 def get_posts_from_folder():
-    """Считывает все файлы из папки blog с проверкой существования"""
     folder_posts = []
-    # Важно: проверяем абсолютный путь
-    target_dir = os.path.join(BASE_DIR, "blog")
-    
-    if not os.path.exists(target_dir):
-        print(f"⚠️ ПАПКА НЕ НАЙДЕНА: {target_dir}")
-        return []
-
-    files = [f for f in os.listdir(target_dir) if f.endswith((".html", ".txt", ".md"))]
-    print(f"📂 Найдено файлов в blog: {len(files)}") # Увидишь в логах
-
+    if not os.path.exists(BLOG_DIR): return []
+    files = [f for f in os.listdir(BLOG_DIR) if f.endswith((".html", ".txt", ".md"))]
     for fn in sorted(files, reverse=True):
         try:
-            path = os.path.join(target_dir, fn)
+            path = os.path.join(BLOG_DIR, fn)
             with open(path, "r", encoding="utf-8") as f:
                 raw = f.read()
-            
             slug = fn.rsplit(".", 1)[0]
-            # Делаем красивый заголовок из имени файла
             title = slug.replace("-", " ").replace("_", " ").capitalize()
-            
-            # Конвертируем контент
-            content_html = markdown.markdown(raw) if fn.endswith((".md", ".txt")) else raw
-            
-            # Чистим текст для превью (excerpt)
-            clean_text = re.sub(r'<[^>]+>', '', content_html) # убираем HTML теги для превью
-            
+            content_html = markdown.markdown(raw) if not fn.endswith(".html") else raw
+            excerpt = re.sub(r'<[^>]+>', '', content_html)[:150].strip() + "..."
             folder_posts.append({
-                "title": title,
-                "slug": slug,
-                "image": f"https://images.unsplash.com/featured/?ai,technology&sig={slug}",
-                "excerpt": clean_text[:180].strip() + "...",
-                "content": content_html,
-                "date": "Архив",
-                "author": "Admin",
-                "category": "Блог",
-                "color": "blue"
+                "title": title, "slug": slug, "image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800",
+                "excerpt": excerpt, "content": content_html, "date": "Архив", "author": "Система", "category": "Блог", "color": "blue"
             })
-        except Exception as e:
-            print(f"❌ Ошибка чтения файла {fn}: {e}")
-            
+        except: continue
     return folder_posts
 
 def get_merged_posts():
-    """Объединяет данные из БД и папки blog"""
     all_posts = []
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -129,17 +103,15 @@ def get_merged_posts():
         db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
         all_posts = [dict(p) for p in db_data]
         conn.close()
-    except Exception as e:
-        print(f"⚠️ Ошибка БД: {e}")
-
-    # Добавляем посты из папки
-    folder_data = get_posts_from_folder()
-    return all_posts + folder_data
-
-def get_merged_posts():
-    conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]; conn.close()
-    return db_posts + get_posts_from_folder()
+    except: pass
+    all_posts += get_posts_from_folder()
+    if not all_posts:
+        all_posts.append({
+            "title": "Статей пока нет", "slug": "welcome", "image": "https://images.unsplash.com/photo-1618401471353-b98aade25588?q=80&w=800",
+            "excerpt": "База данных и папка 'blog' пусты.", "content": "Добавьте посты через админку.",
+            "date": datetime.now().strftime("%d.%m.%Y"), "author": "Admin", "category": "Инфо", "color": "red"
+        })
+    return all_posts
 
 init_db()
 
@@ -188,98 +160,69 @@ class GenReq(BaseModel): message: str; category: str = "ИИ"; color: str = "blu
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     posts = get_merged_posts()
-    return templates.TemplateResponse(request, "index.html", {"request": request, "posts": posts[:12]})
+    return templates.TemplateResponse("index.html", {"request": request, "posts": posts[:12]})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_all(request: Request):
     posts = get_merged_posts()
-    return templates.TemplateResponse(request, "blog_index.html", {"request": request, "posts": posts, "is_single": False})
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": posts, "is_single": False})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def blog_one(request: Request, slug: str):
     posts = get_merged_posts()
     p = next((x for x in posts if x['slug'] == slug), None)
     if not p: raise HTTPException(404)
-    return templates.TemplateResponse(request, "blog_index.html", {"request": request, "posts": [p], "is_single": True})
+    return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [p], "is_single": True})
 
-# --- ЧАТ БОТ API ---
 @app.post("/api/chat")
 async def api_chat(req: ChatReq):
     if not req.message.strip(): return {"reply": "Чем могу помочь?"}
     ans = await mm.generate(f"Ты ИИ-ассистент SpeechClone. Ответь кратко на русском: {req.message}")
     return {"reply": ans or "ИИ временно недоступен."}
 
-# --- АДМИНКА ---
-
-# 1. Страница админки (GET)
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
+    return templates.TemplateResponse("admin_generate.html", {"request": request})
 
-# 2. Логика генерации (POST) - ТУТ БЫЛА ОШИБКА (пропущен декоратор)
 @app.post("/api/admin/generate-post")
 async def api_gen(req: GenReq):
-    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE:.. KEYWORD:.. CONTENT:.."
+    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE: текст KEYWORD: текст CONTENT: текст"
     raw = await mm.generate(prompt)
-    
-    if not raw: 
-        return JSONResponse(status_code=500, content={"error": "No AI response"})
-    
+    if not raw: return JSONResponse(status_code=500, content={"error": "No AI response"})
     try:
-        # Безопасное извлечение данных
         title = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip() if "TITLE:" in raw else req.message
         kw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip() if "KEYWORD:" in raw else "ai"
-        
-        if "CONTENT:" in raw:
-            content_raw = raw.split("CONTENT:")[1].strip()
-        else:
-            content_raw = raw
-            
-        content = markdown.markdown(content_raw)
-        slug = slugify(title)
+        content_raw = raw.split("CONTENT:")[1].strip() if "CONTENT:" in raw else raw
+        content = markdown.markdown(content_raw); slug = slugify(title)
         img = f"https://images.unsplash.com/featured/?{kw}&sig={uuid.uuid4().hex[:5]}"
-        
-        # Сохранение в БД
         conn = sqlite3.connect(DB_PATH)
-        conn.execute('''INSERT INTO posts 
-                        (title, slug, image, excerpt, content, date, author, category, color) 
-                        VALUES (?,?,?,?,?,?,?,?,?)''', 
-                     (title, slug, img, content_raw[:150].strip() + "...", 
-                      content, datetime.now().strftime("%d.%m.%Y"), 
-                      "Gemini AI", req.category, req.color))
-        conn.commit()
-        conn.close()
-        
+        conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
+                     (title, slug, img, content_raw[:150].strip() + "...", content, datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
+        conn.commit(); conn.close()
         return {"status": "success", "slug": slug}
-        
     except Exception as e:
-        print(f"Admin Gen Error: {e}") # Лог в консоль сервера
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# --- ВСПОМОГАТЕЛЬНЫЕ РОУТЫ ---
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait(request: Request, file: str):
-    return templates.TemplateResponse(request, "wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
+    return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
 
 @app.get("/download")
 async def dl(file: str):
     p = os.path.join(AUDIO_DIR, file)
     return FileResponse(p, filename="speechclone.mp3") if os.path.exists(p) else HTMLResponse("404", 404)
 
-# --- ГЛОБАЛЬНЫЙ РОУТ ДЛЯ СТРАНИЦ ---
 @app.get("/{path}")
 async def static_pages(request: Request, path: str):
-    # Если путь ведет в блог, он обработается выше. Здесь только статика.
     valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
-    if path == "admin-generate": return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
-    if path in valid: return templates.TemplateResponse(request, f"{path}.html", {"request": request})
+    if path == "admin-generate": return templates.TemplateResponse("admin_generate.html", {"request": request})
+    if path in valid: return templates.TemplateResponse(f"{path}.html", {"request": request})
     raise HTTPException(404)
 
 @app.on_event("startup")
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
 
 
 
