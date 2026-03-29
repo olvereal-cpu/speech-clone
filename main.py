@@ -220,65 +220,42 @@ def get_posts_from_folder():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    all_posts = get_posts_from_folder()
-    # Передаем список постов в шаблон index.html
-    return templates.TemplateResponse(request=request, name="index.html", context={"posts": all_posts[:15]})
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall()]
+    conn.close()
+    all_posts = db_posts + BLOG_POSTS
+    # ИСПРАВЛЕНИЕ: Используем именованные параметры request и name
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"posts": all_posts[:15]}
+    )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    all_posts = get_posts_from_folder()
-    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": all_posts, "is_single": False})
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
+    conn.close()
+    all_posts = db_posts + BLOG_POSTS
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": all_posts, "is_single": False}
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # 1. Генерируем имя файла. Принудительно делаем slug строкой.
-    clean_slug = str(slug) 
-    filename = clean_slug if clean_slug.endswith('.html') else f"{clean_slug}.html"
-    file_path = os.path.join(BLOG_FOLDER, filename)
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Статья не найдена")
-
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-
-        if len(lines) < 2:
-            return HTMLResponse(content="Ошибка: Файл слишком короткий", status_code=500)
-
-        # 2. Чистим данные от лишних пробелов
-        title = lines[0].strip()
-        image_url = lines[1].strip()
-        
-        # Если во второй строке не ссылка, создаем её сами (простой фикс)
-        if not image_url.startswith("http"):
-            # Используем хеш от строки названия файла
-            img_id = abs(hash(str(filename))) % 1000
-            image_url = f"https://loremflickr.com/800/600/ai?lock={img_id}"
-            content_raw = "".join(lines[1:])
-        else:
-            content_raw = "".join(lines[2:])
-
-        # 3. Форматируем текст (простая замена переносов на абзацы)
-        # Это уберет "простыню" без использования сторонних библиотек
-        formatted_content = content_raw.replace("\n", "<br>").replace("<br><br>", "</p><p>")
-        final_html = f"<p>{formatted_content}</p>"
-
-        post = {
-            "title": title,
-            "image": image_url,
-            "content": final_html,
-            "category": "Нейросети",
-            "date": "2024",
-            "author": "Admin"
-        }
-
-        return templates.TemplateResponse(
-            "blog_index.html", 
-            {"request": request, "posts": [post], "is_single": True}
-        )
-    except Exception as e:
-        return HTMLResponse(content=f"Ошибка: {str(e)}", status_code=500)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
+    conn.close()
+    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
+    if not post: raise HTTPException(status_code=404)
+    return templates.TemplateResponse(
+        request=request, 
+        name="blog_index.html", 
+        context={"posts": [post], "is_single": True}
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
