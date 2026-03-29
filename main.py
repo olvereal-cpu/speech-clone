@@ -229,11 +229,8 @@ async def blog_list(request: Request):
     all_posts = get_posts_from_folder()
     return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": all_posts, "is_single": False})
 
-
-
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # 1. Формируем путь к файлу
     filename = slug if slug.endswith('.html') else f"{slug}.html"
     file_path = os.path.join(BLOG_FOLDER, filename)
     
@@ -244,31 +241,38 @@ async def read_post(request: Request, slug: str):
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
-        if len(lines) < 2:
-            raise HTTPException(status_code=500, detail="Файл поврежден")
+        if not lines:
+            raise ValueError("Файл пуст")
 
-        # 2. Чистим данные
+        # Чистим заголовок
         title = lines[0].strip()
         
-        # Проверяем вторую строку на наличие ссылки
-        potential_img = lines[1].strip()
-        if potential_img.startswith("http"):
-            image_url = potential_img
-            content_raw = "".join(lines[2:])
-        else:
-            # Если ссылки нет, генерируем её по названию (Способ 1)
-            img_id = abs(hash(filename)) % 1000
-            image_url = f"https://loremflickr.com/800/600/ai,tech?lock={img_id}"
-            content_raw = "".join(lines[1:])
+        # Проверяем, есть ли ссылка на картинку во второй строке
+        image_url = ""
+        content_start_index = 1
+        
+        if len(lines) > 1:
+            second_line = lines[1].strip()
+            if second_line.startswith("http"):
+                image_url = second_line
+                content_start_index = 2
+            else:
+                # Если ссылки нет, создаем её сами
+                image_url = f"https://loremflickr.com/800/600/tech?lock={abs(hash(filename)) % 1000}"
+                content_start_index = 1
 
-        # 3. ПРЕВРАЩАЕМ МАРКДАУН В HTML
-        # Это уберет видимые ## и сделает текст чистым
-        formatted_html = markdown.markdown(content_raw)
+        # Собираем оставшийся текст и превращаем Markdown в HTML
+        raw_content = "".join(lines[content_start_index:])
+        # Это уберет решетки ## и сделает красивые заголовки и абзацы
+        html_content = markdown.markdown(raw_content)
 
         post = {
             "title": title,
             "image": image_url,
-            "content": formatted_html
+            "content": html_content,
+            "category": "Нейросети", # Заглушки, чтобы шаблон не ругался
+            "date": "2024",
+            "author": "Gemini AI"
         }
 
         return templates.TemplateResponse(
@@ -276,8 +280,9 @@ async def read_post(request: Request, slug: str):
             {"request": request, "posts": [post], "is_single": True}
         )
     except Exception as e:
-        print(f"Ошибка: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка обработки статьи")
+        print(f"Ошибка обработки: {e}")
+        # Если всё совсем плохо, отдаем хотя бы заголовок
+        return HTMLResponse(content=f"<h1>Ошибка в структуре файла {filename}</h1><p>{str(e)}</p>", status_code=500)
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
