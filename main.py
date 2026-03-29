@@ -3,6 +3,7 @@ import uuid
 import asyncio
 import sqlite3
 import edge_tts
+import re
 import urllib.parse
 import google.generativeai as genai
 from datetime import datetime
@@ -27,6 +28,13 @@ CHANNEL_ID = "@speechclone"
 CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
+
+# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+def slugify(text):
+    chars = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya"}
+    text = text.lower()
+    for k, v in chars.items(): text = text.replace(k, v)
+    return re.sub(r'[^a-z0-9]+', '-', text).strip('-')
 
 # --- ИНИЦИАЛИЗАЦИЯ GEMINI ---
 class ModelManager:
@@ -79,27 +87,28 @@ BLOG_POSTS = [
     }
 ]
 
+# --- ПОЛНЫЙ СПИСОК ГОЛОСОВ ---
 VOICES = {
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇺🇸 Guy (EN)": "en-US-GuyNeural"
+    "🇰🇿 Айгуль": "kk-KZ-AigulNeural", "🇰🇿 Даулет": "kk-KZ-DauletNeural",
+    "🇺🇸 Jenny": "en-US-JennyNeural", "🇺🇸 Guy": "en-US-GuyNeural", "🇺🇸 Aria": "en-US-AriaNeural",
+    "🇺🇦 Поліна": "uk-UA-PolinaNeural", "🇺🇦 Остап": "uk-UA-OstapNeural",
+    "🇹🇷 Турецкий": "tr-TR-EmelNeural", "🇩🇪 Немецкий": "de-DE-KatjaNeural",
+    "🇫🇷 Французский": "fr-FR-DeniseNeural", "🇪🇸 Испанский": "es-ES-ElviraNeural", "🇵🇱 Польский": "pl-PL-ZofiaNeural"
 }
 
-# --- БД С АВТО-МИГРАЦИЕЙ ---
+# --- БД ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, voice TEXT DEFAULT "ru-RU-DmitryNeural")')
     conn.execute('''CREATE TABLE IF NOT EXISTS posts 
                     (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT, image TEXT, 
                      excerpt TEXT, content TEXT, date TEXT, author TEXT, category TEXT, color TEXT)''')
-    
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(posts)")
     cols = [c[1] for c in cursor.fetchall()]
-    if 'category' not in cols:
-        conn.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Технологии'")
-    if 'color' not in cols:
-        conn.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
-    
+    if 'category' not in cols: conn.execute("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT 'Технологии'")
+    if 'color' not in cols: conn.execute("ALTER TABLE posts ADD COLUMN color TEXT DEFAULT 'blue'")
     conn.commit()
     conn.close()
 
@@ -168,14 +177,16 @@ class AdminGenRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall(); conn.close()
-    all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
+    db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall(); conn.close()
+    # На главной строго 8 статей
+    all_posts = ([dict(p) for p in db_posts] + BLOG_POSTS)[:8]
     return templates.TemplateResponse(request, "index.html", {"posts": all_posts})
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     db_posts = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall(); conn.close()
+    # В блоге отображаем ВСЕ статьи
     all_posts = [dict(p) for p in db_posts] + BLOG_POSTS
     return templates.TemplateResponse(request, "blog_index.html", {"posts": all_posts, "is_single": False})
 
@@ -183,37 +194,37 @@ async def blog_list(request: Request):
 async def api_admin_gen(req: AdminGenRequest):
     conn = None
     try:
-        # 1. Генерируем ключевые слова для картинки
-        img_prompt = f"Provide 3 English keywords for Unsplash photo search for: {req.message}. Output only keywords separated by commas."
-        keywords = await mm.generate(img_prompt)
-        img_url = f"https://source.unsplash.com/featured/800x600?{urllib.parse.quote(keywords.strip())}"
+        # 1. Ключевое слово для фото
+        kw_prompt = f"Provide 1 English keyword for photo search for topic: {req.message}. ONLY WORD."
+        kw = await mm.generate(kw_prompt)
+        clean_kw = re.sub(r'[^a-zA-Z]', '', kw).strip() or "technology"
+        img_url = f"https://images.unsplash.com/photo-1614064641935-4476e83bb023?q=80&w=800&auto=format&fit=crop" # Фолбэк
+        # Попытка сделать динамическую ссылку
+        dynamic_img = f"https://source.unsplash.com/800x600/?{clean_kw}"
 
-        # 2. Генерируем саму статью
+        # 2. Текст статьи
         prompt = (
-            f"Напиши статью на тему: {req.message}. "
-            f"Формат: EXCERPT: [анонс 15 слов] CONTENT: [текст статьи в HTML с <p>, <b>]"
+            f"Напиши статью на тему: {req.message}. Формат строго:\n"
+            f"EXCERPT: [анонс 15 слов]\n"
+            f"CONTENT: [полный текст с тегами <p>, <b>]"
         )
         raw_content = await mm.generate(prompt)
+        if "Ошибка" in raw_content: return JSONResponse(status_code=500, content={"message": raw_content})
         
-        if "Ошибка" in raw_content:
-            return JSONResponse(status_code=500, content={"message": raw_content})
-            
-        # Разделяем анонс и контент
-        try:
+        res_excerpt = "Интересная статья об ИИ и будущем."
+        res_content = raw_content
+        if "EXCERPT:" in raw_content and "CONTENT:" in raw_content:
             res_excerpt = raw_content.split("EXCERPT:")[1].split("CONTENT:")[0].strip()
             res_content = raw_content.split("CONTENT:")[1].strip().replace("```html", "").replace("```", "")
-        except:
-            res_excerpt = "Интересный разбор новой темы в нашем блоге."
-            res_content = raw_content
 
-        new_slug = f"post-{uuid.uuid4().hex[:6]}"
+        new_slug = slugify(req.message)
+
         conn = sqlite3.connect(DB_PATH, timeout=30)
         conn.execute('''INSERT INTO posts 
             (title, slug, image, excerpt, content, date, author, category, color) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', 
-            (req.message, new_slug, img_url, res_excerpt, res_content, 
+            (req.message, new_slug, dynamic_img, res_excerpt, res_content, 
              datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
-        
         conn.commit()
         return {"status": "success", "slug": new_slug}
     except Exception as e:
