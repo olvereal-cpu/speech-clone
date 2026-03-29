@@ -260,47 +260,64 @@ async def admin_gen_page(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # 1. Промпт для качественной SEO-структуры
+        # 1. Проверяем/создаем папку блога прямо перед записью
+        if not os.path.exists(BLOG_FOLDER):
+            os.makedirs(BLOG_FOLDER, exist_ok=True)
+
+        # 2. Промпт с требованием чистого JSON
         prompt = f"""
         Напиши профессиональную SEO-статью на тему: {req.message}.
-        Статья должна быть на русском языке.
-        
         Верни ответ СТРОГО в формате JSON:
         {{
-          "title": "Заголовок статьи на русском",
-          "excerpt": "Краткий анонс (150-200 символов)",
-          "content": "Полный текст. Обязательно используй <h2> для подзаголовков и <p> для абзацев.",
-          "photo_keyword": "one specific English noun for a relevant photo"
+          "title": "Заголовок статьи",
+          "excerpt": "Краткий анонс",
+          "content": "Текст с тегами <h2> и <p>",
+          "photo_keyword": "english_keyword"
         }}
         """
         
         raw_res = await mm.generate(prompt)
-        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
+        
+        # 3. Улучшенная очистка JSON от мусора ИИ
+        clean_json = raw_res.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
         data = json.loads(clean_json)
         
-        # 2. Генерируем ЧПУ (транслит) и имя файла
-        slug_name = slugify(data['title'])
+        # 4. Формируем имя файла через транслит
+        title_rus = data.get('title', 'bez-nazvaniya')
+        slug_name = slugify(title_rus)
+        
+        # Если вдруг заголовок пустой или slugify не сработал
+        if not slug_name:
+            slug_name = f"article-{uuid.uuid4().hex[:6]}"
+            
         filename = f"{slug_name}.html"
         file_path = os.path.join(BLOG_FOLDER, filename)
 
-        # 3. Фиксируем картинку (Способ 1 с lock)
-        # Хешируем имя файла, чтобы получить уникальное ID для картинки
+        # 5. Фиксируем картинку
         img_id = abs(hash(filename)) % 1000
-        keyword = data.get('photo_keyword', 'tech').lower()
-        # Эта ссылка не будет меняться при перезагрузке страницы
+        keyword = data.get('photo_keyword', 'technology').lower()
         img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
 
-        # 4. Сохраняем статью в файл (а не в базу)
-        # Формат: Первая строка - Заголовок, Вторая - Ссылка на картинку, Далее - Контент
+        # 6. Запись в файл (Заголовок | Картинка | Контент)
+        # Используем разделитель ||| для надежного чтения в будущем
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
             f.write(f"{data['content']}")
             
-        return {"status": "success", "slug": filename, "url": f"/blog/{filename}"}
+        print(f"Статья успешно создана: {filename}") # Увидите в логах Render
+        return {"status": "success", "slug": filename}
 
+    except json.JSONDecodeError:
+        return JSONResponse(status_code=500, content={"status": "error", "message": "ИИ вернул некорректный формат данных. Попробуйте еще раз."})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        print(f"КРИТИЧЕСКАЯ ОШИБКА: {str(e)}") # Важно для логов!
+        return JSONResponse(status_code=500, content={"status": "error", "message": f"Ошибка сервера: {str(e)}"})
 
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
