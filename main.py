@@ -286,45 +286,50 @@ async def api_admin_gen(req: AdminGenRequest):
           "photo_keywords": "3-4 английских слова через запятую для максимально точного поиска фото"
         }}
         """
-        
         raw_res = await mm.generate(prompt)
-        # Очистка JSON от возможных артефактов Markdown
+        # Очистка JSON от Markdown-разметки
         clean_json = re.sub(r'```json|```', '', raw_res).strip()
         data = json.loads(clean_json)
         
-        # Генерация URL и параметров фото
+        # Генерация уникального слаг-имени
         slug_name = slugify(data['title'])
-        img_id = abs(hash(slug_name)) % 1000
         
-        # --- Запасные варианты тем для картинок ---
+        # --- Запасные варианты тем (упростил до 2 слов для стабильности) ---
         fallback_themes = [
-            'technology,future,ai',
-            'cyberpunk,neon,digital',
-            'office,startup,people',
-            'microphone,podcast,studio',
-            'brain,education,minimalist',
-            'success,mountain,achievement',
-            'soundwave,music,abstract'
+            'technology,ai',
+            'cyberpunk,digital',
+            'office,people',
+            'microphone,studio',
+            'brain,minimalist',
+            'success,mountain',
+            'soundwave,abstract'
         ]
-        # Выбираем случайную тему на случай, если ИИ не выдаст ключи
+        
+        # Выбираем случайную тему, если ИИ подвел
         default_keywords = random.choice(fallback_themes)
         
-        # Берем ключевые слова от ИИ или ставим случайный дефолт
-        keywords = data.get('photo_keywords', default_keywords)
-        # Очищаем от пробелов для корректной ссылки
-        keywords_url = ",".join([k.strip() for k in keywords.split(',')])
+        # Получаем ключи от ИИ
+        raw_keywords = data.get('photo_keywords', default_keywords)
         
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: 
+        # 1. Разбиваем по запятой. 2. Убираем лишние пробелы. 3. Берем только первые 2-3 слова.
+        keyword_list = [k.strip() for k in raw_keywords.split(',') if k.strip()]
+        keywords_url = ",".join(keyword_list[:3]) # LoremFlickr любит не более 3 тегов
+        
+        # Используем random.randint для lock, чтобы всегда получать число > 0
+        img_id = random.randint(1, 9999)
+        
+        # Финальная ссылка (теперь она максимально чистая)
         img_url = f"https://loremflickr.com/800/600/{keywords_url}?lock={img_id}"
         
-        # Сохранение (теперь сохраняем и excerpt для SEO-превью на главной)
+        # Сохранение (теперь сохраняем и excerpt для SEO-превью)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
-            f.write(f"{data.get('excerpt', '')}\n") # Новая строка для краткого описания
+            f.write(f"{data.get('excerpt', '')}\n")
             f.write(f"{data['content']}")
-            
-        return {"status": "success", "url": f"/blog/{slug_name}"}
+       return {"status": "success", "url": f"/blog/{slug_name}"}
     except Exception as e:
         print(f"Ошибка генерации: {e}")
         return JSONResponse(status_code=500, content={"error": "Ошибка при создании статьи. Попробуйте другой запрос."})
