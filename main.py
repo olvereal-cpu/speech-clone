@@ -167,7 +167,9 @@ async def api_chat(req: ChatReq):
     return {"reply": ans or "ИИ временно недоступен."}
 
 # --- АДМИНКА ---
-@app.post("/api/admin/generate-post")
+@app.get("/admin/generate", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    return templates.TemplateResponse(request, "admin_generate.html", {"request": request})
 async def api_gen(req: GenReq):
     prompt = f"Напиши SEO статью про {req.message}. Формат TITLE:.. KEYWORD:.. CONTENT:.."
     raw = await mm.generate(prompt)
