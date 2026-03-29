@@ -224,6 +224,7 @@ async def read_post(request: Request, slug: str):
         request=request, 
         name="blog_index.html", 
         context={"posts": [post], "is_single": True}
+    )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
