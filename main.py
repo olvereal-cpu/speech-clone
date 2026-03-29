@@ -4,8 +4,8 @@ import asyncio
 import sqlite3
 import json
 import edge_tts
-from google import genai 
-from google.genai import types as genai_types
+import google.generativeai as genai
+import re
 import markdown
 from datetime import datetime
 from typing import Optional
@@ -19,7 +19,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import LabeledPrice, PreCheckoutQuery
-import re
+
 
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
@@ -194,6 +194,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
+# --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
+class ChatRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
+class KeyCheck(BaseModel): key: str
 class AdminGenRequest(BaseModel): 
     message: str
     category: Optional[str] = "Технологии"
