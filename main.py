@@ -32,6 +32,7 @@ def slugify(text: str) -> str:
     result = "".join(chars.get(c, c) for c in text)
     result = re.sub(r'[^a-z0-9]+', '-', result)
     return result.strip('-')
+
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -42,22 +43,13 @@ CHANNEL_URL = "https://t.me/speechclone"
 SITE_URL = "https://speechclone.online"
 PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 
-# --- ИНИЦИАЛИЗАЦИЯ GEMINI 3.1 FLASH LITE ---
+# --- ИНИЦИАЛИЗАЦИЯ GEMINI ---
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        self.target_model = 'gemini-3.1-flash-lite-preview'
-        self.safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
+        self.target_model = 'gemini-1.5-flash' # Использование стабильной версии
         genai.configure(api_key=self.api_key)
-        self.active_model = genai.GenerativeModel(
-            model_name=self.target_model,
-            safety_settings=self.safety_settings
-        )
+        self.active_model = genai.GenerativeModel(model_name=self.target_model)
 
     async def generate(self, prompt):
         try:
@@ -73,23 +65,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
+BLOG_FOLDER = os.path.join(BASE_DIR, "blog") # Папка для ваших 15 статей
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(BLOG_FOLDER, exist_ok=True)
 
-# --- ДАННЫЕ БЛОГА ---
+# --- ВСТРОЕННЫЕ ПОСТЫ ---
 BLOG_POSTS = [
     {
         "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
         "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
         "excerpt": "Разбираемся в будущем клонирования...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue",
         "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства...</p>"
-    },
-    {
-        "id": 1002, "title": "Секреты идеального подкаста", "slug": "sekrety-sozdaniya-podkasta-ii", 
-        "image": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=800", 
-        "excerpt": "Автоматизация монтажа с помощью ИИ.", "date": "08.03.2026", "author": "М. Вудс", "category": "Подкастинг", "color": "purple",
-        "content": "<p>Создание подкаста всегда было трудоемким процессом...</p>"
     }
 ]
 
@@ -114,6 +102,38 @@ def init_db():
     conn.close()
 
 init_db()
+
+# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ БЛОГА ---
+def get_all_posts():
+    """Собирает посты из всех источников: Файлы, БД, BLOG_POSTS"""
+    all_posts = []
+    
+    # 1. Из файлов (ваши 15 статей)
+    if os.path.exists(BLOG_FOLDER):
+        for filename in os.listdir(BLOG_FOLDER):
+            if filename.endswith(".html"):
+                try:
+                    with open(os.path.join(BLOG_FOLDER, filename), 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                    if len(lines) >= 3:
+                        all_posts.append({
+                            "title": lines[0].strip(),
+                            "image": lines[1].strip(),
+                            "content": "".join(lines[2:]),
+                            "excerpt": "".join(lines[2:])[:150] + "...",
+                            "slug": filename.replace(".html", ""),
+                            "date": "12.03.2026", "author": "Admin", "category": "AI", "color": "indigo"
+                        })
+                except: continue
+
+    # 2. Из базы данных
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
+    conn.close()
+    
+    # 3. Объединяем
+    return db_posts + all_posts + BLOG_POSTS
 
 # --- БОТ ---
 bot = Bot(token=BOT_TOKEN)
@@ -173,59 +193,90 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
-class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
-class KeyCheck(BaseModel): key: str
 class AdminGenRequest(BaseModel): 
     message: str
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
 
-# --- МАРШРУТЫ САЙТА (ИСПРАВЛЕНЫ) ---
+# --- МАРШРУТЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC LIMIT 20').fetchall()]
-    conn.close()
-    all_posts = db_posts + BLOG_POSTS
-    # ИСПРАВЛЕНИЕ: Используем именованные параметры request и name
+    posts = get_all_posts()
+    # Выводим только 6 на главную
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
-        context={"posts": all_posts[:15]}
+        context={"posts": posts[:6]}
     )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
-    conn.close()
-    all_posts = db_posts + BLOG_POSTS
+    posts = get_all_posts()
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
-        context={"posts": all_posts, "is_single": False}
+        context={"posts": posts, "is_single": False}
     )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    db_post = conn.execute('SELECT * FROM posts WHERE slug = ?', (slug,)).fetchone()
-    conn.close()
-    post = dict(db_post) if db_post else next((p for p in BLOG_POSTS if p["slug"] == slug), None)
+    posts = get_all_posts()
+    # Принудительно ищем по слагу как по строке
+    post = next((p for p in posts if str(p["slug"]) == str(slug)), None)
+    
     if not post: raise HTTPException(status_code=404)
+    
+    # Исправление "простыни": если это чистый текст, делаем абзацы
+    if "<p>" not in post["content"]:
+        post["content"] = post["content"].replace("\n", "<br>").replace("<br><br>", "</p><p>")
+        post["content"] = f"<p>{post['content']}</p>"
+
     return templates.TemplateResponse(
         request=request, 
         name="blog_index.html", 
         context={"posts": [post], "is_single": True}
     )
 
+# --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---
+@app.post("/api/admin/generate-post")
+async def api_admin_gen(req: AdminGenRequest):
+    try:
+        prompt = f"""
+        Напиши полноценную SEO статью на тему: {req.message}.
+        Верни ответ СТРОГО в формате JSON:
+        {{
+          "title": "Заголовок статьи",
+          "excerpt": "Краткий анонс для главной страницы (200 знаков)",
+          "content": "Полный текст с HTML разметкой. Используй <h2> для заголовков и <p> для абзацев.",
+          "keyword": "one specific English noun for Unsplash photo search"
+        }}
+        """
+        raw_res = await mm.generate(prompt)
+        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean_json)
+        
+        slug_name = slugify(data['title'])
+        filename = f"{slug_name}.html"
+        
+        # Уникальная картинка по ключевому слову
+        img_id = abs(hash(filename)) % 1000
+        keyword = data.get('keyword', 'tech')
+        img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
+
+        # Сохранение в папку блога
+        file_path = os.path.join(BLOG_FOLDER, filename)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(f"{data['title']}\n")
+            f.write(f"{img_url}\n")
+            f.write(f"{data['content']}")
+
+        return {"status": "success", "url": f"/blog/{slug_name}"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+# --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
-async def voices_page(request: Request):
-    return templates.TemplateResponse(request=request, name="voices.html")
+async def voices_page(request: Request): return templates.TemplateResponse(request=request, name="voices.html")
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
@@ -255,72 +306,19 @@ async def about_page(request: Request):
 async def admin_gen_page(request: Request):
     return templates.TemplateResponse(request=request, name="admin_generate.html")
 
-# --- API ---
-
-@app.post("/api/admin/generate-post")
-async def api_admin_gen(req: AdminGenRequest):
-    try:
-        # 1. Промпт для качественной SEO-структуры
-        prompt = f"""
-        Напиши профессиональную SEO-статью на тему: {req.message}.
-        Статья должна быть на русском языке.
-        
-        Верни ответ СТРОГО в формате JSON:
-        {{
-          "title": "Заголовок статьи на русском",
-          "excerpt": "Краткий анонс (150-200 символов)",
-          "content": "Полный текст. Обязательно используй <h2> для подзаголовков и <p> для абзацев.",
-          "photo_keyword": "one specific English noun for a relevant photo"
-        }}
-        """
-        
-        raw_res = await mm.generate(prompt)
-        clean_json = raw_res.replace("```json", "").replace("```", "").strip()
-        data = json.loads(clean_json)
-        
-        # 2. Генерируем ЧПУ (транслит) и имя файла
-        slug_name = slugify(data['title'])
-        filename = f"{slug_name}.html"
-        file_path = os.path.join(BLOG_FOLDER, filename)
-
-        # 3. Фиксируем картинку (Способ 1 с lock)
-        # Хешируем имя файла, чтобы получить уникальное ID для картинки
-        img_id = abs(hash(filename)) % 1000
-        keyword = data.get('photo_keyword', 'tech').lower()
-        # Эта ссылка не будет меняться при перезагрузке страницы
-        img_url = f"https://loremflickr.com/800/600/{keyword}?lock={img_id}"
-
-        # 4. Сохраняем статью в файл (а не в базу)
-        # Формат: Первая строка - Заголовок, Вторая - Ссылка на картинку, Далее - Контент
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(f"{data['title']}\n")
-            f.write(f"{img_url}\n")
-            f.write(f"{data['content']}")
-            
-        return {"status": "success", "slug": filename, "url": f"/blog/{filename}"}
-
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-
 @app.post("/api/verify-key")
 async def verify_key(data: KeyCheck):
     is_valid = data.key.upper() in [k.upper() for k in PREMIUM_KEYS]
     return {"success": is_valid}
-
+    
 @app.get("/wait-download", response_class=HTMLResponse)
-async def wait_page(request: Request, file: str, key: str = None):
-    return templates.TemplateResponse(
-        request=request, 
-        name="wait_page.html", 
-        context={"file": file}
-    )
+async def wait_page(request: Request, file: str):
+    return templates.TemplateResponse(request=request, name="wait_page.html", context={"file": file})
 
 @app.get("/download")
 async def download_file(file: str):
     path = os.path.join(AUDIO_DIR, file)
-    if os.path.exists(path):
-        return FileResponse(path=path, filename="speechclone.mp3")
-    return HTMLResponse("Файл не найден.", status_code=404)
+    return FileResponse(path=path, filename="speechclone.mp3") if os.path.exists(path) else HTMLResponse("404")
 
 @app.post("/api/chat")
 async def chat_api(req: ChatRequest):
@@ -337,7 +335,7 @@ async def api_generate_web(r: TTSRequest):
         return {"audio_url": f"/wait-download?file={fid}"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
-
+        
 @app.on_event("startup")
 async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
