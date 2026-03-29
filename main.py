@@ -25,10 +25,11 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 SITE_URL = "https://speechclone.online"
 
-# --- 2. GEMINI MANAGER ---
+# --- 2. GEMINI MANAGER (СТРОГО 3.1 FLASH) ---
 class ModelManager:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
+        # Установлена актуальная модель Gemini 3.1 Flash
         self.model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
         
     async def generate(self, prompt):
@@ -89,7 +90,7 @@ def get_posts_from_folder():
             content_html = markdown.markdown(raw) if not fn.endswith(".html") else raw
             excerpt = re.sub(r'<[^>]+>', '', content_html)[:150].strip() + "..."
             folder_posts.append({
-                "title": title, "slug": slug, "image": "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800",
+                "title": title, "slug": slug, "image": f"https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800",
                 "excerpt": excerpt, "content": content_html, "date": "Архив", "author": "Система", "category": "Блог", "color": "blue"
             })
         except: continue
@@ -98,19 +99,10 @@ def get_posts_from_folder():
 def get_merged_posts():
     all_posts = []
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
-        all_posts = [dict(p) for p in db_data]
-        conn.close()
+        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        all_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]; conn.close()
     except: pass
     all_posts += get_posts_from_folder()
-    if not all_posts:
-        all_posts.append({
-            "title": "Статей пока нет", "slug": "welcome", "image": "https://images.unsplash.com/photo-1618401471353-b98aade25588?q=80&w=800",
-            "excerpt": "База данных и папка 'blog' пусты.", "content": "Добавьте посты через админку.",
-            "date": datetime.now().strftime("%d.%m.%Y"), "author": "Admin", "category": "Инфо", "color": "red"
-        })
     return all_posts
 
 init_db()
@@ -174,12 +166,14 @@ async def blog_one(request: Request, slug: str):
     if not p: raise HTTPException(404)
     return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [p], "is_single": True})
 
+# --- ЧАТ БОТ (API) ---
 @app.post("/api/chat")
 async def api_chat(req: ChatReq):
     if not req.message.strip(): return {"reply": "Чем могу помочь?"}
     ans = await mm.generate(f"Ты ИИ-ассистент SpeechClone. Ответь кратко на русском: {req.message}")
     return {"reply": ans or "ИИ временно недоступен."}
 
+# --- АДМИНКА ---
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_page(request: Request):
     return templates.TemplateResponse("admin_generate.html", {"request": request})
@@ -203,6 +197,7 @@ async def api_gen(req: GenReq):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# --- ВСПОМОГАТЕЛЬНЫЕ РОУТЫ ---
 @app.get("/wait-download", response_class=HTMLResponse)
 async def wait(request: Request, file: str):
     return templates.TemplateResponse("wait_page.html", {"request": request, "file_url": f"/download?file={file}"})
@@ -215,7 +210,6 @@ async def dl(file: str):
 @app.get("/{path}")
 async def static_pages(request: Request, path: str):
     valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
-    if path == "admin-generate": return templates.TemplateResponse("admin_generate.html", {"request": request})
     if path in valid: return templates.TemplateResponse(f"{path}.html", {"request": request})
     raise HTTPException(404)
 
@@ -223,6 +217,7 @@ async def static_pages(request: Request, path: str):
 async def startup():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
+
 
 
 
