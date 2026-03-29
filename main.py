@@ -47,7 +47,7 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-BLOG_DIR = os.path.join(BASE_DIR, "blog") # Папка со статьями
+BLOG_DIR = os.path.join(BASE_DIR, "blog")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_DIR, exist_ok=True)
@@ -77,7 +77,6 @@ def slugify(text):
 
 def get_posts_from_folder():
     folder_posts = []
-    # Используем абсолютный путь для надежности
     target_dir = os.path.abspath(BLOG_DIR)
     if not os.path.exists(target_dir): return []
     
@@ -88,12 +87,11 @@ def get_posts_from_folder():
             with open(path, "r", encoding="utf-8") as f:
                 raw = f.read()
             slug = fn.rsplit(".", 1)[0]
-            # Убираем разметку из заголовка
+            # ОЧИСТКА ЗАГОЛОВКА
             title = slug.replace("-", " ").replace("_", " ").replace("*", "").capitalize()
             content_html = markdown.markdown(raw) if not fn.endswith(".html") else raw
-            # Чистим анонс от тегов и звезд
-            excerpt = re.sub(r'<[^>]+>', '', content_html)
-            excerpt = excerpt.replace("*", "").replace("#", "").strip()[:150] + "..."
+            # ОЧИСТКА АНОНСА
+            excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
             
             folder_posts.append({
                 "title": title, "slug": slug, 
@@ -111,17 +109,7 @@ def get_merged_posts():
         db_data = conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()
         all_posts = [dict(p) for p in db_data]; conn.close()
     except: pass
-    
     all_posts += get_posts_from_folder()
-    
-    if not all_posts:
-        all_posts.append({
-            "title": "Статей пока нет", "slug": "welcome", 
-            "image": "https://images.unsplash.com/photo-1618401471353-b98aade25588?q=80&w=800",
-            "excerpt": "Блог пуст. Добавьте файлы в папку blog или используйте админку.", 
-            "content": "Ожидаем контент...", "date": datetime.now().strftime("%d.%m.%Y"), 
-            "author": "Admin", "category": "Инфо", "color": "red"
-        })
     return all_posts
 
 init_db()
@@ -168,6 +156,7 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 class ChatReq(BaseModel): message: str
 class GenReq(BaseModel): message: str; category: str = "ИИ"; color: str = "blue"
 
+# ИСПРАВЛЕННЫЕ РОУТЫ (FIX 500 ERROR)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     posts = get_merged_posts()
@@ -197,22 +186,17 @@ async def admin_page(request: Request):
 
 @app.post("/api/admin/generate-post")
 async def api_gen(req: GenReq):
-    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE: текст KEYWORD: одно_слово CONTENT: текст"
+    prompt = f"Напиши SEO статью про {req.message}. Формат TITLE: текст без звезд KEYWORD: одно_слово CONTENT: текст"
     raw = await mm.generate(prompt)
     if not raw: return JSONResponse(status_code=500, content={"error": "No AI response"})
     try:
         title_raw = re.search(r"TITLE:(.*?)(?=KEYWORD|CONTENT|$)", raw, re.S).group(1).strip()
-        title = title_raw.replace("*", "").replace("#", "") # Чистим заголовок
-        
+        title = title_raw.replace("*", "").replace("#", "")
         kw_raw = re.search(r"KEYWORD:(.*?)(?=CONTENT|$)", raw, re.S).group(1).strip()
         kw = kw_raw.replace("*", "")
-        
         content_raw = raw.split("CONTENT:")[1].strip() if "CONTENT:" in raw else raw
         content_html = markdown.markdown(content_raw)
-        
-        # Чистый анонс без Markdown
         excerpt = re.sub(r'<[^>]+>', '', content_html).replace("*", "").replace("#", "").strip()[:150] + "..."
-        
         slug = slugify(title)
         img = f"https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800"
         
@@ -236,8 +220,8 @@ async def dl(file: str):
 @app.get("/{path}")
 async def static_pages(request: Request, path: str):
     valid = ["voices", "about", "guide", "privacy", "disclaimer", "faq", "premium", "contact", "instructions"]
-    if path == "admin-generate": return templates.TemplateResponse("admin_generate.html", {"request": request})
-    if path in valid: return templates.TemplateResponse(f"{path}.html", {"request": request})
+    if path in valid:
+        return templates.TemplateResponse(f"{path}.html", {"request": request})
     raise HTTPException(404)
 
 @app.on_event("startup")
