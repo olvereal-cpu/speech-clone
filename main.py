@@ -17,7 +17,20 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import LabeledPrice, PreCheckoutQuery
+import re
 
+def slugify(text: str) -> str:
+    """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
+    chars = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+        'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
+    text = text.lower().strip()
+    result = "".join(chars.get(c, c) for c in text)
+    result = re.sub(r'[^a-z0-9]+', '-', result)
+    return result.strip('-')
 # --- КОНФИГУРАЦИЯ ---
 ADMIN_ID = int(os.getenv("ADMIN_ID", "430747895"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -53,22 +66,11 @@ class ModelManager:
             return f"Ошибка ИИ: {str(e)}"
 
 mm = ModelManager(GEMINI_API_KEY)
-import re
 
-def slugify(text: str) -> str:
-    """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
-    chars = {
-        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
-        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
-        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
-        'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-    }
-    text = text.lower().strip()
-    result = "".join(chars.get(c, c) for c in text)
-    result = re.sub(r'[^a-z0-9]+', '-', result)
-    return result.strip('-')
 # --- ПУТИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BLOG_FOLDER = os.path.join(BASE_DIR, "blog")
+os.makedirs(BLOG_FOLDER, exist_ok=True)
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
