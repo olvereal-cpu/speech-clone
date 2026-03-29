@@ -230,22 +230,46 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # Если slug пришел без .html, добавляем его
+    # Убеждаемся, что расширение .html есть
     filename = slug if slug.endswith('.html') else f"{slug}.html"
     file_path = os.path.join(BLOG_FOLDER, filename)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Статья не найдена")
 
-    with open(file_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        
-    post = {
-        "title": lines[0].strip(),
-        "image": lines[1].strip(),
-        "content": "".join(lines[2:])
-    }
-    return templates.TemplateResponse(request=request, name="blog_index.html", context={"posts": [post], "is_single": True})
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = [line.strip() for line in f.readlines()]
+            
+        # Проверяем, что в файле достаточно строк
+        if len(lines) < 3:
+            # Если файл "битый", пробуем создать данные на лету
+            title = lines[0] if len(lines) > 0 else "Без названия"
+            image = f"https://loremflickr.com/800/600/music?lock={abs(hash(filename)) % 1000}"
+            content = lines[1] if len(lines) > 1 else ""
+        else:
+            title = lines[0]
+            image = lines[1]
+            content = "\n".join(lines[2:])
+
+        # Если во второй строке не ссылка, а текст, заменяем на рабочую ссылку
+        if not image.startswith("http"):
+            image = f"https://loremflickr.com/800/600/ai?lock={abs(hash(filename)) % 1000}"
+
+        post = {
+            "title": title,
+            "image": image,
+            "content": content
+        }
+
+        return templates.TemplateResponse(
+            request=request, 
+            name="blog_index.html", 
+            context={"posts": [post], "is_single": True}
+        )
+    except Exception as e:
+        print(f"Ошибка при открытии статьи: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка чтения файла")
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
