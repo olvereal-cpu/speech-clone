@@ -247,17 +247,52 @@ async def admin_gen_page(request: Request):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        prompt = f"Напиши статью: {req.message}. Формат JSON: {{\"title\": \"...\", \"excerpt\": \"...\", \"content\": \"...\", \"photo_topic\": \"...\"}}"
+        # Улучшенный промпт для SEO, структуры и качественного подбора фото
+        prompt = f"""
+        Напиши профессиональную SEO-статью на тему: {req.message}.
+        Статья должна быть на русском языке, иметь четкую структуру.
+        
+        Верни ответ СТРОГО в формате JSON без разметки markdown:
+        {{
+          "title": "Заголовок статьи",
+          "excerpt": "Краткий анонс для главной страницы (150-200 символов)",
+          "content": "Полный текст статьи. Обязательно используй HTML-теги: <h2> для подзаголовков, <p> для абзацев, <b> для акцентов.",
+          "photo_keyword": "one specific English noun for a relevant high-quality photo"
+        }}
+        """
+        
         raw_res = await mm.generate(prompt)
+        # Очистка от возможных артефактов markdown
         clean_json = raw_res.replace("```json", "").replace("```", "").strip()
         data = json.loads(clean_json)
-        new_slug = f"post-{uuid.uuid4().hex[:6]}"
-        img_url = f"https://loremflickr.com/800/600/{data.get('photo_topic', 'tech')}"
+        
+        # Генерация URL и подготовка данных
+        new_slug = f"post-{uuid.uuid4().hex[:8]}"
+        
+        # АЛЬТЕРНАТИВА UNSPLASH: LoremFlickr (бесплатно, быстро, по ключевым словам)
+        # Ключевое слово из ИИ подставляется в конец URL
+        keyword = data.get('photo_keyword', 'technology').lower()
+        img_url = f"https://loremflickr.com/800/600/{keyword}"
+        
         conn = sqlite3.connect(DB_PATH)
-        conn.execute('INSERT INTO posts (title, slug, image, excerpt, content, date, author, category, color) VALUES (?,?,?,?,?,?,?,?,?)', 
-                     (data['title'], new_slug, img_url, data['excerpt'], data['content'], datetime.now().strftime("%d.%m.%Y"), "Gemini AI", req.category, req.color))
+        conn.execute('''INSERT INTO posts 
+            (title, slug, image, excerpt, content, date, author, category, color) 
+            VALUES (?,?,?,?,?,?,?,?,?)''', 
+            (
+                data['title'], 
+                new_slug, 
+                img_url, 
+                data['excerpt'], 
+                data['content'], 
+                datetime.now().strftime("%d.%m.%Y"), 
+                "Gemini AI", 
+                req.category, 
+                req.color
+            )
+        )
         conn.commit()
         conn.close()
+        
         return {"status": "success", "slug": new_slug}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
