@@ -314,78 +314,69 @@ class AdminGenRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
-        # Запрашиваем посты из Supabase
-        res = supabase.table("posts") \
-            .select("*") \
-            .order("created_at", desc=True) \
-            .limit(6) \
-            .execute()
-        
+        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
         all_posts = res.data if res.data else []
         
-        # Явно указываем name и context
+        # ПЕРВЫМ аргументом идет request, ВТОРЫМ — имя шаблона, ТРЕТЬИМ — словарь данных
         return templates.TemplateResponse(
-            name="index.html", 
-            context={"request": request, "posts": all_posts}
+            request, 
+            "index.html", 
+            {"posts": all_posts}
         )
     except Exception as e:
-        print(f"Ошибка получения постов для главной: {e}")
+        print(f"Ошибка на главной: {e}")
         return templates.TemplateResponse(
-            name="index.html", 
-            context={"request": request, "posts": []}
+            request, 
+            "index.html", 
+            {"posts": []}
         )
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     try:
-        # Получаем ВСЕ посты из базы для страницы блога
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
         all_posts = res.data if res.data else []
         
         return templates.TemplateResponse(
-            name="blog_index.html", 
-            context={"request": request, "posts": all_posts, "is_single": False}
+            request, 
+            "blog_index.html", 
+            {"posts": all_posts, "is_single": False}
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse(
-            name="blog_index.html", 
-            context={"request": request, "posts": [], "is_single": False}
+            request, 
+            "blog_index.html", 
+            {"posts": [], "is_single": False}
         )
-
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # 1. Получаем данные из Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
-        
         if not res.data:
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
         post = res.data[0]
         
-        # 2. Очеловечивание контента
         content = post.get("content", "")
         if "Автор статьи" not in content:
             tg_link = globals().get('CHANNEL_ID', '#')
-            
             content += f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{tg_link}">Telegram</a>!
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо.
             </div>
             """
             post["content"] = content
 
-        # 3. Рендерим страницу статьи (Явно указываем name и context)
         return templates.TemplateResponse(
-            name="post.html", 
-            context={"request": request, "post": post}
+            request, 
+            "post.html", 
+            {"post": post}
         )
-            
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Ошибка Supabase при чтении {slug}: {e}")
+        print(f"Ошибка: {e}")
         raise HTTPException(status_code=500, detail="Ошибка базы данных")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
