@@ -334,55 +334,56 @@ async def home(request: Request):
             "index.html", 
             {"request": request, "posts": []}
         )
-)
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
-    all_posts = get_all_blog_posts()
-    return templates.TemplateResponse(
-    request=request, 
-    name="blog_index.html", 
-    context={"posts": all_posts, "is_single": False}
-)
+    try:
+        # Получаем ВСЕ посты из базы для страницы блога
+        res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
+        all_posts = res.data if res.data else []
+        
+        return templates.TemplateResponse(
+            "blog_index.html", 
+            {"request": request, "posts": all_posts, "is_single": False}
+        )
+    except Exception as e:
+        print(f"Ошибка списка блога: {e}")
+        return templates.TemplateResponse(
+            "blog_index.html", 
+            {"request": request, "posts": [], "is_single": False}
+        )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     # --- ЛОГИКА: ПОЛУЧАЕМ ИЗ SUPABASE ---
     try:
-        # Ищем запись в таблице posts, где slug совпадает
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
-        # Если данных нет, отдаем 404
         if not res.data:
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
-        # Объект статьи
         post = res.data[0]
+        
+        # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ ---
+        content = post.get("content", "")
+        if "Автор статьи" not in content:
+            content += f"""
+            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{CHANNEL_ID}">Telegram</a>!
+            </div>
+            """
+            post["content"] = content
+
+        return templates.TemplateResponse(
+            "post.html", 
+            {"request": request, "post": post}
+        )
             
     except HTTPException:
-        # Пробрасываем 404 дальше
         raise
     except Exception as e:
         print(f"Ошибка Supabase: {e}")
         raise HTTPException(status_code=500, detail="Ошибка базы данных")
-    
-    # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ (ПЕРЕМЕЩЕНА ВЕРНО) ---
-    content = post.get("content", "")
-    
-    if "Автор статьи" not in content:
-        content += f"""
-        <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-            <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{CHANNEL_ID}">Telegram</a>!
-        </div>
-        """
-    post["content"] = content
-
-    # Возвращаем финальный шаблон со всеми правками
-    return templates.TemplateResponse(
-        request=request, 
-        name="post.html", 
-        context={"post": post}
-    )
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
