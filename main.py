@@ -432,40 +432,33 @@ async def api_admin_gen(req: AdminGenRequest):
         title = data.get('title', 'new-post')
         slug_name = slugify(title)
         
-        # 3. ПОДГОТОВКА ССЫЛОК
-        PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
+       # 3. ПОДГОТОВКА ССЫЛОК
+# Хороший запасной вариант (технологичный темный фон)
+unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
+
+# Извлекаем ключевые слова
+raw_keywords = data.get('photo_keywords', 'ai, technology')
+clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
+keyword_list = clean_text.split()[:2]
+
+# Формируем поисковый запрос (добавляем dark для стиля блога)
+search_term = ",".join(keyword_list) if keyword_list else "technology,dark"
+
+# 4. ПОЛУЧЕНИЕ ФОТО (Используем LoremFlickr вместо мертвого Unsplash Source)
+try:
+    # Этот сервис жив и отлично подтягивает фото по тегам
+    # Формат: https://loremflickr.com/ширина/высота/теги
+    img_url = f"https://loremflickr.com/1200/800/{search_term},dark/all"
+    
+    # Дополнительная проверка: если ключевых слов нет, ставим проверенный fallback
+    if not keyword_list:
+        img_url = unsplash_fallback
         
-        # Твоя любимая картинка как базовый запасной вариант
-        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=800"
-        
-        # Уникальная заглушка (всегда разная для каждого слага)
-        img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
-        
-        raw_keywords = data.get('photo_keywords', 'ai, technology')
-        # Добавляем стиль 'dark' и 'code', чтобы картинки были похожи на твой пример
-        clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
-        keyword_list = clean_text.split()[:2]
-        
-        # 4. ПОПЫТКА ПОЛУЧИТЬ ТЕМАТИЧЕСКОЕ ФОТО
-        if PIXABAY_KEY:
-            search_query = "+".join(keyword_list) + "+dark+code"
-            api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
-            
-            try:
-                response = requests.get(api_url, timeout=5)
-                
-                if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
-                    pixabay_data = response.json()
-                    
-                    if pixabay_data.get('hits'):
-                        found_url = pixabay_data['hits'][0]['largeImageURL']
-                        img_url = found_url.replace("http://", "https://")
-                        print(f"✅ Для статьи '{title}' найдено тематическое фото: {img_url}")
-                    else:
-                        img_url = unsplash_fallback
-                        print(f"⚠️ Pixabay не нашел фото. Использован Unsplash fallback.")
-            except Exception as e:
-                print(f"❌ Ошибка запроса к Pixabay: {e}")
+    print(f"✅ Для статьи '{title}' создана вечная ссылка: {img_url}")
+
+except Exception as e:
+    print(f"❌ Ошибка генерации ссылки: {e}")
+    img_url = unsplash_fallback
 
         # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
         supabase.table("posts").insert({
