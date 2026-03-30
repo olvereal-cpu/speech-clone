@@ -412,51 +412,43 @@ async def api_admin_gen(req: AdminGenRequest):
         # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
         img_id = random.randint(1, 10000)
         
-       # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Новый метод) ---
-        # 1. Твой API Ключ Pixabay (найди его на https://pixabay.com/api/docs/)
-        # Если ключа пока нет, оставь пустым — сработает заглушка.
+       # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Исправлено) ---
         PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
         
-        # 2. Получаем ключевые слова от нейросети (по умолчанию 'ai, future')
         raw_keywords = data.get('photo_keywords', 'ai, future')
         
-        # 3. Очищаем текст: оставляем только латинские буквы и пробелы
+        # Очищаем текст
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
-        
-        # 4. Берем первые 2 слова для точности поиска на стоке
         keyword_list = clean_text.split()[:2]
         
-        # Значение по умолчанию для ссылки (заглушка)
-        img_url = "https://picsum.photos/800/600?blur=1"
+        # Уникальная заглушка: если Pixabay не ответит, 
+        # picsum выдаст ОДНО И ТО ЖЕ фото для этого конкретного поста (по slug)
+        img_url = f"https://picsum.photos/seed/{slug}/800/600"
         
-        # 5. Если есть ключи и прописан API KEY, делаем запрос к Pixabay
-        if keyword_list and PIXABAY_KEY != "12734072-77cbfaa3fbea06df8e5108da2":
-            # Соединяем слова плюсом для URL (например, 'ai+robot')
+        # ИСПРАВЛЕННОЕ УСЛОВИЕ: Проверяем, что ключ вообще есть
+        if keyword_list and PIXABAY_KEY:
             search_query = "+".join(keyword_list)
-            
-            # Формируем URL запроса к API
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
             try:
-                # Делаем быстрый запрос (ждем не более 3 секунд)
                 response = requests.get(api_url, timeout=3)
                 if response.status_code == 200:
                     pixabay_data = response.json()
                     
-                    # Если нашли картинки, берем первую
                     if pixabay_data.get('hits'):
+                        # Берем прямую ссылку на статичный файл .jpg
                         img_url = pixabay_data['hits'][0]['largeImageURL']
-                        print(f"✅ Успешно нашли фото на Pixabay по запросу: {search_query}")
+                        print(f"✅ Найдено статичное фото: {img_url}")
                     else:
-                        print(f"⚠️ Pixabay не нашел фото по запросу: {search_query}")
+                        print(f"⚠️ Фото не найдено, зафиксирована заглушка для: {slug}")
                 else:
-                    print(f"❌ Ошибка Pixabay API: Статус {response.status_code}")
+                    print(f"❌ Ошибка API: {response.status_code}")
             except Exception as e:
-                print(f"❌ Ошибка подключения к Pixabay: {e}")
-        else:
-            print("ℹ️ Используем заглушку (не прописан API ключ или нет ключевых слов)")
+                print(f"❌ Ошибка запроса: {e}")
 
-        # --- КОНЕЦ БЛОКА (Переменная img_url готова для записи в базу) ---
+        # Теперь в переменную img_url записана ПРЯМАЯ ссылка на картинку,
+        # которая сохранится в базу и не будет меняться.
+        # --- КОНЕЦ БЛОКА ---
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
