@@ -406,13 +406,13 @@ async def api_admin_gen(req: AdminGenRequest):
         clean_json = re.sub(r'```json|```', '', raw_res).strip()
         data = json.loads(clean_json)
         
-        # Генерация URL и параметров фото
+        # 1. Генерация URL и параметров фото (создаем slug_name)
         slug_name = slugify(data['title'])
         
-        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
+        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash (для других нужд, если нужно)
         img_id = random.randint(1, 10000)
         
-       # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Исправлено) ---
+        # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Исправлено) ---
         PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
         
         raw_keywords = data.get('photo_keywords', 'ai, future')
@@ -421,9 +421,9 @@ async def api_admin_gen(req: AdminGenRequest):
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         keyword_list = clean_text.split()[:2]
         
-        # Уникальная заглушка: если Pixabay не ответит, 
-        # picsum выдаст ОДНО И ТО ЖЕ фото для этого конкретного поста (по slug)
-        img_url = f"https://picsum.photos/seed/{slug}/800/600"
+        # Уникальная заглушка: ТЕПЕРЬ использует slug_name
+        # picsum выдаст ОДНО И ТО ЖЕ фото для этого конкретного поста (по seed)
+        img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
         
         # ИСПРАВЛЕННОЕ УСЛОВИЕ: Проверяем, что ключ вообще есть
         if keyword_list and PIXABAY_KEY:
@@ -431,6 +431,7 @@ async def api_admin_gen(req: AdminGenRequest):
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
             try:
+                # ВАЖНО: используй requests.get, убедись что библиотека импортирована
                 response = requests.get(api_url, timeout=3)
                 if response.status_code == 200:
                     pixabay_data = response.json()
@@ -440,14 +441,12 @@ async def api_admin_gen(req: AdminGenRequest):
                         img_url = pixabay_data['hits'][0]['largeImageURL']
                         print(f"✅ Найдено статичное фото: {img_url}")
                     else:
-                        print(f"⚠️ Фото не найдено, зафиксирована заглушка для: {slug}")
+                        print(f"⚠️ Фото не найдено, зафиксирована заглушка для: {slug_name}")
                 else:
                     print(f"❌ Ошибка API: {response.status_code}")
             except Exception as e:
                 print(f"❌ Ошибка запроса: {e}")
 
-        # Теперь в переменную img_url записана ПРЯМАЯ ссылка на картинку,
-        # которая сохранится в базу и не будет меняться.
         # --- КОНЕЦ БЛОКА ---
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
