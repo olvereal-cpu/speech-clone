@@ -322,12 +322,8 @@ async def read_post(request: Request, slug: str):
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
         post = res.data[0]
-        
-       # Добавляем "Мнение эксперта" (если его нет)
-    try:
-        # Твой код получения post должен быть здесь выше
-        
         # ДОБАВЛЯЕМ "МНЕНИЕ ЭКСПЕРТА" (Внутри блока try)
+    try:  
         if post and "Мнение эксперта" not in post.get("content", ""):
             expert_text = (
                 "«Современный синтез речи перестал быть просто набором звуков. Сегодня SpeechClone AI "
