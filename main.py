@@ -147,6 +147,17 @@ def get_all_blog_posts():
     # Склеиваем: Файлы + БД + Встроенные
     return posts + db_posts + BLOG_POSTS
 
+# --- СОСТОЯНИЯ И КЛАВИАТУРА АДМИНА ---
+class AdminStates(StatesGroup):
+    waiting_for_broadcast = State()
+
+def get_admin_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📊 Статистика", callback_data="admin_stats")
+    kb.button(text="📢 Рассылка", callback_data="admin_broadcast")
+    kb.button(text="📥 Выгрузка базы (txt)", callback_data="admin_export")
+    return kb.adjust(1).as_markup()
+
 # --- БОТ ---
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -159,10 +170,90 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    # Регистрируем пользователя в базе, если его там нет (для рассылки)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (message.from_user.id,))
+    conn.commit()
+    conn.close()
+
+    # Проверка обязательной подписки
+    if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
+        kb = InlineKeyboardBuilder()
+        kb.button(text="📢 Подписаться на канал", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")
+        kb.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
+        return await message.answer("⚠️ Для использования бота необходимо подписаться на наш канал!", reply_markup=kb.adjust(1).as_markup())
+
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
     await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
+
+# --- АДМИН-ФУНКЦИИ ---
+
+@dp.message(Command("admin"))
+async def cmd_admin(message: types.Message):
+    if message.from_user.id != ADMIN_ID: return
+    await message.answer("⚙️ Панель администратора:", reply_markup=get_admin_kb())
+
+@dp.callback_query(F.data == "admin_stats")
+async def admin_stats(call: types.CallbackQuery):
+    conn = sqlite3.connect(DB_PATH)
+    count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+    conn.close()
+    await call.message.answer(f"📈 Всего пользователей в базе: {count}")
+    await call.answer()
+
+@dp.callback_query(F.data == "admin_export")
+async def admin_export(call: types.CallbackQuery):
+    conn = sqlite3.connect(DB_PATH)
+    users = conn.execute('SELECT user_id, voice FROM users').fetchall()
+    conn.close()
+    
+    file_path = "users_db.txt"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write("ID пользователя | Голос\n" + "-"*30 + "\n")
+        for u in users:
+            f.write(f"{u[0]} | {u[1]}\n")
+    
+    await call.message.answer_document(types.FSInputFile(file_path), caption="📂 Выгрузка базы")
+    os.remove(file_path)
+    await call.answer()
+
+@dp.callback_query(F.data == "admin_broadcast")
+async def broadcast_start(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("📝 Отправьте сообщение для рассылки (текст, фото или видео):")
+    await state.set_state(AdminStates.waiting_for_broadcast)
+    await call.answer()
+
+@dp.message(AdminStates.waiting_for_broadcast)
+async def broadcast_process(message: types.Message, state: FSMContext):
+    conn = sqlite3.connect(DB_PATH)
+    users = conn.execute('SELECT user_id FROM users').fetchall()
+    conn.close()
+    
+    ok, err = 0, 0
+    await message.answer(f"🚀 Рассылка запущена на {len(users)} чел...")
+    
+    for (uid,) in users:
+        try:
+            await message.copy_to(chat_id=uid)
+            ok += 1
+            await asyncio.sleep(0.05) # Защита от Flood-лимитов
+        except:
+            err += 1
+            
+    await message.answer(f"✅ Рассылка завершена!\n\nДоставлено: {ok}\nНе удалось: {err}")
+    await state.clear()
+
+@dp.callback_query(F.data == "sub_check_done")
+async def sub_check_done(call: types.CallbackQuery):
+    if await check_sub(call.from_user.id):
+        await call.message.delete()
+        await cmd_start(call.message)
+    else:
+        await call.answer("❌ Вы всё еще не подписаны!", show_alert=True)
+
+# --- ИСХОДНЫЕ ОБРАБОТЧИКИ ---
 
 @dp.callback_query(F.data == "buy_stars")
 async def send_invoice(call: types.CallbackQuery):
