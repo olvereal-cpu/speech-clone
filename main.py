@@ -341,24 +341,22 @@ async def read_post(request: Request, slug: str):
             </div>
             """
 
-        # 3. Возвращаем страницу (важно: вне внутренних проверок, но внутри главного try)
+       # 3. Возвращаем страницу (правильный формат для FastAPI)
         return templates.TemplateResponse(
             "blog_index.html", 
             {
-                "request": request,
+                "request": request,    # Это ДОЛЖНО быть внутри словаря
                 "posts": [post], 
                 "is_single": True
             }
         )
 
     except HTTPException as http_ex:
-        # Пробрасываем 404 ошибку, если статья не найдена
         raise http_ex
     except Exception as e:
-        # Ловим все остальные системные ошибки
         print(f"Ошибка чтения статьи {slug}: {e}")
+        # Выводим саму ошибку в консоль Render, чтобы видеть детали
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
-
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
 @app.post("/api/admin/generate-post")
