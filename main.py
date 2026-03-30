@@ -327,7 +327,7 @@ async def read_post(request: Request, slug: str):
         if "Мнение эксперта" not in post.get("content", ""):
             post["content"] = post.get("content", "") + f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{tg_link}">Telegram</a>!
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в Telegram!
             </div>
             """
        # 3. Возвращаем страницу (правильный формат для FastAPI)
