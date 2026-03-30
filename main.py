@@ -329,7 +329,6 @@ async def home(request: Request):
         )
     except Exception as e:
         print(f"Ошибка получения постов для главной: {e}")
-        # В случае ошибки возвращаем пустой список, чтобы сайт не упал
         return templates.TemplateResponse(
             "index.html", 
             {"request": request, "posts": []}
@@ -355,8 +354,8 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # --- ЛОГИКА: ПОЛУЧАЕМ ИЗ SUPABASE ---
     try:
+        # 1. Получаем данные из Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res.data:
@@ -364,16 +363,20 @@ async def read_post(request: Request, slug: str):
             
         post = res.data[0]
         
-        # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ ---
+        # 2. Очеловечивание контента
         content = post.get("content", "")
         if "Автор статьи" not in content:
+            # Используем глобальный CHANNEL_ID или пустую строку, если его нет
+            tg_link = globals().get('CHANNEL_ID', '#')
+            
             content += f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{CHANNEL_ID}">Telegram</a>!
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{tg_link}">Telegram</a>!
             </div>
             """
             post["content"] = content
 
+        # 3. Рендерим страницу статьи
         return templates.TemplateResponse(
             "post.html", 
             {"request": request, "post": post}
@@ -382,7 +385,7 @@ async def read_post(request: Request, slug: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Ошибка Supabase: {e}")
+        print(f"Ошибка Supabase при чтении {slug}: {e}")
         raise HTTPException(status_code=500, detail="Ошибка базы данных")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
