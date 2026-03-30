@@ -115,43 +115,6 @@ def init_db():
 
 init_db()
 
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ БЛОГА ---
-def get_all_blog_posts():
-    posts = []
-    # 1. Читаем файлы из папки blog
-    if os.path.exists(BLOG_FOLDER):
-        files = [f for f in os.listdir(BLOG_FOLDER) if f.endswith(".html")]
-        for f in files:
-            try:
-                with open(os.path.join(BLOG_FOLDER, f), 'r', encoding='utf-8') as file:
-                    lines = file.readlines()
-                if len(lines) >= 3:
-                    title = lines[0].strip()
-                    image = lines[1].strip()
-                    # Собираем ВЕСЬ остальной текст (не только одну строку)
-                    content_html = "".join(lines[2:]).strip()
-                    
-                    posts.append({
-                        "title": title,
-                        "image": image,
-                        "content": content_html,
-                        "excerpt": clean_html(content_html)[:160] + "...",
-                        "slug": f.replace(".html", ""),
-                        "date": "20.03.2026", "author": "Admin", "category": "AI", "color": "purple"
-                    })
-            except Exception as e:
-                print(f"Ошибка чтения {f}: {e}")
-    
-    # 2. Из базы данных
-    try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
-        db_posts = [dict(p) for p in conn.execute('SELECT * FROM posts ORDER BY id DESC').fetchall()]
-        conn.close()
-    except: db_posts = []
-    
-    # Склеиваем: Файлы + БД + Встроенные
-    return posts + db_posts + BLOG_POSTS
-
 # --- СОСТОЯНИЯ И КЛАВИАТУРА АДМИНА ---
 class AdminStates(StatesGroup):
     waiting_for_broadcast = State()
@@ -334,6 +297,7 @@ async def home(request: Request):
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     try:
+        # Берем данные ТОЛЬКО из Supabase
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
         all_posts = res.data if res.data else []
         
@@ -345,10 +309,40 @@ async def blog_list(request: Request):
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse(
+            request, "blog_index.html", {"posts": [], "is_single": False}
+        )
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
+async def read_post(request: Request, slug: str):
+    try:
+        # Ищем в Supabase
+        res = supabase.table("posts").select("*").eq("slug", slug).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Статья не найдена")
+            
+        post = res.data[0]
+        
+        # Добавляем "Мнение эксперта" (если его нет)
+        if "Мнение эксперта" not in post.get("content", ""):
+            post["content"] = post.get("content", "") + f"""
+            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
+            </div>
+            """
+
+        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
+        return templates.TemplateResponse(
             request, 
             "blog_index.html", 
-            {"posts": [], "is_single": False}
+            {
+                "posts": [post], # Шаблон ждет список
+                "is_single": True
+            }
         )
+    except Exception as e:
+        print(f"Ошибка чтения статьи {slug}: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
