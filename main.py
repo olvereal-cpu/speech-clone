@@ -89,10 +89,7 @@ os.makedirs(BLOG_FOLDER, exist_ok=True)
 # --- ВСТРОЕННЫЕ ПОСТЫ ---
 BLOG_POSTS = [
     {
-        "id": 1001, "title": "Как ИИ изменит ваш голос в 2026 году", "slug": "kak-ii-izmenit-vash-golos", 
-        "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?q=80&w=800", 
-        "excerpt": "Разбираемся в будущем клонирования...", "date": "10.03.2026", "author": "Алекс", "category": "Технологии", "color": "blue",
-        "content": "<p>В 2026 году технологии синтеза речи достигли невероятного сходства...</p>"
+       
     }
 ]
 
