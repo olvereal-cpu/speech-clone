@@ -396,67 +396,69 @@ async def api_admin_gen(req: AdminGenRequest):
         }}
         """
         
-       # 1. ГЕНЕРАЦИЯ КОНТЕНТА
+      # 1. ГЕНЕРАЦИЯ КОНТЕНТА
         raw_res = await mm.generate(prompt)
         
         # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
         try:
-            # Очистка JSON от Markdown (```json ... ```)
             clean_json = re.sub(r'```json|```', '', raw_res).strip()
             data = json.loads(clean_json)
         except Exception as e:
             print(f"❌ ОШИБКА: Нейросеть вернула не JSON. Ответ: {raw_res[:100]}...")
             data = {
                 "title": "Новая технология AI", 
-                "photo_keywords": "technology, ai", 
+                "photo_keywords": "programming, dark tech", 
                 "content": "Статья в процессе обработки..."
             }
         
-        # 2. ГЕНЕРАЦИЯ УНИКАЛЬНОГО СЛАГА (Основа для стабильной картинки)
+        # 2. ГЕНЕРАЦИЯ УНИКАЛЬНОГО СЛАГА
         import string
         title = data.get('title', 'new-post')
         slug_name = slugify(title)
         
-        # 3. ПОДГОТОВКА ССЫЛОК И КЛЮЧЕЙ
+        # 3. ПОДГОТОВКА ССЫЛОК
         PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
         
-        # Дефолтная заглушка (уникальная для каждого поста по его названию)
-        # Она сработает, если Pixabay не найдет ничего подходящего
+        # Твоя любимая картинка как базовый запасной вариант
+        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=800"
+        
+        # Уникальная заглушка (всегда разная для каждого слага)
         img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
         
         raw_keywords = data.get('photo_keywords', 'ai, technology')
+        # Добавляем стиль 'dark' и 'code', чтобы картинки были похожи на твой пример
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         keyword_list = clean_text.split()[:2]
         
-        # 4. ПОПЫТКА ПОЛУЧИТЬ ТЕМАТИЧЕСКОЕ ФОТО С PIXABAY
-        if keyword_list and PIXABAY_KEY:
-            search_query = "+".join(keyword_list)
-            # Важно: используем эндпоинт /api/ (для ФОТО), а не /api/videos/
+        # 4. ПОПЫТКА ПОЛУЧИТЬ ТЕМАТИЧЕСКОЕ ФОТО
+        if PIXABAY_KEY:
+            # Формируем запрос: ключи от нейросети + уточнение стиля
+            search_query = "+".join(keyword_list) + "+dark+code"
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
             try:
                 response = requests.get(api_url, timeout=5)
                 
-                # Проверка на валидный JSON и статус 200
                 if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
                     pixabay_data = response.json()
                     
                     if pixabay_data.get('hits'):
-                        # Если нашли тематическое фото — берем самую качественную ссылку
-                        img_url = pixabay_data['hits'][0]['largeImageURL']
-                        # Гарантируем HTTPS
-                        img_url = img_url.replace("http://", "https://")
-                        print(f"✅ Для статьи '{title}' найдено фото на Pixabay: {img_url}")
+                        # Берем первое фото
+                        found_url = pixabay_data['hits'][0]['largeImageURL']
+                        # ПРИНУДИТЕЛЬНО HTTPS (исправляет проблему "заглушек")
+                        img_url = found_url.replace("http://", "https://")
+                        print(f"✅ Для статьи '{title}' найдено тематическое фото: {img_url}")
                     else:
-                        print(f"⚠️ Pixabay не нашел фото по запросу '{search_query}'. Оставлен Picsum.")
+                        # Если по спец-запросу пусто, пробуем твой Unsplash
+                        img_url = unsplash_fallback
+                        print(f"⚠️ Pixabay не нашел фото. Использован Unsplash fallback.")
                 else:
-                    print(f"❌ Pixabay API вернул ошибку или HTML (Статус: {response.status_code})")
+                    print(f"❌ Ошибка API. Статус: {response.status_code}")
             except Exception as e:
                 print(f"❌ Ошибка запроса к Pixabay: {e}")
 
-        # Теперь img_url готов для записи в Supabase. 
-        # Это будет либо прямая ссылка Pixabay (.jpg), либо стабильный Picsum-seed.
-        
+        # ИТОГ: img_url теперь либо уникальный Pixabay (Dark стиль), либо Unsplash, либо уникальный Picsum.
+
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
             "title": data['title'],
