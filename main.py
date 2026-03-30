@@ -315,38 +315,7 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # Ищем в Supabase
-        res = supabase.table("posts").select("*").eq("slug", slug).execute()
-        
-        if not res.data:
-            raise HTTPException(status_code=404, detail="Статья не найдена")
-            
-        post = res.data[0]
-        
-        # Добавляем "Мнение эксперта" (если его нет)
-        if "Мнение эксперта" not in post.get("content", ""):
-            post["content"] = post.get("content", "") + f"""
-            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
-            </div>
-            """
-
-        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
-        return templates.TemplateResponse(
-            request, 
-            "blog_index.html", 
-            {
-                "posts": [post], # Шаблон ждет список
-                "is_single": True
-            }
-        )
-    except Exception as e:
-        print(f"Ошибка чтения статьи {slug}: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
-@app.get("/blog/{slug}", response_class=HTMLResponse)
-async def read_post(request: Request, slug: str):
-    try:
-        # 1. Запрос к Supabase
+        # 1. Запрос к Supabase (как в твоих обеих версиях)
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res or not res.data:
@@ -357,6 +326,7 @@ async def read_post(request: Request, slug: str):
         # 2. Очеловечивание контента
         content = post.get("content", "")
         if "Мнение эксперта" not in content:
+            # Используем CHANNEL_ID из globals как во второй версии
             tg_link = globals().get('CHANNEL_ID', '#')
             expert_block = f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
@@ -365,20 +335,35 @@ async def read_post(request: Request, slug: str):
             """
             post["content"] = content + expert_block
 
-        # 3. РЕНДЕР (Используем имя твоего шаблона: blog_index.html)
+        # 3. Дополнительно тянем похожие статьи (чтобы блок "Ещё по теме" работал)
+        try:
+            related_res = supabase.table("posts")\
+                .select("title, slug, image_url, category")\
+                .neq("slug", slug)\
+                .limit(3)\
+                .execute()
+            related_posts = related_res.data if related_res and related_res.data else []
+        except Exception as e:
+            print(f"Ошибка подгрузки похожих статей: {e}")
+            related_posts = []
+
+        # 4. РЕНДЕР (используем blog_index.html)
         return templates.TemplateResponse(
             request,
             "blog_index.html", 
             {
                 "posts": [post],  # Твой шаблон ожидает список posts и берет первый элемент
+                "related": related_posts, # Похожие статьи для подвала
                 "is_single": True
             }
         )
             
     except HTTPException:
+        # Пробрасываем 404, если статья не найдена
         raise
     except Exception as e:
-        print(f"Ошибка: {e}")
+        # Сохраняем твой формат логирования и вывода ошибки
+        print(f"Ошибка чтения статьи {slug}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка базы данных: {str(e)}")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
