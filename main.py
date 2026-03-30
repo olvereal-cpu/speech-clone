@@ -8,6 +8,7 @@ import google.generativeai as genai
 import re
 import markdown
 import random
+import urllib.parse
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
@@ -367,6 +368,8 @@ async def read_post(request: Request, slug: str):
     )
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
+import urllib.parse  # Добавляем в начало файла
+
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
@@ -416,9 +419,34 @@ async def api_admin_gen(req: AdminGenRequest):
         keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
         keywords_url = ",".join(keyword_list[:3])
         
-        # ИСПРАВЛЕНИЕ 3: Чистая ссылка (Pollinations для точности темы)
-        prompt_for_img = keywords_url.replace(',', ' ')
+        # ИСПРАВЛЕНИЕ 3: Чистая ссылка с экранированием пробелов
+        # Заменяем запятые на пробелы и кодируем строку для URL
+        prompt_for_img = urllib.parse.quote(keywords_url.replace(',', ' '))
         img_url = f"https://image.pollinations.ai/prompt/{prompt_for_img}?width=800&height=600&seed={img_id}&nologo=true"
+        
+        # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
+        supabase.table("posts").insert({
+            "title": data['title'],
+            "slug": slug_name,
+            "image_url": img_url,
+            "excerpt": data.get('excerpt', ''),
+            "content": data['content']
+        }).execute()
+
+        # Сохранение в локальный файл (оставлено по просьбе пользователя)
+        file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
+        if not os.path.exists(BLOG_FOLDER): os.makedirs(BLOG_FOLDER)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(f"{data['title']}\n")
+            f.write(f"{img_url}\n")
+            f.write(f"{data.get('excerpt', '')}\n")
+            f.write(f"{data['content']}")
+            
+        return {"status": "success", "url": f"/blog/{slug_name}"}
+
+    except Exception as e:
+        print(f"Ошибка генерации: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
