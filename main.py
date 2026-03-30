@@ -315,36 +315,35 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # 1. Ищем статью в Supabase
+        # Ищем в Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res.data:
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
         post = res.data[0]
-
-       # Добавляем "Мнение эксперта" (если его нет)
+        
+        # Добавляем "Мнение эксперта" (если его нет)
         if "Мнение эксперта" not in post.get("content", ""):
             post["content"] = post.get("content", "") + f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
                 <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
             </div>
             """
-       # 3. Возвращаем страницу (правильный формат для FastAPI)
+
+        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
         return templates.TemplateResponse(
+            request, 
             "blog_index.html", 
             {
-                "posts": [post], 
+                "posts": [post], # Шаблон ждет список
                 "is_single": True
             }
         )
-
-    except HTTPException as http_ex:
-        raise http_ex
     except Exception as e:
         print(f"Ошибка чтения статьи {slug}: {e}")
-        # Выводим саму ошибку в консоль Render, чтобы видеть детали
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
 @app.post("/api/admin/generate-post")
