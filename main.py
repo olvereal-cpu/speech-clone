@@ -424,7 +424,7 @@ async def api_admin_gen(req: AdminGenRequest):
         if not safe_prompt: safe_prompt = "technology-ai"
         
         # Финальный URL (без %20, без точек, без лишнего мусора)
-        img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=800&height=600&seed={img_id}&nologo=true"
+        img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=800&height=600&seed={img_id}&nologo=true&model=flux"
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
