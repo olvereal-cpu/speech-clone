@@ -333,13 +333,25 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    all_posts = get_all_blog_posts()
-    post = next((p for p in all_posts if p["slug"] == slug), None)
-    if not post: raise HTTPException(status_code=404)
+    # --- НОВАЯ ЛОГИКА: ПОЛУЧАЕМ ИЗ SUPABASE ---
+    try:
+        # Ищем одну запись в таблице posts, где slug совпадает с пришедшим в URL
+        res = supabase.table("posts").select("*").eq("slug", slug).execute()
+        
+        # Если данных нет (список пустой), выдаем 404
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Статья не найдена")
+            
+        # Берем первый (и единственный) объект из результата
+        post = res.data[0]
+        
+    except Exception as e:
+        print(f"Ошибка Supabase: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка базы данных")
     
+    # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ (СОХРАНЕНА) ---
     content = post["content"]
     
-    # Очеловечивание: Добавляем блок автора в конец, если его нет
     if "Автор статьи" not in content:
         content += f"""
         <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
