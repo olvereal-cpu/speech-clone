@@ -324,7 +324,7 @@ async def read_post(request: Request, slug: str):
         post = res.data[0]
         
        # Добавляем "Мнение эксперта" (если его нет)
-   try:
+    try:
         # Твой код получения post должен быть здесь выше
         
         # ДОБАВЛЯЕМ "МНЕНИЕ ЭКСПЕРТА" (Внутри блока try)
@@ -345,7 +345,7 @@ async def read_post(request: Request, slug: str):
             </div>
             """
 
-   except Exception as e:
+    except Exception as e:
         print(f"Error processing post: {e}")
        
 
