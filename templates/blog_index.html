@@ -12,7 +12,11 @@
             <a href="/blog" class="text-blue-600 font-black uppercase text-[10px] tracking-widest mb-8 block hover:translate-x-[-5px] transition-transform">← Назад в базу знаний</a>
             
             <div class="rounded-[45px] overflow-hidden shadow-2xl mb-12 bg-gray-100">
-               <img src="{{ post.image_url }}"class="w-full object-cover rounded-[30px]"style="min-height: 300px; background-color: #f3f4f6;" alt="{{ post.title }}">
+               <img src="{{ post.image_url }}" 
+                    class="w-full object-cover rounded-[30px]" 
+                    style="min-height: 300px; background-color: #f3f4f6;" 
+                    alt="{{ post.title }}"
+                    onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=1200';">
             </div>
 
             <div class="flex items-center gap-4 mb-6">
@@ -59,7 +63,11 @@
                     <article class="lg:col-span-2 bg-white rounded-[45px] border border-gray-100 shadow-sm overflow-hidden hover:shadow-2xl transition-all duration-500 group">
                         <div class="flex flex-col md:flex-row h-full">
                             <div class="md:w-1/2 h-64 md:h-auto overflow-hidden bg-gray-50">
-                                <img src="{{ post.image_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" alt="{{ post.title }}">
+                                <img src="{{ post.image_url }}" 
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                                     alt="{{ post.title }}"
+                                     loading="lazy"
+                                     onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1200';">
                             </div>
                             <div class="md:w-1/2 p-10 flex flex-col justify-center">
                                 <div class="flex items-center gap-3 mb-4">
@@ -86,7 +94,11 @@
                     <!-- ОСТАЛЬНЫЕ КАРТОЧКИ -->
                     <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
                         <div class="h-56 rounded-[30px] overflow-hidden mb-6 bg-gray-50">
-                            <img src="{{ post.image_url }}" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" alt="{{ post.title }}">
+                            <img src="{{ post.image_url }}" 
+                                 class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" 
+                                 alt="{{ post.title }}"
+                                 loading="lazy"
+                                 onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=800';">
                         </div>
                         <div class="px-4 pb-6">
                             <div class="flex justify-between items-center mb-3 text-[9px] font-black uppercase tracking-widest text-blue-600">
