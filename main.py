@@ -411,23 +411,21 @@ async def api_admin_gen(req: AdminGenRequest):
         # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
         img_id = random.randint(1, 10000)
         
-        # ИСПРАВЛЕНИЕ 2: Глубокая очистка ключевых слов
-        # 1. Берем ключевые слова (максимум 3)
-        raw_keywords = data.get('photo_keywords', 'technology,future,ai')
-        # Убираем все лишние символы, оставляя только буквы, цифры и запятые
-        clean_keywords = re.sub(r'[^\w\s,]', '', raw_keywords).strip()
+        # --- ФИНАЛЬНЫЙ СТАБИЛЬНЫЙ БЛОК ФОТО ---
+        raw_keywords = data.get('photo_keywords', 'ai, technology')
+        # Оставляем только буквы и пробелы
+        clean_keywords = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).strip()
         
-        # 2. Формируем строку для нейросети (заменяем запятые на пробелы)
-        keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
-        prompt_str = " ".join(keyword_list[:3])
+        # Берем только первые 2-3 слова (чем короче, тем стабильнее ответ ИИ)
+        keyword_list = clean_keywords.split()
+        short_prompt = " ".join(keyword_list[:3])
         
-        # 3. КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Кодируем для URL и добавляем расширение .jpg
-        # Добавление .jpg в конец пути prompt заставляет браузеры и Render 
-        # воспринимать ссылку именно как прямую картинку.
-        encoded_prompt = urllib.parse.quote(f"{prompt_str}.jpg")
+        # Кодируем пробелы
+        encoded_prompt = urllib.parse.quote(short_prompt)
         
-        # 4. Собираем финальный URL (Pollinations любит, когда параметры идут после расширения)
-        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={img_id}&nologo=true"
+        # Собираем ссылку БЕЗ .jpg в пути (Pollinations так стабильнее)
+        # Но добавляем параметр &model=flux или &model=turbo для скорости
+        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={img_id}&nologo=true&model=turbo"
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
