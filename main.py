@@ -396,7 +396,7 @@ async def api_admin_gen(req: AdminGenRequest):
         }}
         """
         
-        # 1. ГЕНЕРАЦИЯ КОНТЕНТА
+       # 1. ГЕНЕРАЦИЯ КОНТЕНТА
         raw_res = await mm.generate(prompt)
         
         # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
@@ -415,47 +415,47 @@ async def api_admin_gen(req: AdminGenRequest):
         # 2. ГЕНЕРАЦИЯ УНИКАЛЬНОГО СЛАГА (Основа для стабильной картинки)
         import string
         title = data.get('title', 'new-post')
-        # Создаем чистый slug_name (уникальный для каждой статьи)
         slug_name = slugify(title)
         
-        # 3. ГЕНЕРАЦИЯ ССЫЛКИ
+        # 3. ПОДГОТОВКА ССЫЛОК И КЛЮЧЕЙ
         PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
         
-        raw_keywords = data.get('photo_keywords', 'ai, future')
+        # Дефолтная заглушка (уникальная для каждого поста по его названию)
+        # Она сработает, если Pixabay не найдет ничего подходящего
+        img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
+        
+        raw_keywords = data.get('photo_keywords', 'ai, technology')
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         keyword_list = clean_text.split()[:2]
-        
-        # --- УНИКАЛЬНАЯ ЗАГЛУШКА ДЛЯ ЭТОЙ СТАТЬИ ---
-        # Сервис picsum.photos при использовании /seed/SLUG/ всегда будет отдавать 
-        # ОДНУ И ТУ ЖЕ картинку именно для этого слага. Для другой статьи картинка будет другой.
-        img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
         
         # 4. ПОПЫТКА ПОЛУЧИТЬ ТЕМАТИЧЕСКОЕ ФОТО С PIXABAY
         if keyword_list and PIXABAY_KEY:
             search_query = "+".join(keyword_list)
+            # Важно: используем эндпоинт /api/ (для ФОТО), а не /api/videos/
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
             try:
                 response = requests.get(api_url, timeout=5)
-                # Проверка на валидный JSON (защита от Unexpected token <)
+                
+                # Проверка на валидный JSON и статус 200
                 if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
                     pixabay_data = response.json()
+                    
                     if pixabay_data.get('hits'):
-                        # Если нашли тематическое фото — фиксируем его ПРЯМУЮ ссылку в базу
+                        # Если нашли тематическое фото — берем самую качественную ссылку
                         img_url = pixabay_data['hits'][0]['largeImageURL']
-                        # Принудительно HTTPS
-                        if img_url.startswith("http://"):
-                            img_url = img_url.replace("http://", "https://")
-                        print(f"✅ Для статьи '{title}' найдено тематическое фото: {img_url}")
+                        # Гарантируем HTTPS
+                        img_url = img_url.replace("http://", "https://")
+                        print(f"✅ Для статьи '{title}' найдено фото на Pixabay: {img_url}")
                     else:
-                        print(f"⚠️ Pixabay не нашел фото для '{search_query}'. Использована уникальная заглушка.")
+                        print(f"⚠️ Pixabay не нашел фото по запросу '{search_query}'. Оставлен Picsum.")
                 else:
-                    print(f"❌ Pixabay API ошибка {response.status_code}. Использована уникальная заглушка.")
+                    print(f"❌ Pixabay API вернул ошибку или HTML (Статус: {response.status_code})")
             except Exception as e:
                 print(f"❌ Ошибка запроса к Pixabay: {e}")
 
-        # Теперь img_url — это либо прямая ссылка на фото Pixabay, 
-        # либо стабильная ссылка picsum, привязанная к слагу статьи.
+        # Теперь img_url готов для записи в Supabase. 
+        # Это будет либо прямая ссылка Pixabay (.jpg), либо стабильный Picsum-seed.
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
