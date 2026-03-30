@@ -313,12 +313,27 @@ class AdminGenRequest(BaseModel):
 # --- МАРШРУТЫ САЙТА ---
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    all_posts = get_all_blog_posts()
-    # Берем первые 6 для главной
-    return templates.TemplateResponse(
-    request=request, 
-    name="index.html", 
-    context={"posts": all_posts[:6]}
+    try:
+        # Запрашиваем посты из Supabase, сортируем по дате (сначала новые) и берем 6 штук
+        res = supabase.table("posts") \
+            .select("*") \
+            .order("created_at", desc=True) \
+            .limit(6) \
+            .execute()
+        
+        all_posts = res.data if res.data else []
+        
+        return templates.TemplateResponse(
+            "index.html", 
+            {"request": request, "posts": all_posts}
+        )
+    except Exception as e:
+        print(f"Ошибка получения постов для главной: {e}")
+        # В случае ошибки возвращаем пустой список, чтобы сайт не упал
+        return templates.TemplateResponse(
+            "index.html", 
+            {"request": request, "posts": []}
+        )
 )
 
 @app.get("/blog", response_class=HTMLResponse)
@@ -332,7 +347,7 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # --- ЛОГИКА: ПОЛУЧАЕМ ТОЛЬКО ИЗ SUPABASE ---
+    # --- ЛОГИКА: ПОЛУЧАЕМ ИЗ SUPABASE ---
     try:
         # Ищем запись в таблице posts, где slug совпадает
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
@@ -343,12 +358,6 @@ async def read_post(request: Request, slug: str):
             
         # Объект статьи
         post = res.data[0]
-
-        # Возвращаем отрендеренный шаблон post.html (или blog_detail.html)
-        return templates.TemplateResponse("post.html", {
-            "request": request, 
-            "post": post
-        })
             
     except HTTPException:
         # Пробрасываем 404 дальше
@@ -357,8 +366,8 @@ async def read_post(request: Request, slug: str):
         print(f"Ошибка Supabase: {e}")
         raise HTTPException(status_code=500, detail="Ошибка базы данных")
     
-    # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ (СОХРАНЕНА) ---
-    content = post["content"]
+    # --- ТВОЯ ЛОГИКА ОЧЕЛОВЕЧИВАНИЯ (ПЕРЕМЕЩЕНА ВЕРНО) ---
+    content = post.get("content", "")
     
     if "Автор статьи" not in content:
         content += f"""
@@ -368,10 +377,11 @@ async def read_post(request: Request, slug: str):
         """
     post["content"] = content
 
+    # Возвращаем финальный шаблон со всеми правками
     return templates.TemplateResponse(
         request=request, 
-        name="blog_index.html", 
-        context={"posts": [post], "is_single": True}
+        name="post.html", 
+        context={"post": post}
     )
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
@@ -405,7 +415,7 @@ async def api_admin_gen(req: AdminGenRequest):
         }}
         """
         
-      # 1. ГЕНЕРАЦИЯ КОНТЕНТА
+        # 1. ГЕНЕРАЦИЯ КОНТЕНТА
         raw_res = await mm.generate(prompt)
         
         # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
@@ -441,7 +451,6 @@ async def api_admin_gen(req: AdminGenRequest):
         
         # 4. ПОПЫТКА ПОЛУЧИТЬ ТЕМАТИЧЕСКОЕ ФОТО
         if PIXABAY_KEY:
-            # Формируем запрос: ключи от нейросети + уточнение стиля
             search_query = "+".join(keyword_list) + "+dark+code"
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
@@ -452,35 +461,29 @@ async def api_admin_gen(req: AdminGenRequest):
                     pixabay_data = response.json()
                     
                     if pixabay_data.get('hits'):
-                        # Берем первое фото
                         found_url = pixabay_data['hits'][0]['largeImageURL']
-                        # ПРИНУДИТЕЛЬНО HTTPS (исправляет проблему "заглушек")
                         img_url = found_url.replace("http://", "https://")
                         print(f"✅ Для статьи '{title}' найдено тематическое фото: {img_url}")
                     else:
-                        # Если по спец-запросу пусто, пробуем твой Unsplash
                         img_url = unsplash_fallback
                         print(f"⚠️ Pixabay не нашел фото. Использован Unsplash fallback.")
-                else:
-                    print(f"❌ Ошибка API. Статус: {response.status_code}")
             except Exception as e:
                 print(f"❌ Ошибка запроса к Pixabay: {e}")
 
-         # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
+        # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
         supabase.table("posts").insert({
-            "title": data['title'],
+            "title": data.get('title', 'Без заголовка'),
             "slug": slug_name,
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
-            "content": data['content']
+            "content": data.get('content', '')
         }).execute()
 
-        # Локальное сохранение удалено. Теперь данные берутся только из БД.
-        
+        # Локальное сохранение удалено полностью.
         return {"status": "success", "url": f"/blog/{slug_name}"}
 
     except Exception as e:
-        print(f"Ошибка генерации или сохранения: {e}")
+        print(f"Ошибка генерации: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
