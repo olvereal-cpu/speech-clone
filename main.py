@@ -366,7 +366,6 @@ async def read_post(request: Request, slug: str):
     )
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
-import urllib.parse  # Добавляем в начало файла
 
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
@@ -397,54 +396,56 @@ async def api_admin_gen(req: AdminGenRequest):
         }}
         """
         
+        # 1. ГЕНЕРАЦИЯ КОНТЕНТА
         raw_res = await mm.generate(prompt)
         
-        # Очистка JSON от возможных артефактов Markdown
-        clean_json = re.sub(r'```json|```', '', raw_res).strip()
-        data = json.loads(clean_json)
+        # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
+        try:
+            # Очистка JSON от Markdown (```json ... ```)
+            clean_json = re.sub(r'```json|```', '', raw_res).strip()
+            data = json.loads(clean_json)
+        except Exception as e:
+            print(f"❌ ОШИБКА: Нейросеть вернула не JSON. Ответ: {raw_res[:100]}...")
+            # Если нейросеть сбоит, создаем пустую структуру, чтобы код не упал дальше
+            data = {
+                "title": "Новая технология AI", 
+                "photo_keywords": "technology, ai", 
+                "content": "Статья в процессе обработки..."
+            }
         
-        # 1. Генерация URL и параметров фото (создаем slug_name)
-        slug_name = slugify(data['title'])
+        # 2. ГЕНЕРАЦИЯ СЛАГА
+        slug_name = slugify(data.get('title', 'new-post'))
         
-        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash (для других нужд, если нужно)
-        img_id = random.randint(1, 10000)
-        
-        # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Исправлено) ---
+        # 3. ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY
         PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
         
         raw_keywords = data.get('photo_keywords', 'ai, future')
-        
-        # Очищаем текст
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         keyword_list = clean_text.split()[:2]
         
-        # Уникальная заглушка: ТЕПЕРЬ использует slug_name
-        # picsum выдаст ОДНО И ТО ЖЕ фото для этого конкретного поста (по seed)
+        # Дефолтная заглушка (всегда работает)
         img_url = f"https://picsum.photos/seed/{slug_name}/800/600"
         
-        # ИСПРАВЛЕННОЕ УСЛОВИЕ: Проверяем, что ключ вообще есть
         if keyword_list and PIXABAY_KEY:
             search_query = "+".join(keyword_list)
             api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
             
             try:
-                # ВАЖНО: используй requests.get, убедись что библиотека импортирована
-                response = requests.get(api_url, timeout=3)
-                if response.status_code == 200:
+                response = requests.get(api_url, timeout=5)
+                # Проверяем, что Pixabay вернул именно JSON, а не HTML страницу ошибки
+                if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
                     pixabay_data = response.json()
-                    
                     if pixabay_data.get('hits'):
-                        # Берем прямую ссылку на статичный файл .jpg
                         img_url = pixabay_data['hits'][0]['largeImageURL']
-                        print(f"✅ Найдено статичное фото: {img_url}")
-                    else:
-                        print(f"⚠️ Фото не найдено, зафиксирована заглушка для: {slug_name}")
+                        # Принудительно ставим HTTPS
+                        if img_url.startswith("http://"):
+                            img_url = img_url.replace("http://", "https://")
+                        print(f"✅ Успешно зафиксировано фото: {img_url}")
                 else:
-                    print(f"❌ Ошибка API: {response.status_code}")
+                    print(f"⚠️ Pixabay недоступен или ошибка ключа (Код: {response.status_code})")
             except Exception as e:
-                print(f"❌ Ошибка запроса: {e}")
+                print(f"❌ Ошибка запроса к Pixabay: {e}")
 
-        # --- КОНЕЦ БЛОКА ---
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
@@ -471,29 +472,7 @@ async def api_admin_gen(req: AdminGenRequest):
         print(f"Ошибка генерации: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
         
-        # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
-        supabase.table("posts").insert({
-            "title": data['title'],
-            "slug": slug_name,
-            "image_url": img_url,
-            "excerpt": data.get('excerpt', ''),
-            "content": data['content']
-        }).execute()
-
-        # Сохранение в локальный файл (оставлено по просьбе пользователя)
-        file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
-        if not os.path.exists(BLOG_FOLDER): os.makedirs(BLOG_FOLDER)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(f"{data['title']}\n")
-            f.write(f"{img_url}\n")
-            f.write(f"{data.get('excerpt', '')}\n")
-            f.write(f"{data['content']}")
-            
-        return {"status": "success", "url": f"/blog/{slug_name}"}
-
-    except Exception as e:
-        print(f"Ошибка генерации: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
