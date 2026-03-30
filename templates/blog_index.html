@@ -12,20 +12,19 @@
             <a href="/blog" class="text-blue-600 font-black uppercase text-[10px] tracking-widest mb-8 block hover:translate-x-[-5px] transition-transform">← Назад в базу знаний</a>
             
             <div class="rounded-[45px] overflow-hidden shadow-2xl mb-12 bg-gray-100">
-                {# Добавлен h-auto и min-h для надежности отображения #}
-                <img src="{{ post.image }}" class="w-full h-auto md:h-[500px] object-cover block" alt="{{ post.title }}">
+                {# ИСПРАВЛЕНО: post.image заменен на post.image_url #}
+                <img src="{{ post.image_url }}" class="w-full h-auto md:h-[500px] object-cover block" alt="{{ post.title }}">
             </div>
 
             <div class="flex items-center gap-4 mb-6">
-                <span class="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-[10px] font-black uppercase">{{ post.category }}</span>
-                <span class="text-gray-400 text-xs font-bold">{{ post.date }} • {{ post.author }}</span>
+                <span class="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-[10px] font-black uppercase">{{ post.category or 'Нейросети' }}</span>
+                <span class="text-gray-400 text-xs font-bold">{{ post.created_at or post.date }} • {{ post.author or 'SpeechClone' }}</span>
             </div>
 
             <h1 class="text-4xl md:text-6xl font-black text-gray-900 mb-8 leading-[1.1] tracking-tighter">
                 {{ post.title }}
             </h1>
 
-            <!-- Вывод полного контента с исправленным форматированием абзацев -->
             <div class="prose prose-xl max-w-none text-gray-600 font-medium leading-relaxed mb-20 prose-p:mb-6 prose-headings:text-gray-900 prose-headings:font-black">
                 {{ post.content | safe }}
             </div>
@@ -59,12 +58,13 @@
                     <article class="lg:col-span-2 bg-white rounded-[45px] border border-gray-100 shadow-sm overflow-hidden hover:shadow-2xl transition-all duration-500 group">
                         <div class="flex flex-col md:flex-row h-full">
                             <div class="md:w-1/2 h-64 md:h-auto overflow-hidden bg-gray-50">
-                                <img src="{{ post.image }}" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700">
+                                {# ИСПРАВЛЕНО: post.image заменен на post.image_url #}
+                                <img src="{{ post.image_url }}" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" alt="{{ post.title }}">
                             </div>
                             <div class="md:w-1/2 p-10 flex flex-col justify-center">
                                 <div class="flex items-center gap-3 mb-4">
-                                    <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest">{{ post.category }}</div>
-                                    <span class="text-[10px] text-gray-300 font-bold">{{ post.date }}</span>
+                                    <div class="text-[10px] font-black text-blue-600 uppercase tracking-widest">{{ post.category or 'AI News' }}</div>
+                                    <span class="text-[10px] text-gray-300 font-bold">{{ post.created_at or post.date }}</span>
                                 </div>
                                 <h2 class="text-3xl font-black text-gray-900 mb-6 leading-tight tracking-tight">{{ post.title }}</h2>
                                 <p class="text-gray-500 mb-6 line-clamp-3">{{ post.excerpt }}</p>
@@ -73,9 +73,9 @@
                         </div>
                     </article>
 
-                    <!-- БЛОК ПАРТНЕРСТВА -->
+                    <!-- БЛОК ПАРТНЕРСТВА (всегда второй в сетке) -->
                     <div class="bg-gray-900 rounded-[45px] p-10 text-white flex flex-col justify-between shadow-xl relative overflow-hidden group">
-                        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800" class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:scale-110 transition-transform duration-700">
+                        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800" class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:scale-110 transition-transform duration-700" alt="Partnership">
                         <div class="relative z-10">
                             <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-6 block">Партнерство</span>
                             <h3 class="text-2xl font-black mb-4 leading-tight">Ваш голос заслуживает <span class="text-blue-500 italic">лучшего</span>.</h3>
@@ -86,14 +86,15 @@
                     <!-- ОСТАЛЬНЫЕ КАРТОЧКИ -->
                     <article class="bg-white rounded-[40px] border border-gray-100 p-4 shadow-sm hover:shadow-xl transition-all group">
                         <div class="h-56 rounded-[30px] overflow-hidden mb-6 bg-gray-50">
-                            <img src="{{ post.image }}" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500">
+                            {# ИСПРАВЛЕНО: post.image заменен на post.image_url #}
+                            <img src="{{ post.image_url }}" class="w-full h-full object-cover group-hover:scale-110 transition-all duration-500" alt="{{ post.title }}">
                         </div>
                         <div class="px-4 pb-6">
                             <div class="flex justify-between items-center mb-3 text-[9px] font-black uppercase tracking-widest text-blue-600">
-                                <span>{{ post.category }}</span>
-                                <span class="text-gray-400">{{ post.date }}</span>
+                                <span>{{ post.category or 'Технологии' }}</span>
+                                <span class="text-gray-400">{{ post.created_at or post.date }}</span>
                             </div>
-                            <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight">{{ post.title }}</h2>
+                            <h2 class="text-xl font-black text-gray-900 mb-4 leading-tight line-clamp-2">{{ post.title }}</h2>
                             <a href="/blog/{{ post.slug }}" class="text-[11px] font-black uppercase text-gray-900 group-hover:text-blue-600 transition-colors">Перейти →</a>
                         </div>
                     </article>
