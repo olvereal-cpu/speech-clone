@@ -22,8 +22,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import LabeledPrice, PreCheckoutQuery
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from supabase import create_client, Client
 
-
+SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
@@ -355,7 +358,7 @@ async def read_post(request: Request, slug: str):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Промпт (оставлен без изменений, как ты просил)
+        # Промпт (оставлен без изменений)
         prompt = f"""
         Напиши экспертную, глубокую и человечную статью на тему: {req.message}.
         
@@ -390,27 +393,37 @@ async def api_admin_gen(req: AdminGenRequest):
         # Генерация URL и параметров фото
         slug_name = slugify(data['title'])
         
-        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash, чтобы избежать отрицательных чисел
+        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
         img_id = random.randint(1, 10000)
         
-        # ИСПРАВЛЕНИЕ 2: Глубокая очистка ключевых слов (удаляем точки, кавычки и лишние пробелы)
+        # ИСПРАВЛЕНИЕ 2: Глубокая очистка ключевых слов
         raw_keywords = data.get('photo_keywords', 'technology,future,ai')
         clean_keywords = raw_keywords.replace('.', '').replace('"', '').replace("'", '').strip()
         
-        # Разбиваем, чистим и берем только первые 3 слова (чтобы ссылка не была слишком длинной)
+        # Разбиваем, чистим и берем только первые 3 слова
         keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
         keywords_url = ",".join(keyword_list[:3])
         
-        # ИСПРАВЛЕНИЕ 3: Чистая ссылка (ЗАМЕНЕНО НА PICSUM)
-        # Picsum не использует ключевые слова, поэтому мы передаем img_id как seed для уникальной картинки
+        # ИСПРАВЛЕНИЕ 3: Чистая ссылка (Pollinations для точности темы)
+        prompt_for_img = keywords_url.replace(',', ' ')
         img_url = f"https://image.pollinations.ai/prompt/{prompt_for_img}?width=800&height=600&seed={img_id}&nologo=true"
         
-        # Сохранение (3 строки данных + контент)
+        # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
+        supabase.table("posts").insert({
+            "title": data['title'],
+            "slug": slug_name,
+            "image_url": img_url,
+            "excerpt": data.get('excerpt', ''),
+            "content": data['content']
+        }).execute()
+
+        # Сохранение в локальный файл (оставлено по просьбе пользователя)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
+        if not os.path.exists(BLOG_FOLDER): os.makedirs(BLOG_FOLDER)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
             f.write(f"{img_url}\n")
-            f.write(f"{data.get('excerpt', '')}\n") # Новая строка для краткого описания
+            f.write(f"{data.get('excerpt', '')}\n")
             f.write(f"{data['content']}")
             
         return {"status": "success", "url": f"/blog/{slug_name}"}
