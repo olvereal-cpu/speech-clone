@@ -403,7 +403,7 @@ async def api_admin_gen(req: AdminGenRequest):
         
         # ИСПРАВЛЕНИЕ 3: Чистая ссылка (ЗАМЕНЕНО НА PICSUM)
         # Picsum не использует ключевые слова, поэтому мы передаем img_id как seed для уникальной картинки
-        img_url = f"https://picsum.photos/seed/{img_id}/800/600"
+        img_url = f"https://image.pollinations.ai/prompt/{prompt_for_img}?width=800&height=600&seed={img_id}&nologo=true"
         
         # Сохранение (3 строки данных + контент)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
