@@ -315,15 +315,15 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # Ищем в Supabase
+        # 1. Ищем статью в Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res.data:
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
         post = res.data[0]
-        # ДОБАВЛЯЕМ "МНЕНИЕ ЭКСПЕРТА" (Внутри блока try)
-    try:  
+
+        # 2. Добавляем "Мнение эксперта" (если его еще нет в контенте)
         if post and "Мнение эксперта" not in post.get("content", ""):
             expert_text = (
                 "«Современный синтез речи перестал быть просто набором звуков. Сегодня SpeechClone AI "
@@ -341,22 +341,23 @@ async def read_post(request: Request, slug: str):
             </div>
             """
 
-    except Exception as e:
-        print(f"Error processing post: {e}")
-       
-
-        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
+        # 3. Возвращаем страницу (важно: вне внутренних проверок, но внутри главного try)
         return templates.TemplateResponse(
-            request, 
             "blog_index.html", 
             {
-                "posts": [post], # Шаблон ждет список
+                "request": request,
+                "posts": [post], 
                 "is_single": True
             }
         )
+
+    except HTTPException as http_ex:
+        # Пробрасываем 404 ошибку, если статья не найдена
+        raise http_ex
     except Exception as e:
+        # Ловим все остальные системные ошибки
         print(f"Ошибка чтения статьи {slug}: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
