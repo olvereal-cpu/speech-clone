@@ -529,7 +529,7 @@ async def download_file(file: str):
     path = os.path.join(AUDIO_DIR, file)
     return FileResponse(path=path, filename="speechclone.mp3") if os.path.exists(path) else HTMLResponse("404")
 
-@app.post("/api/chat")
+@app.post("/chat")
 async def chat_api(req: ChatRequest):
     reply = await mm.generate(req.message)
     return {"reply": reply}
