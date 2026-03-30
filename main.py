@@ -412,17 +412,22 @@ async def api_admin_gen(req: AdminGenRequest):
         img_id = random.randint(1, 10000)
         
         # ИСПРАВЛЕНИЕ 2: Глубокая очистка ключевых слов
+        # 1. Берем ключевые слова (максимум 3)
         raw_keywords = data.get('photo_keywords', 'technology,future,ai')
-        clean_keywords = raw_keywords.replace('.', '').replace('"', '').replace("'", '').strip()
+        # Убираем все лишние символы, оставляя только буквы, цифры и запятые
+        clean_keywords = re.sub(r'[^\w\s,]', '', raw_keywords).strip()
         
-        # Разбиваем, чистим и берем только первые 3 слова
+        # 2. Формируем строку для нейросети (заменяем запятые на пробелы)
         keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
-        keywords_url = ",".join(keyword_list[:3])
+        prompt_str = " ".join(keyword_list[:3])
         
-        # ИСПРАВЛЕНИЕ 3: Чистая ссылка с экранированием пробелов
-        # Заменяем запятые на пробелы и кодируем строку для URL
-        prompt_for_img = urllib.parse.quote(keywords_url.replace(',', ' '))
-        img_url = f"https://image.pollinations.ai/prompt/{prompt_for_img}?width=800&height=600&seed={img_id}&nologo=true"
+        # 3. КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Кодируем для URL и добавляем расширение .jpg
+        # Добавление .jpg в конец пути prompt заставляет браузеры и Render 
+        # воспринимать ссылку именно как прямую картинку.
+        encoded_prompt = urllib.parse.quote(f"{prompt_str}.jpg")
+        
+        # 4. Собираем финальный URL (Pollinations любит, когда параметры идут после расширения)
+        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={img_id}&nologo=true"
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
