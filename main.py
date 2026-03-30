@@ -352,32 +352,47 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
+        # 1. Запрос к Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
-        if not res.data:
+        
+        # 2. Проверка, есть ли данные
+        if not res or not res.data:
+            print(f"Статья со слагом {slug} не найдена в базе")
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
         post = res.data[0]
         
+        # 3. Безопасное добавление "Мнения эксперта"
         content = post.get("content", "")
-        if "Автор статьи" not in content:
-            tg_link = globals().get('CHANNEL_ID', '#')
-            content += f"""
+        
+        # Проверяем, есть ли уже блок, чтобы не дублировать
+        if "Мнение эксперта" not in content:
+            # Безопасно получаем CHANNEL_ID, если его нет - ставим заглушку
+            try:
+                tg_link = CHANNEL_ID if 'CHANNEL_ID' in globals() else "#"
+            except NameError:
+                tg_link = "#"
+
+            expert_block = f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо.
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{tg_link}">Telegram</a>!
             </div>
             """
-            post["content"] = content
+            post["content"] = content + expert_block
 
+        # 4. Рендерим шаблон (Важно: request первым аргументом)
         return templates.TemplateResponse(
-            request, 
-            "post.html", 
+            request,
+            "post.html",
             {"post": post}
         )
+            
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Ошибка: {e}")
-        raise HTTPException(status_code=500, detail="Ошибка базы данных")
+        # Это выведет реальную причину ошибки в логи Render
+        print(f"КРИТИЧЕСКАЯ ОШИБКА БАЗЫ: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка базы данных: {str(e)}")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
