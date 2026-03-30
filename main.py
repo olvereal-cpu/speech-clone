@@ -466,9 +466,7 @@ async def api_admin_gen(req: AdminGenRequest):
             except Exception as e:
                 print(f"❌ Ошибка запроса к Pixabay: {e}")
 
-        # ИТОГ: img_url теперь либо уникальный Pixabay (Dark стиль), либо Unsplash, либо уникальный Picsum.
-
-        # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
+         # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
         supabase.table("posts").insert({
             "title": data['title'],
             "slug": slug_name,
@@ -476,6 +474,14 @@ async def api_admin_gen(req: AdminGenRequest):
             "excerpt": data.get('excerpt', ''),
             "content": data['content']
         }).execute()
+
+        # Локальное сохранение удалено. Теперь данные берутся только из БД.
+        
+        return {"status": "success", "url": f"/blog/{slug_name}"}
+
+    except Exception as e:
+        print(f"Ошибка генерации или сохранения: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
