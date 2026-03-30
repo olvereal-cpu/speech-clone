@@ -297,11 +297,9 @@ async def home(request: Request):
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     try:
-        # Получаем данные из Supabase
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
         all_posts = res.data if res and res.data else []
         
-        # ВАЖНО: Имя шаблона ПЕРВЫМ, словарь ВТОРЫМ
         return templates.TemplateResponse("blog_index.html", {
             "request": request,
             "posts": all_posts,
@@ -309,7 +307,7 @@ async def blog_list(request: Request):
             "related": []
         })
     except Exception as e:
-        print(f"Ошибка списка блога: {e}")
+        print(f"Ошибка списка: {e}")
         return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [], "is_single": False, "related": []})
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -321,23 +319,18 @@ async def read_post(request: Request, slug: str):
         
         post = res.data[0]
         
-        # Добавляем блок эксперта, если его нет
-        if "Мнение эксперта" not in (post.get("content") or ""):
-            expert_block = '<div style="background:#f0f7ff;padding:20px;margin-top:20px;border-radius:15px;"><b>💡 Мнение эксперта:</b> Используйте нейросети с умом!</div>'
-            post["content"] = (post.get("content") or "") + expert_block
-
-        # Похожие статьи
-        rel_res = supabase.table("posts").select("*").neq("slug", slug).limit(3).execute()
+        # Загружаем 3 любые другие статьи для рекомендаций
+        rel_res = supabase.table("posts").select("title, slug, image_url").neq("slug", slug).limit(3).execute()
         related_posts = rel_res.data if rel_res and rel_res.data else []
 
         return templates.TemplateResponse("blog_index.html", {
             "request": request,
-            "posts": [post], # Передаем как список
-            "related": related_posts,
-            "is_single": True
+            "posts": [post],
+            "is_single": True,
+            "related": related_posts
         })
     except Exception as e:
-        print(f"Ошибка статьи {slug}: {e}")
+        print(f"Ошибка статьи: {e}")
         return HTMLResponse(content="Ошибка сервера", status_code=500)
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
