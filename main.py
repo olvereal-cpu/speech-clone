@@ -297,19 +297,17 @@ async def home(request: Request):
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     try:
-        # Получаем все посты из Supabase
+        # Получаем данные из Supabase
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
         all_posts = res.data if res and res.data else []
         
-        return templates.TemplateResponse(
-            "blog_index.html",  # Имя файла ВСЕГДА первое
-            {
-                "request": request, 
-                "posts": all_posts, 
-                "is_single": False,  # Режим списка
-                "related": []        # Пустой список для главной блога
-            }
-        )
+        # ВАЖНО: Имя шаблона ПЕРВЫМ, словарь ВТОРЫМ
+        return templates.TemplateResponse("blog_index.html", {
+            "request": request,
+            "posts": all_posts,
+            "is_single": False,
+            "related": []
+        })
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse("blog_index.html", {"request": request, "posts": [], "is_single": False, "related": []})
@@ -317,55 +315,30 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # 1. Запрос к Supabase (ищем основную статью по slug)
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
-        
         if not res or not res.data:
-            raise HTTPException(status_code=404, detail="Статья не найдена")
-            
+            return HTMLResponse(content="Статья не найдена", status_code=404)
+        
         post = res.data[0]
         
-        # 2. Очеловечивание контента (Мнение эксперта)
-        content = post.get("content", "")
-        if "Мнение эксперта" not in content:
-            # Безопасно берем ссылку на ТГ
-            tg_link = globals().get('CHANNEL_ID', 'https://t.me/speechclone')
-            expert_block = f"""
-            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 20px; margin-top: 30px; border-radius: 15px; font-style: italic;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в <a href="{tg_link}" style="color: #007bff; font-weight: bold; text-decoration: underline;">Telegram</a>!
-            </div>
-            """
-            post["content"] = content + expert_block
+        # Добавляем блок эксперта, если его нет
+        if "Мнение эксперта" not in (post.get("content") or ""):
+            expert_block = '<div style="background:#f0f7ff;padding:20px;margin-top:20px;border-radius:15px;"><b>💡 Мнение эксперта:</b> Используйте нейросети с умом!</div>'
+            post["content"] = (post.get("content") or "") + expert_block
 
-        # 3. Подгружаем похожие статьи
-        related_posts = []
-        try:
-            rel_res = supabase.table("posts")\
-                .select("title, slug, image_url, category")\
-                .neq("slug", slug)\
-                .limit(3)\
-                .execute()
-            related_posts = rel_res.data if rel_res and rel_res.data else []
-        except Exception as rel_e:
-            print(f"Ошибка похожих статей: {rel_e}")
+        # Похожие статьи
+        rel_res = supabase.table("posts").select("*").neq("slug", slug).limit(3).execute()
+        related_posts = rel_res.data if rel_res and rel_res.data else []
 
-        # 4. ИСПРАВЛЕННЫЙ РЕНДЕР
-        # ВАЖНО: Имя файла идет ПЕРВЫМ аргументом, а словарь с данными — ВТОРЫМ.
-        return templates.TemplateResponse(
-            "blog_index.html", # 1. Имя шаблона
-            {                  # 2. Контекст (словарь)
-                "request": request,       # Обязательно внутри словаря
-                "posts": [post],          # Список из одного поста
-                "related": related_posts, # Похожие статьи
-                "is_single": True         # Режим чтения статьи
-            }
-        )
-            
-    except HTTPException:
-        raise
+        return templates.TemplateResponse("blog_index.html", {
+            "request": request,
+            "posts": [post], # Передаем как список
+            "related": related_posts,
+            "is_single": True
+        })
     except Exception as e:
-        print(f"Ошибка чтения статьи {slug}: {e}")
-        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
+        print(f"Ошибка статьи {slug}: {e}")
+        return HTMLResponse(content="Ошибка сервера", status_code=500)
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
