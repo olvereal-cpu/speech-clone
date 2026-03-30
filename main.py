@@ -432,35 +432,69 @@ async def api_admin_gen(req: AdminGenRequest):
         title = data.get('title', 'new-post')
         slug_name = slugify(title)
         
-      # 3. ПОДГОТОВКА ССЫЛОК
-        # Твой основной качественный вариант (Unsplash)
-        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
-
+      # 3. ПОДГОТОВКА КЛЮЧЕВЫХ СЛОВ (Для Pixabay)
         raw_keywords = data.get('photo_keywords', 'ai, technology')
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         keyword_list = clean_text.split()[:2]
+        search_term = "+".join(keyword_list) if keyword_list else "technology+dark"
+
+        # Запасной вариант (качественный темный фон)
+        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
         
-        # Формируем поисковую фразу для Unsplash
-        search_query = "+".join(keyword_list) if keyword_list else "technology+dark"
+        # Базовый URL для генерации ссылки на превью по ID (для стабильности)
+        pixabay_base_url = "https://cdn.pixabay.com/photo/ix/ix/"
 
-        # 4. ПОЛУЧЕНИЕ ФОТО
+        PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
+        img_url = unsplash_fallback # Ставим заглушку по умолчанию
+
+        # 4. ПОЛУЧЕНИЕ ФОТО С PIXABAY
         try:
-            # ОСНОВНОЙ ВАРИАНТ: Прямая ссылка на качественный Unsplash (через их официальный домен)
-            # Мы используем конструктор, который подбирает фото по ключевым словам
-            img_url = f"https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop&sig={slug_name}"
+            # Делаем запрос к API, просим 10 вариантов
+            api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_term}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10"
+            response = requests.get(api_url, timeout=5)
             
-            # Если есть ключевые слова, пробуем собрать "умную" ссылку через LoremFlickr (как прокси для Unsplash)
-            if keyword_list:
-                # LoremFlickr берет лучшие фото с Unsplash и Flickr по твоим тегам
-                img_url = f"https://loremflickr.com/1200/800/{search_query},dark/all"
-            else:
-                img_url = unsplash_fallback
+            if response.status_code == 200:
+                pixabay_data = response.json()
+                if pixabay_data.get('hits'):
+                    # !!! РАНДОМИЗАЦИЯ !!!
+                    # Выбираем случайный хит из найденных (первые 10)
+                    random_hit = random.choice(pixabay_data['hits'])
+                    
+                    # Пытаемся сформировать ссылку по ID (самая стабильная)
+                    # Если ID есть, собираем вечную ссылку, иначе берем fullHD
+                    # Формат: ...pixabay.com/photo/ix/ix/{ID}_1280.jpg
+                    pixabay_id = random_hit.get('id')
+                    
+                    if pixabay_id:
+                        img_url = f"https://cdn.pixabay.com/photo/ix/ix/{pixabay_id}_1280.jpg"
+                    else:
+                        img_url = random_hit['largeImageURL']
 
-            print(f"✅ Картинка для '{slug_name}' готова: {img_url}")
+                    print(f"✅ Для статьи '{title}' найдено рандомное фото Pixabay: {img_url}")
+                else:
+                    print(f"⚠️ Pixabay не нашел фото по запросу: {search_term}")
+                    img_url = unsplash_fallback
 
         except Exception as e:
-            print(f"❌ Ошибка в блоке фото: {e}")
+            print(f"❌ Ошибка в блоке Pixabay: {e}")
             img_url = unsplash_fallback
+
+        # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
+        # Убедись, что в базе есть колонка 'image_url' (text)
+        supabase.table("posts").insert({
+            "title": data.get('title', 'Без заголовка'),
+            "slug": slug_name,
+            "image_url": img_url, # Сохраняем готовую ссылку
+            "excerpt": data.get('excerpt', ''),
+            "content": data.get('content', '')
+        }).execute()
+
+        # Локальное сохранение удалено полностью.
+        return {"status": "success", "url": f"/blog/{slug_name}"}
+
+    except Exception as e:
+        print(f"Ошибка генерации: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
         # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
         supabase.table("posts").insert({
