@@ -398,8 +398,9 @@ async def api_admin_gen(req: AdminGenRequest):
         keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
         keywords_url = ",".join(keyword_list[:3])
         
-        # ИСПРАВЛЕНИЕ 3: Чистая ссылка без пробелов
-        img_url = f"https://loremflickr.com/800/600/{keywords_url}?lock={img_id}"
+        # ИСПРАВЛЕНИЕ 3: Чистая ссылка (ЗАМЕНЕНО НА PICSUM)
+        # Picsum не использует ключевые слова, поэтому мы передаем img_id как seed для уникальной картинки
+        img_url = f"https://picsum.photos/seed/{img_id}/800/600"
         
         # Сохранение (3 строки данных + контент)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
