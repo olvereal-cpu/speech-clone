@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
+    <!-- ДИНАМИЧЕСКИЕ МЕТА-ТЕГИ (Переопределяются в блоге) -->
+    {% block meta %}
     <title>{% block title %}SpeechClone AI — Озвучка текста нейросетью онлайн бесплатно{% endblock %}</title>
     <meta name="description" content="{% block description %}Бесплатная озвучка текста нейросетями онлайн. Более 50 реалистичных голосов, поддержка ударений и скачивание в MP3. Лучший сервис для создания аудио из текста.{% endblock %}">
-    <meta name="keywords" content="озвучка текста, нейросеть голос, текст в речь, синтез речи онлайн, SpeechClone, скачать озвучку mp3">
     
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://speechclone.online/">
@@ -19,7 +20,10 @@
     <meta property="twitter:title" content="SpeechClone AI — Озвучка текста">
     <meta property="twitter:description" content="Бесплатный синтез речи онлайн. MP3 скачивание.">
     <meta property="twitter:image" content="{{ url_for('static', path='logo.png') }}">
+    {% endblock %}
 
+    <!-- Постоянные теги -->
+    <meta name="keywords" content="озвучка текста, нейросеть голос, текст в речь, синтез речи онлайн, SpeechClone, скачать озвучку mp3">
     <link rel="icon" type="image/png" href="{{ url_for('static', path='favicon.png') }}">
     <link rel="canonical" href="https://speechclone.online/" />
     
@@ -114,7 +118,6 @@
                 </p>
                 
                 <div class="flex flex-col md:flex-row items-center gap-6">
-                    <!-- Внутренний счетчик визитов -->
                     <div class="inline-flex items-center space-x-3 bg-gray-800/50 px-4 py-2 rounded-full border border-gray-700/50">
                         <span class="flex h-2 w-2 relative">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -125,7 +128,6 @@
                         </p>
                     </div>
 
-                    <!-- ТВОЙ СЧЕТЧИК LIVEINTERNET -->
                     <div class="opacity-40 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 scale-90">
                         <!--LiveInternet counter--><a href="https://www.liveinternet.ru/click"
                         target="_blank"><img id="licnt5D3F" width="31" height="31" style="border:0" 
@@ -156,14 +158,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Логика личного счетчика
         let count = localStorage.getItem('my_visits') || 0;
         count++;
         localStorage.setItem('my_visits', count);
         const counterDisplay = document.getElementById('user-counter');
         if (counterDisplay) { counterDisplay.innerText = count; }
 
-        // Логика скролла
         {% if scroll_to %}
         const target = document.getElementById('{{ scroll_to }}');
         if (target) {
