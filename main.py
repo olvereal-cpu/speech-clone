@@ -297,48 +297,52 @@ async def home(request: Request):
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request):
     try:
+        # Берем данные ТОЛЬКО из Supabase
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
-        posts_data = res.data if res and res.data else []
+        all_posts = res.data if res.data else []
         
-        # Используем явные имена аргументов, чтобы не было ошибки unhashable dict
         return templates.TemplateResponse(
-            name="blog_index.html", 
-            context={
-                "request": request,
-                "posts": posts_data,
-                "is_single": False,
-                "related": []
-            }
+            request, 
+            "blog_index.html", 
+            {"posts": all_posts, "is_single": False}
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
-        return HTMLResponse(content="Ошибка загрузки блога", status_code=500)
+        return templates.TemplateResponse(
+            request, "blog_index.html", {"posts": [], "is_single": False}
+        )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
+        # Ищем в Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
-        if not res or not res.data:
-            return HTMLResponse(content="Статья не найдена", status_code=404)
         
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Статья не найдена")
+            
         post = res.data[0]
         
-        # Подтягиваем похожие статьи
-        rel_res = supabase.table("posts").select("title, slug, image_url").neq("slug", slug).limit(3).execute()
-        related_posts = rel_res.data if rel_res and rel_res.data else []
+        # Добавляем "Мнение эксперта" (если его нет)
+        if "Мнение эксперта" not in post.get("content", ""):
+            post["content"] = post.get("content", "") + f"""
+            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
+            </div>
+            """
 
+        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
         return templates.TemplateResponse(
-            name="blog_index.html",
-            context={
-                "request": request,
-                "posts": [post],
-                "is_single": True,
-                "related": related_posts
+            request, 
+            "blog_index.html", 
+            {
+                "posts": [post], # Шаблон ждет список
+                "is_single": True
             }
         )
     except Exception as e:
-        print(f"Ошибка статьи {slug}: {e}")
-        return HTMLResponse(content="Ошибка сервера", status_code=500)
+        print(f"Ошибка чтения статьи {slug}: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 
