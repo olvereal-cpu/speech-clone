@@ -327,14 +327,13 @@ async def read_post(request: Request, slug: str):
         if "Мнение эксперта" not in post.get("content", ""):
             post["content"] = post.get("content", "") + f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса развиваются быстрее, чем мы думали. Главное — использовать их во благо. А что думаете вы? Напишите нам в Telegram!
+                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
             </div>
             """
        # 3. Возвращаем страницу (правильный формат для FastAPI)
         return templates.TemplateResponse(
             "blog_index.html", 
             {
-                "request": request,    # Это ДОЛЖНО быть внутри словаря
                 "posts": [post], 
                 "is_single": True
             }
