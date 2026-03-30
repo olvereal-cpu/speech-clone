@@ -314,7 +314,7 @@ class AdminGenRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
-        # Запрашиваем посты из Supabase, сортируем по дате (сначала новые) и берем 6 штук
+        # Запрашиваем посты из Supabase
         res = supabase.table("posts") \
             .select("*") \
             .order("created_at", desc=True) \
@@ -323,15 +323,16 @@ async def home(request: Request):
         
         all_posts = res.data if res.data else []
         
+        # Явно указываем name и context
         return templates.TemplateResponse(
-            "index.html", 
-            {"request": request, "posts": all_posts}
+            name="index.html", 
+            context={"request": request, "posts": all_posts}
         )
     except Exception as e:
         print(f"Ошибка получения постов для главной: {e}")
         return templates.TemplateResponse(
-            "index.html", 
-            {"request": request, "posts": []}
+            name="index.html", 
+            context={"request": request, "posts": []}
         )
 
 @app.get("/blog", response_class=HTMLResponse)
@@ -342,14 +343,14 @@ async def blog_list(request: Request):
         all_posts = res.data if res.data else []
         
         return templates.TemplateResponse(
-            "blog_index.html", 
-            {"request": request, "posts": all_posts, "is_single": False}
+            name="blog_index.html", 
+            context={"request": request, "posts": all_posts, "is_single": False}
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse(
-            "blog_index.html", 
-            {"request": request, "posts": [], "is_single": False}
+            name="blog_index.html", 
+            context={"request": request, "posts": [], "is_single": False}
         )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -366,7 +367,6 @@ async def read_post(request: Request, slug: str):
         # 2. Очеловечивание контента
         content = post.get("content", "")
         if "Автор статьи" not in content:
-            # Используем глобальный CHANNEL_ID или пустую строку, если его нет
             tg_link = globals().get('CHANNEL_ID', '#')
             
             content += f"""
@@ -376,10 +376,10 @@ async def read_post(request: Request, slug: str):
             """
             post["content"] = content
 
-        # 3. Рендерим страницу статьи
+        # 3. Рендерим страницу статьи (Явно указываем name и context)
         return templates.TemplateResponse(
-            "post.html", 
-            {"request": request, "post": post}
+            name="post.html", 
+            context={"request": request, "post": post}
         )
             
     except HTTPException:
