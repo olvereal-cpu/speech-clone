@@ -332,18 +332,27 @@ async def blog_list(request: Request):
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
-    # --- НОВАЯ ЛОГИКА: ПОЛУЧАЕМ ИЗ SUPABASE ---
+    # --- ЛОГИКА: ПОЛУЧАЕМ ТОЛЬКО ИЗ SUPABASE ---
     try:
-        # Ищем одну запись в таблице posts, где slug совпадает с пришедшим в URL
+        # Ищем запись в таблице posts, где slug совпадает
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
-        # Если данных нет (список пустой), выдаем 404
+        # Если данных нет, отдаем 404
         if not res.data:
             raise HTTPException(status_code=404, detail="Статья не найдена")
             
-        # Берем первый (и единственный) объект из результата
+        # Объект статьи
         post = res.data[0]
-        
+
+        # Возвращаем отрендеренный шаблон post.html (или blog_detail.html)
+        return templates.TemplateResponse("post.html", {
+            "request": request, 
+            "post": post
+        })
+            
+    except HTTPException:
+        # Пробрасываем 404 дальше
+        raise
     except Exception as e:
         print(f"Ошибка Supabase: {e}")
         raise HTTPException(status_code=500, detail="Ошибка базы данных")
