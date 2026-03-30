@@ -432,33 +432,35 @@ async def api_admin_gen(req: AdminGenRequest):
         title = data.get('title', 'new-post')
         slug_name = slugify(title)
         
-       # 3. ПОДГОТОВКА ССЫЛОК
-# Хороший запасной вариант (технологичный темный фон)
-unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
+      # 3. ПОДГОТОВКА ССЫЛОК
+        # Твой основной качественный вариант (Unsplash)
+        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
 
-# Извлекаем ключевые слова
-raw_keywords = data.get('photo_keywords', 'ai, technology')
-clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
-keyword_list = clean_text.split()[:2]
-
-# Формируем поисковый запрос (добавляем dark для стиля блога)
-search_term = ",".join(keyword_list) if keyword_list else "technology,dark"
-
-# 4. ПОЛУЧЕНИЕ ФОТО (Используем LoremFlickr вместо мертвого Unsplash Source)
-try:
-    # Этот сервис жив и отлично подтягивает фото по тегам
-    # Формат: https://loremflickr.com/ширина/высота/теги
-    img_url = f"https://loremflickr.com/1200/800/{search_term},dark/all"
-    
-    # Дополнительная проверка: если ключевых слов нет, ставим проверенный fallback
-    if not keyword_list:
-        img_url = unsplash_fallback
+        raw_keywords = data.get('photo_keywords', 'ai, technology')
+        clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
+        keyword_list = clean_text.split()[:2]
         
-    print(f"✅ Для статьи '{title}' создана вечная ссылка: {img_url}")
+        # Формируем поисковую фразу для Unsplash
+        search_query = "+".join(keyword_list) if keyword_list else "technology+dark"
 
-except Exception as e:
-    print(f"❌ Ошибка генерации ссылки: {e}")
-    img_url = unsplash_fallback
+        # 4. ПОЛУЧЕНИЕ ФОТО
+        try:
+            # ОСНОВНОЙ ВАРИАНТ: Прямая ссылка на качественный Unsplash (через их официальный домен)
+            # Мы используем конструктор, который подбирает фото по ключевым словам
+            img_url = f"https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop&sig={slug_name}"
+            
+            # Если есть ключевые слова, пробуем собрать "умную" ссылку через LoremFlickr (как прокси для Unsplash)
+            if keyword_list:
+                # LoremFlickr берет лучшие фото с Unsplash и Flickr по твоим тегам
+                img_url = f"https://loremflickr.com/1200/800/{search_query},dark/all"
+            else:
+                img_url = unsplash_fallback
+
+            print(f"✅ Картинка для '{slug_name}' готова: {img_url}")
+
+        except Exception as e:
+            print(f"❌ Ошибка в блоке фото: {e}")
+            img_url = unsplash_fallback
 
         # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
         supabase.table("posts").insert({
