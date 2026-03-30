@@ -430,7 +430,7 @@ async def api_admin_gen(req: AdminGenRequest):
         img_url = "https://picsum.photos/800/600?blur=1"
         
         # 5. Если есть ключи и прописан API KEY, делаем запрос к Pixabay
-        if keyword_list and PIXABAY_KEY != "ТВОЙ_КЛЮЧ_PIXABAY_СЮДА":
+        if keyword_list and PIXABAY_KEY != "12734072-77cbfaa3fbea06df8e5108da2":
             # Соединяем слова плюсом для URL (например, 'ai+robot')
             search_query = "+".join(keyword_list)
             
