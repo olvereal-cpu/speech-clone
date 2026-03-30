@@ -325,6 +325,10 @@ async def read_post(request: Request, slug: str):
         
        # Добавляем "Мнение эксперта" (если его нет)
 if "Мнение эксперта" not in post.get("content", ""):
+    post["content"] = post.get("content", "") + f"""
+    <div style="background: #f8fafc; border-left: 5px solid #2563eb; padding: 25px; margin-top: 40px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <p style="color: #2563eb; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">💡 Мнение эксперта SpeechClone</p>
+        <blockquote style="color: #1f2937; font-size: 16px; font-style: italic; line-height: 1.6; font-weight: 500; margin: 0;">
     expert_text = (
         "«Современный синтез речи перестал быть просто набором звуков. Сегодня SpeechClone AI "
         "воспроизводит сложнейшие микро-интонации и эмоциональный подтекст, которые раньше "
@@ -332,11 +336,7 @@ if "Мнение эксперта" not in post.get("content", ""):
         "озвучки, а ключевой фактор масштабирования для бизнеса и медиа-проектов по всему миру»."
     )
     
-    post["content"] = post.get("content", "") + f"""
-    <div style="background: #f8fafc; border-left: 5px solid #2563eb; padding: 25px; margin-top: 40px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-        <p style="color: #2563eb; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">💡 Мнение эксперта SpeechClone</p>
-        <blockquote style="color: #1f2937; font-size: 16px; font-style: italic; line-height: 1.6; font-weight: 500; margin: 0;">
-            {expert_text}
+    {expert_text}
         </blockquote>
     </div>
     """
