@@ -421,11 +421,11 @@ async def api_admin_gen(req: AdminGenRequest):
         short_prompt = " ".join(keyword_list[:3])
         
         # Кодируем пробелы
-        encoded_prompt = urllib.parse.quote(short_prompt)
+        encoded_words = urllib.parse.quote(short_prompt)
         
         # Собираем ссылку БЕЗ .jpg в пути (Pollinations так стабильнее)
         # Но добавляем параметр &model=flux или &model=turbo для скорости
-        img_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&seed={img_id}&nologo=true&model=turbo"
+        img_url = f"https://image.pollinations.ai/prompt/{encoded_words}.jpg?width=800&height=600&seed={img_id}&nologo=true&model=turbo"
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
