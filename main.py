@@ -299,17 +299,28 @@ async def blog_list(request: Request):
     try:
         # Берем данные ТОЛЬКО из Supabase
         res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
-        all_posts = res.data if res.data else []
+        all_posts = res.data if res and res.data else []
         
         return templates.TemplateResponse(
-            request, 
             "blog_index.html", 
-            {"posts": all_posts, "is_single": False}
+            {
+                "request": request, # Передаем request первым аргументом или в словаре
+                "posts": all_posts, 
+                "related": [],      # ОБЯЗАТЕЛЬНО: пустой список, чтобы не было ошибки 500
+                "is_single": False
+            }
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
+        # Даже в случае ошибки передаем пустые списки, чтобы шаблон не падал
         return templates.TemplateResponse(
-            request, "blog_index.html", {"posts": [], "is_single": False}
+            "blog_index.html", 
+            {
+                "request": request, 
+                "posts": [], 
+                "related": [], 
+                "is_single": False
+            }
         )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
