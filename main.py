@@ -8,6 +8,7 @@ import google.generativeai as genai
 import re
 import markdown
 import random
+import requests
 import urllib.parse
 from datetime import datetime
 from typing import Optional
@@ -411,20 +412,51 @@ async def api_admin_gen(req: AdminGenRequest):
         # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
         img_id = random.randint(1, 10000)
         
-       # --- ГЕНЕРАЦИЯ ССЫЛКИ БЕЗ ПРОБЕЛОВ (Через дефис) ---
-        raw_keywords = data.get('photo_keywords', 'ai, technology')
-        # Оставляем только буквы и пробелы
+       # --- ГЕНЕРАЦИЯ ССЫЛКИ ЧЕРЕЗ PIXABAY API (Новый метод) ---
+        # 1. Твой API Ключ Pixabay (найди его на https://pixabay.com/api/docs/)
+        # Если ключа пока нет, оставь пустым — сработает заглушка.
+        PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
+        
+        # 2. Получаем ключевые слова от нейросети (по умолчанию 'ai, future')
+        raw_keywords = data.get('photo_keywords', 'ai, future')
+        
+        # 3. Очищаем текст: оставляем только латинские буквы и пробелы
         clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         
-        # Разделяем на слова и соединяем дефисами (slugify-стиль)
-        keyword_list = clean_text.split()[:3]  # берем первые 3 слова
-        safe_prompt = "-".join(keyword_list)
+        # 4. Берем первые 2 слова для точности поиска на стоке
+        keyword_list = clean_text.split()[:2]
         
-        # Если ключевых слов нет, ставим заглушку
-        if not safe_prompt: safe_prompt = "technology-ai"
+        # Значение по умолчанию для ссылки (заглушка)
+        img_url = "https://picsum.photos/800/600?blur=1"
         
-        # Финальный URL (без %20, без точек, без лишнего мусора)
-        img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=800&height=600&seed={img_id}&nologo=true&model=flux"
+        # 5. Если есть ключи и прописан API KEY, делаем запрос к Pixabay
+        if keyword_list and PIXABAY_KEY != "ТВОЙ_КЛЮЧ_PIXABAY_СЮДА":
+            # Соединяем слова плюсом для URL (например, 'ai+robot')
+            search_query = "+".join(keyword_list)
+            
+            # Формируем URL запроса к API
+            api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_query}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3"
+            
+            try:
+                # Делаем быстрый запрос (ждем не более 3 секунд)
+                response = requests.get(api_url, timeout=3)
+                if response.status_code == 200:
+                    pixabay_data = response.json()
+                    
+                    # Если нашли картинки, берем первую
+                    if pixabay_data.get('hits'):
+                        img_url = pixabay_data['hits'][0]['largeImageURL']
+                        print(f"✅ Успешно нашли фото на Pixabay по запросу: {search_query}")
+                    else:
+                        print(f"⚠️ Pixabay не нашел фото по запросу: {search_query}")
+                else:
+                    print(f"❌ Ошибка Pixabay API: Статус {response.status_code}")
+            except Exception as e:
+                print(f"❌ Ошибка подключения к Pixabay: {e}")
+        else:
+            print("ℹ️ Используем заглушку (не прописан API ключ или нет ключевых слов)")
+
+        # --- КОНЕЦ БЛОКА (Переменная img_url готова для записи в базу) ---
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
