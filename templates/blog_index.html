@@ -85,26 +85,44 @@
                 </div>
             </div>
 
-            <!-- ПЕРЕЛИНКОВКА (Related Posts) -->
-            {% if related %}
-            <div class="mb-16">
-                <h3 class="text-2xl font-black text-gray-900 mb-8 tracking-tighter">Ещё по теме:</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {% for rel in related %}
-                    <a href="/blog/{{ rel.slug }}" class="group block bg-white rounded-[30px] border border-gray-100 p-3 hover:shadow-xl transition-all duration-300">
-                        <div class="h-40 rounded-[22px] overflow-hidden mb-4 bg-gray-50">
-                            <img src="{{ rel.image_url }}" 
-                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                 onerror="this.src='https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=400';">
-                        </div>
-                        <h4 class="font-black text-sm text-gray-900 leading-tight line-clamp-2 px-2 group-hover:text-blue-600 transition-colors">
-                            {{ rel.title }}
-                        </h4>
-                    </a>
-                    {% endfor %}
-                </div>
+           <!-- ПЕРЕЛИНКОВКА (Related Posts) -->
+{% if is_single and related %}
+<section class="max-w-5xl mx-auto px-4 mt-20 mb-24 animate-fade-in">
+    <div class="flex items-center gap-4 mb-10">
+        <h3 class="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Ещё по теме</h3>
+        <div class="h-1 flex-grow bg-gradient-to-r from-blue-600 to-transparent rounded-full opacity-20"></div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {% for rel in related %}
+        <a href="/blog/{{ rel.slug }}" class="group flex flex-col bg-white rounded-[40px] border border-gray-100 p-4 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-2">
+            <div class="relative h-48 rounded-[30px] overflow-hidden mb-6 bg-gray-100">
+                <!-- Категория поверх фото -->
+                {% if rel.category %}
+                <span class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full text-blue-600 shadow-sm">
+                    {{ rel.category }}
+                </span>
+                {% endif %}
+                
+                <img src="{{ rel.image_url }}" 
+                     alt="{{ rel.title }}"
+                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                     onerror="this.src='https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=400';">
             </div>
-            {% endif %}
+            
+            <h4 class="text-lg font-black text-gray-900 leading-tight line-clamp-2 px-2 group-hover:text-blue-600 transition-colors duration-300">
+                {{ rel.title }}
+            </h4>
+            
+            <div class="mt-auto pt-6 px-2 flex items-center text-blue-600 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                Читать статью 
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 
             <div class="bg-gray-900 rounded-[40px] p-10 text-white text-center">
                 <h3 class="text-2xl font-black mb-4">Понравился материал?</h3>
