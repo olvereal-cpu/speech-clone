@@ -411,21 +411,20 @@ async def api_admin_gen(req: AdminGenRequest):
         # ИСПРАВЛЕНИЕ 1: Используем random вместо hash
         img_id = random.randint(1, 10000)
         
-        # --- ФИНАЛЬНЫЙ СТАБИЛЬНЫЙ БЛОК ФОТО ---
+       # --- ГЕНЕРАЦИЯ ССЫЛКИ БЕЗ ПРОБЕЛОВ (Через дефис) ---
         raw_keywords = data.get('photo_keywords', 'ai, technology')
         # Оставляем только буквы и пробелы
-        clean_keywords = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).strip()
+        clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
         
-        # Берем только первые 2-3 слова (чем короче, тем стабильнее ответ ИИ)
-        keyword_list = clean_keywords.split()
-        short_prompt = " ".join(keyword_list[:3])
+        # Разделяем на слова и соединяем дефисами (slugify-стиль)
+        keyword_list = clean_text.split()[:3]  # берем первые 3 слова
+        safe_prompt = "-".join(keyword_list)
         
-        # Кодируем пробелы
-        encoded_words = urllib.parse.quote(short_prompt)
+        # Если ключевых слов нет, ставим заглушку
+        if not safe_prompt: safe_prompt = "technology-ai"
         
-        # Собираем ссылку БЕЗ .jpg в пути (Pollinations так стабильнее)
-        # Но добавляем параметр &model=flux или &model=turbo для скорости
-        img_url = f"https://image.pollinations.ai/prompt/{encoded_words}.jpg?width=800&height=600&seed={img_id}&nologo=true&model=turbo"
+        # Финальный URL (без %20, без точек, без лишнего мусора)
+        img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=800&height=600&seed={img_id}&nologo=true"
         
         # --- ДОБАВЛЕНО: СОХРАНЕНИЕ В SUPABASE ---
         supabase.table("posts").insert({
