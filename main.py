@@ -315,7 +315,7 @@ async def blog_list(request: Request):
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # 1. Запрос к Supabase (как в твоих обеих версиях)
+        # 1. Запрос к Supabase (ищем основную статью по slug)
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res or not res.data:
@@ -323,10 +323,10 @@ async def read_post(request: Request, slug: str):
             
         post = res.data[0]
         
-        # 2. Очеловечивание контента
+        # 2. Очеловечивание контента (Мнение эксперта)
         content = post.get("content", "")
         if "Мнение эксперта" not in content:
-            # Используем CHANNEL_ID из globals как во второй версии
+            # Используем CHANNEL_ID из globals (вторая версия)
             tg_link = globals().get('CHANNEL_ID', '#')
             expert_block = f"""
             <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
@@ -336,25 +336,29 @@ async def read_post(request: Request, slug: str):
             post["content"] = content + expert_block
 
         # 3. Дополнительно тянем похожие статьи (чтобы блок "Ещё по теме" работал)
+        # Мы запрашиваем 3 другие статьи для отрисовки карточек рекомендаций
         try:
             related_res = supabase.table("posts")\
                 .select("title, slug, image_url, category")\
                 .neq("slug", slug)\
                 .limit(3)\
                 .execute()
+            
+            # Если данные есть — берем их, если нет — оставляем пустой список
             related_posts = related_res.data if related_res and related_res.data else []
-        except Exception as e:
-            print(f"Ошибка подгрузки похожих статей: {e}")
+        except Exception as rel_e:
+            # Если запрос к похожим статьям упал, основная статья всё равно должна открыться
+            print(f"Ошибка подгрузки похожих статей: {rel_e}")
             related_posts = []
 
-        # 4. РЕНДЕР (используем blog_index.html)
+        # 4. РЕНДЕР (используем твой blog_index.html)
         return templates.TemplateResponse(
             request,
             "blog_index.html", 
             {
-                "posts": [post],  # Твой шаблон ожидает список posts и берет первый элемент
-                "related": related_posts, # Похожие статьи для подвала
-                "is_single": True
+                "posts": [post],          # Твой шаблон ожидает список и берет первый элемент
+                "related": related_posts, # Похожие статьи для подвала страницы
+                "is_single": True         # Флаг для переключения верстки в режим чтения статьи
             }
         )
             
@@ -362,7 +366,7 @@ async def read_post(request: Request, slug: str):
         # Пробрасываем 404, если статья не найдена
         raise
     except Exception as e:
-        # Сохраняем твой формат логирования и вывода ошибки
+        # Твой формат логирования и вывода ошибки 500
         print(f"Ошибка чтения статьи {slug}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка базы данных: {str(e)}")
 
