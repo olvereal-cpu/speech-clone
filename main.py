@@ -257,11 +257,11 @@ async def read_post(request: Request, slug: str):
         context={"posts": [post], "is_single": True}
     )
 
-# --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---
+# --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Промпт с жестким уклоном в SEO и человеческий стиль
+        # Промпт (оставлен без изменений, как ты просил)
         prompt = f"""
         Напиши экспертную, глубокую и человечную статью на тему: {req.message}.
         
@@ -286,23 +286,31 @@ async def api_admin_gen(req: AdminGenRequest):
           "photo_keywords": "3-4 английских слова через запятую для максимально точного поиска фото"
         }}
         """
+        
         raw_res = await mm.generate(prompt)
+        
         # Очистка JSON от возможных артефактов Markdown
         clean_json = re.sub(r'```json|```', '', raw_res).strip()
         data = json.loads(clean_json)
         
         # Генерация URL и параметров фото
         slug_name = slugify(data['title'])
-        img_id = abs(hash(slug_name)) % 1000
         
-        # Берем ключевые слова от ИИ или ставим дефолт, если ИИ ошибся в ключе
-        keywords = data.get('photo_keywords', 'technology,future,ai')
-        # Очищаем от пробелов для корректной ссылки
-        keywords_url = ",".join([k.strip() for k in keywords.split(',')])
+        # ИСПРАВЛЕНИЕ 1: Используем random вместо hash, чтобы избежать отрицательных чисел
+        img_id = random.randint(1, 10000)
         
+        # ИСПРАВЛЕНИЕ 2: Глубокая очистка ключевых слов (удаляем точки, кавычки и лишние пробелы)
+        raw_keywords = data.get('photo_keywords', 'technology,future,ai')
+        clean_keywords = raw_keywords.replace('.', '').replace('"', '').replace("'", '').strip()
+        
+        # Разбиваем, чистим и берем только первые 3 слова (чтобы ссылка не была слишком длинной)
+        keyword_list = [k.strip() for k in clean_keywords.split(',') if k.strip()]
+        keywords_url = ",".join(keyword_list[:3])
+        
+        # ИСПРАВЛЕНИЕ 3: Чистая ссылка без пробелов
         img_url = f"https://loremflickr.com/800/600/{keywords_url}?lock={img_id}"
         
-        # Сохранение (теперь сохраняем и excerpt для SEO-превью на главной)
+        # Сохранение (3 строки данных + контент)
         file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(f"{data['title']}\n")
@@ -311,9 +319,10 @@ async def api_admin_gen(req: AdminGenRequest):
             f.write(f"{data['content']}")
             
         return {"status": "success", "url": f"/blog/{slug_name}"}
+
     except Exception as e:
         print(f"Ошибка генерации: {e}")
-        return JSONResponse(status_code=500, content={"error": "Ошибка при создании статьи. Попробуйте другой запрос."})
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
