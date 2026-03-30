@@ -439,7 +439,7 @@ async def api_admin_gen(req: AdminGenRequest):
         }).execute()
 
         # Сохранение в локальный файл (оставлено по просьбе пользователя)
-       file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
+        file_path = os.path.join(BLOG_FOLDER, f"{slug_name}.html")
         if not os.path.exists(BLOG_FOLDER): os.makedirs(BLOG_FOLDER)
         
         with open(file_path, 'w', encoding='utf-8') as f:
