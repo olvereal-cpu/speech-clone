@@ -1,8 +1,9 @@
 import requests
 import time
 
-# Твой актуальный адрес API
-API_URL = "https://speechclone.online/api/admin/generate-post" 
+# Теперь пароль берется из секретов GitHub Actions
+MY_SECRET = os.getenv("MY_SECRET_KEY", "Barakuda") 
+API_URL = "https://speechclone.online/api/admin/generate-post"
 
 def run_autopilot():
     print(f"🚀 [{time.strftime('%H:%M:%S')}] Запуск генерации статьи на speechclone.online...")
