@@ -349,7 +349,7 @@ async def read_post(request: Request, slug: str):
 
 async def api_admin_gen(
     req: AdminGenRequest, 
-    x_secret_key: str = Header(None) # Сюда прилетит пароль из заголовков
+    x_secret_key: str = Header(None)
 ):
     # ПАРОЛЬ
     MY_SECRET = "Barakuda"
@@ -373,10 +373,8 @@ async def api_admin_gen(
                 "Лайфхаки и продуктивность: Как разработчику успевать всё, автоматизировать рутину и не выгорать"
             ]
             
-            # Сначала выбираем нишу, чтобы она была доступна для промпта
             current_niche = random.choice(niches)
             
-            # Формируем промпт, используя выбранную нишу
             topic_prompt = f"""
             Ты — главный редактор топового IT-издания. Придумай ОДНУ конкретную, экспертную и актуальную тему.
             Направление: {current_niche}.
@@ -384,7 +382,7 @@ async def api_admin_gen(
             Ответь ТОЛЬКО текстом заголовка без кавычек.
             """
             
-            # Генерируем финальную тему
+            # Генерация через Gemini 3.1
             generated_topic = await mm.generate(topic_prompt)
             target_topic = generated_topic.strip().replace('"', '')
         
@@ -407,17 +405,17 @@ async def api_admin_gen(
         - Добавь в текст LSI-фразы (тематические слова, связанные с {target_topic}).
         - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
 
-       !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
-В самом конце статьи добавь блок "Мнение эксперта", оформив его СТРОГО в следующем HTML-виде:
-<div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
-  <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
-    <span style="margin-right: 8px;">⚡</span> Мнение эксперта
-  </h4>
-  <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
-    [Здесь текст мнения, СТРОГО релевантный теме "{target_topic}"]
-  </p>
-</div>
-       
+        !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
+        В самом конце статьи добавь блок "Мнение эксперта", оформив его СТРОГО в следующем HTML-виде:
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
+          <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
+            <span style="margin-right: 8px;">⚡</span> Мнение эксперта
+          </h4>
+          <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
+            [Здесь текст мнения, СТРОГО релевантный теме "{target_topic}"]
+          </p>
+        </div>
+        
         Верни ответ СТРОГО в формате JSON:
         {{
           "title": "Заголовок статьи",
@@ -427,42 +425,45 @@ async def api_admin_gen(
         }}
         """
         
-        # 2. ГЕНЕРАЦИЯ
+        # 2. ГЕНЕРАЦИЯ КОНТЕНТА
         raw_res = await mm.generate(prompt)
         
         # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
         try:
-            clean_json = re.sub(r'```json|```', '', raw_res).strip()
-            data = json.loads(clean_json)
+            # Gemini часто оборачивает JSON в блоки кода ```json ... ```, убираем их
+            json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
+            data = json.loads(json_str)
         except Exception as e:
-            print(f"❌ ОШИБКА JSON: {e}")
+            print(f"❌ ОШИБКА JSON ПАРСИНГА: {e}")
             data = {
                 "title": target_topic, 
-                "photo_keywords": "programming, dark tech", 
-                "content": f"<p>{raw_res[:500]}...</p>",
-                "excerpt": "Экспертный взгляд на технологии."
+                "photo_keywords": "it, technology, digital", 
+                "content": f"<p>{raw_res}</p>", # Записываем как есть, если JSON не удался
+                "excerpt": "Интересная статья о современных IT-технологиях."
             }
         
         # 3. ПОДГОТОВКА СЛАГА И ФОТО
         final_title = data.get('title', target_topic)
         slug_name = slugify(final_title)
         
-        # ПРИОРИТЕТ: PEXELS API
+        # PEXELS API
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
-        raw_keywords = data.get('photo_keywords', 'technology, artificial intelligence')
+        raw_keywords = data.get('photo_keywords', 'technology')
         search_term = urllib.parse.quote(raw_keywords.replace(",", " "))
         
         img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
         try:
-            px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=5&orientation=landscape"
-            px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=7)
-            if px_res.status_code == 200:
-                px_data = px_res.json()
-                if px_data.get('photos'):
-                    img_url = random.choice(px_data['photos'])['src']['large']
-                    print(f"✅ Фото Pexels успешно привязано: {img_url}")
-        except: pass
+            async with httpx.AsyncClient() as client:
+                px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=5&orientation=landscape"
+                px_res = await client.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
+                if px_res.status_code == 200:
+                    px_data = px_res.json()
+                    if px_data.get('photos'):
+                        img_url = random.choice(px_data['photos'])['src']['large']
+                        print(f"✅ Фото успешно привязано: {img_url}")
+        except Exception as img_err:
+            print(f"⚠️ Ошибка Pexels: {img_err}")
 
         # 4. СОХРАНЕНИЕ В SUPABASE
         supabase.table("posts").insert({
@@ -473,7 +474,7 @@ async def api_admin_gen(
             "content": data.get('content', '')
         }).execute()
 
-        return {"status": "success", "title": final_title}
+        return {"status": "success", "title": final_title, "slug": slug_name}
 
     except Exception as e:
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
