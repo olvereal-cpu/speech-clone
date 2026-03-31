@@ -12,8 +12,8 @@ certifi>=2024.2.2
 gunicorn>=22.0.0
 markdown
 supabase
-slugify
-random
+python-slugify
+
 
 
 
