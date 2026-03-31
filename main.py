@@ -153,7 +153,7 @@ async def cmd_start(message: types.Message):
 
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 Купить Stars", callback_data="buy_stars"))
+    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
     await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
 
 # --- АДМИН-ФУНКЦИИ ---
@@ -349,9 +349,34 @@ async def read_post(request: Request, slug: str):
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(req: AdminGenRequest):
     try:
-        # Промпт (оставлен без изменений)
+        # --- 0. ЛОГИКА АВТОПИЛОТА / РУЧНОГО ВВОДА ---
+        target_topic = req.message.strip()
+        
+        if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
+            print("🤖 Режим автопилота: придумываю хайповую IT-тему...")
+            niches = [
+                "разработка на Python, FastAPI и современные архитектуры",
+                "практическое применение нейросетей и автоматизация процессов",
+                "лайфхаки для продуктивности и инструменты разработчика (Cursor, VS Code, AI-ассистенты)",
+                "туториалы по облачному деплою и работе с базами данных (Supabase, Docker)",
+                "анализ трендов в IT и личный опыт выживания в индустрии"
+            ]
+            current_niche = random.choice(niches)
+            
+            topic_prompt = f"""
+            Ты — главный редактор топового IT-издания. Придумай ОДНУ конкретную, экспертную и актуальную тему.
+            Направление: {current_niche}.
+            Тема должна решать реальную проблему (например: 'Как я ускорил API в 10 раз' или 'Почему ваш ИИ-бот тупит').
+            Ответь ТОЛЬКО текстом заголовка без кавычек.
+            """
+            generated_topic = await mm.generate(topic_prompt)
+            target_topic = generated_topic.strip().replace('"', '')
+        
+        print(f"📝 Генерация статьи по теме: {target_topic}")
+
+        # --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА (ТВОЙ SEO + МОЙ КОНТЕКСТ) ---
         prompt = f"""
-        Напиши экспертную, глубокую и человечную статью на тему: {req.message}.
+        Напиши экспертную, глубокую и человечную статью на тему: {target_topic}.
         
         ТРЕБОВАНИЯ К СТИЛЮ:
         - Никакой "воды" и шаблонных фраз вроде "в современном мире".
@@ -362,8 +387,8 @@ async def api_admin_gen(req: AdminGenRequest):
         
         SEO-ПАРАМЕТРЫ:
         - Заголовок (Title) должен содержать ключевое слово и быть кликабельным (Clickbait-style, но честный).
-        - Используй подзаголовки <h2> с ключевыми словами.
-        - Добавь в текст LSI-фразы (тематические слова, связанные с {req.message}).
+        - Используй подзаголовки <h2> с ключевыми словами и эмодзи.
+        - Добавь в текст LSI-фразы (тематические слова, связанные с {target_topic}).
         - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
 
         Верни ответ СТРОГО в формате JSON:
@@ -371,11 +396,11 @@ async def api_admin_gen(req: AdminGenRequest):
           "title": "Заголовок статьи",
           "excerpt": "Мета-описание (150-160 символов) для поисковиков, которое заставляет кликнуть.",
           "content": "HTML-текст: вступление, <h2> подзаголовки с эмодзи, списки <ul>, акценты <strong>, FAQ блок и заключение с призывом.",
-          "photo_keywords": "3-4 английских слова через запятую для максимально точного поиска фото"
+          "photo_keywords": "3-4 английских слова через запятую для максимально точного поиска фото на тему {target_topic}"
         }}
         """
         
-        # 1. ГЕНЕРАЦИЯ КОНТЕНТА
+        # 2. ГЕНЕРАЦИЯ
         raw_res = await mm.generate(prompt)
         
         # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
@@ -383,97 +408,49 @@ async def api_admin_gen(req: AdminGenRequest):
             clean_json = re.sub(r'```json|```', '', raw_res).strip()
             data = json.loads(clean_json)
         except Exception as e:
-            print(f"❌ ОШИБКА: Нейросеть вернула не JSON. Ответ: {raw_res[:100]}...")
+            print(f"❌ ОШИБКА JSON: {e}")
             data = {
-                "title": "Новая технология AI", 
+                "title": target_topic, 
                 "photo_keywords": "programming, dark tech", 
-                "content": "Статья в процессе обработки..."
+                "content": f"<p>{raw_res[:500]}...</p>",
+                "excerpt": "Экспертный взгляд на технологии."
             }
         
-        # 2. ГЕНЕРАЦИЯ УНИКАЛЬНОГО СЛАГА
-        import string
-        title = data.get('title', 'new-post')
-        slug_name = slugify(title)
+        # 3. ПОДГОТОВКА СЛАГА И ФОТО
+        final_title = data.get('title', target_topic)
+        slug_name = slugify(final_title)
         
-      # 3. ПОДГОТОВКА КЛЮЧЕВЫХ СЛОВ (Для Pixabay)
-        raw_keywords = data.get('photo_keywords', 'ai, technology')
-        clean_text = re.sub(r'[^a-zA-Z\s]', '', raw_keywords).lower().strip()
-        keyword_list = clean_text.split()[:2]
-        search_term = "+".join(keyword_list) if keyword_list else "technology+dark"
-
-        # Запасной вариант (качественный темный фон)
-        unsplash_fallback = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200&auto=format&fit=crop"
+        # ПРИОРИТЕТ: PEXELS API
+        PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
+        raw_keywords = data.get('photo_keywords', 'technology, artificial intelligence')
+        search_term = urllib.parse.quote(raw_keywords.replace(",", " "))
         
-        # Базовый URL для генерации ссылки на превью по ID (для стабильности)
-        pixabay_base_url = "https://cdn.pixabay.com/photo/ix/ix/"
+        img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
-        PIXABAY_KEY = "12734072-77cbfaa3fbea06df8e5108da2" 
-        img_url = unsplash_fallback # Ставим заглушку по умолчанию
-
-        # 4. ПОЛУЧЕНИЕ ФОТО С PIXABAY
         try:
-            # Делаем запрос к API, просим 10 вариантов
-            api_url = f"https://pixabay.com/api/?key={PIXABAY_KEY}&q={search_term}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10"
-            response = requests.get(api_url, timeout=5)
-            
-            if response.status_code == 200:
-                pixabay_data = response.json()
-                if pixabay_data.get('hits'):
-                    # !!! РАНДОМИЗАЦИЯ !!!
-                    # Выбираем случайный хит из найденных (первые 10)
-                    random_hit = random.choice(pixabay_data['hits'])
-                    
-                    # Пытаемся сформировать ссылку по ID (самая стабильная)
-                    # Если ID есть, собираем вечную ссылку, иначе берем fullHD
-                    # Формат: ...pixabay.com/photo/ix/ix/{ID}_1280.jpg
-                    pixabay_id = random_hit.get('id')
-                    
-                    if pixabay_id:
-                        img_url = f"https://cdn.pixabay.com/photo/ix/ix/{pixabay_id}_1280.jpg"
-                    else:
-                        img_url = random_hit['largeImageURL']
+            px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=5&orientation=landscape"
+            px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=7)
+            if px_res.status_code == 200:
+                px_data = px_res.json()
+                if px_data.get('photos'):
+                    img_url = random.choice(px_data['photos'])['src']['large']
+                    print(f"✅ Фото Pexels успешно привязано: {img_url}")
+        except: pass
 
-                    print(f"✅ Для статьи '{title}' найдено рандомное фото Pixabay: {img_url}")
-                else:
-                    print(f"⚠️ Pixabay не нашел фото по запросу: {search_term}")
-                    img_url = unsplash_fallback
-
-        except Exception as e:
-            print(f"❌ Ошибка в блоке Pixabay: {e}")
-            img_url = unsplash_fallback
-
-        # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
-        # Убедись, что в базе есть колонка 'image_url' (text)
+        # 4. СОХРАНЕНИЕ В SUPABASE
         supabase.table("posts").insert({
-            "title": data.get('title', 'Без заголовка'),
-            "slug": slug_name,
-            "image_url": img_url, # Сохраняем готовую ссылку
-            "excerpt": data.get('excerpt', ''),
-            "content": data.get('content', '')
-        }).execute()
-
-        # Локальное сохранение удалено полностью.
-        return {"status": "success", "url": f"/blog/{slug_name}"}
-
-    except Exception as e:
-        print(f"Ошибка генерации: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-        # --- СОХРАНЕНИЕ ТОЛЬКО В SUPABASE ---
-        supabase.table("posts").insert({
-            "title": data.get('title', 'Без заголовка'),
+            "title": final_title,
             "slug": slug_name,
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content', '')
         }).execute()
 
-        # Локальное сохранение удалено полностью.
-        return {"status": "success", "url": f"/blog/{slug_name}"}
+        return {"status": "success", "title": final_title}
 
     except Exception as e:
-        print(f"Ошибка генерации: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
+        return {"status": "error", "message": str(e)}
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
