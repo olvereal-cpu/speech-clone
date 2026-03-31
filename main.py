@@ -4,7 +4,7 @@ import asyncio
 import sqlite3
 import json
 import edge_tts
-import google.generativeai as genai
+import google-genai
 import re
 import markdown
 import random
