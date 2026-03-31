@@ -393,10 +393,16 @@ async def api_admin_gen(req: AdminGenRequest):
         - Добавь в текст LSI-фразы (тематические слова, связанные с {target_topic}).
         - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
 
-        !!! ВАЖНО !!!
-        Добавь в самом конце текста статьи блок "💡 Мнение эксперта". 
-        Мнение должно быть СТРОГО релевантно текущей теме статьи ("{target_topic}"), 
-        без упоминания сторонних технологий, не относящихся к делу.
+       !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
+В самом конце статьи добавь блок "Мнение эксперта", оформив его СТРОГО в следующем HTML-виде:
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
+  <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
+    <span style="margin-right: 8px;">⚡</span> Мнение эксперта
+  </h4>
+  <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
+    [Здесь текст мнения, СТРОГО релевантный теме "{target_topic}"]
+  </p>
+</div>
        
         Верни ответ СТРОГО в формате JSON:
         {{
