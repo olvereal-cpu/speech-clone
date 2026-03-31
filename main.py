@@ -346,7 +346,7 @@ async def read_post(request: Request, slug: str):
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
-
+@app.post("/api/admin/generate-post")
 async def api_admin_gen(
     req: AdminGenRequest, 
     x_secret_key: str = Header(None)
