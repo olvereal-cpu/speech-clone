@@ -324,14 +324,6 @@ async def read_post(request: Request, slug: str):
             
         post = res.data[0]
         
-        # Добавляем "Мнение эксперта" (если его нет)
-        if "Мнение эксперта" not in post.get("content", ""):
-            post["content"] = post.get("content", "") + f"""
-            <div style="background: #f0f7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 30px; border-radius: 8px;">
-                <strong>💡 Мнение эксперта:</strong> Технологии клонирования голоса — это наше будущее.
-            </div>
-            """
-
         # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
         return templates.TemplateResponse(
             request, 
