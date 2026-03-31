@@ -1,0 +1,28 @@
+name: Auto Post Articles
+
+on:
+  schedule:
+    # Запуск в 06:00, 12:00 и 18:00 по UTC (можно подправить)
+    - cron: '0 6,12,18 * * *'
+  workflow_dispatch: # Позволяет запускать вручную кнопкой
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-group: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run autobot
+        env:
+          # Передаем секреты из настроек GitHub
+          MY_SECRET_KEY: ${{ secrets.MY_SECRET_KEY }}
+        run: python autobot.py
