@@ -1,8 +1,4 @@
-import os       
-import requests
-import time
 name: Auto Post Articles
-
 on:
   schedule:
     # Запуск в 06:00, 12:00 и 18:00 по UTC (можно подправить)
