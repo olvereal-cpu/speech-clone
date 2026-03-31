@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель | Контент-Завод</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -12,19 +13,22 @@
             <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl">✍️</div>
             <div>
                 <h1 class="text-2xl font-black text-gray-900 uppercase">Генератор Блога</h1>
-                <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Powered by Gemini 3.1 Flash-Lite</p>
+                <p class="text-gray-400 text-xs font-bold uppercase tracking-widest">Powered by Gemini 2.0 Flash</p>
             </div>
         </div>
 
         <div class="space-y-6">
             <div>
                 <label class="block text-xs font-black uppercase text-gray-500 mb-2 ml-1">Тема новой статьи</label>
-                <input type="text" id="topic" placeholder="Например: Как ИИ пишет музыку..." 
-                       class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-medium">
+                <!-- Добавлена поддержка Enter через onkeyup -->
+                <input type="text" id="topic" 
+                       onkeyup="if(event.key==='Enter') generatePost()"
+                       placeholder="Оставь пустым для автопилота..." 
+                       class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-medium text-gray-700">
             </div>
 
             <button onclick="generatePost()" id="genBtn" 
-                    class="w-full py-5 bg-gray-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all uppercase tracking-widest text-sm shadow-xl">
+                    class="w-full py-5 bg-gray-900 text-white font-black rounded-2xl hover:bg-blue-600 disabled:bg-gray-400 transition-all uppercase tracking-widest text-sm shadow-xl">
                 Создать магию ✨
             </button>
 
@@ -39,21 +43,27 @@
 
     <script>
         async function generatePost() {
-            const topic = document.getElementById('topic').value;
+            const topicInput = document.getElementById('topic');
             const btn = document.getElementById('genBtn');
             const status = document.getElementById('status');
+            
+            // Если поле пустое, отправляем "авто" для включения твоей логики ниш
+            const topicValue = topicInput.value.trim() || "авто";
 
-            if (!topic) return alert("Введите тему, бро!");
-
+            // Блокируем кнопку
             btn.disabled = true;
             btn.innerText = "Gemini думает... 🧠";
             status.classList.add('hidden');
 
             try {
+                // ВАЖНО: Путь должен совпадать с тем, что в main.py (@app.post("/api/admin/generate-post"))
                 const response = await fetch('/api/admin/generate-post', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: topic })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-secret-key': 'Barakuda' // Тот самый ключ для доступа
+                    },
+                    body: JSON.stringify({ message: topicValue })
                 });
 
                 const data = await response.json();
@@ -61,14 +71,16 @@
                 if (response.ok) {
                     status.innerText = "✅ Статья успешно добавлена в блог!";
                     status.className = "p-4 rounded-2xl text-center font-bold text-sm bg-green-50 text-green-600 block";
-                    document.getElementById('topic').value = "";
+                    topicInput.value = ""; // Очищаем поле
                 } else {
-                    throw new Error(data.error || "Ошибка сервера");
+                    // Если сервер вернул ошибку (например, 403 или 500)
+                    throw new Error(data.detail || data.error || "Ошибка сервера");
                 }
             } catch (e) {
                 status.innerText = "❌ Ошибка: " + e.message;
                 status.className = "p-4 rounded-2xl text-center font-bold text-sm bg-red-50 text-red-600 block";
             } finally {
+                // Возвращаем кнопку в рабочее состояние
                 btn.disabled = false;
                 btn.innerText = "Создать магию ✨";
             }
