@@ -306,6 +306,12 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
+# Проверяем, есть ли папка, чтобы не было ошибки при запуске
+if not os.path.exists("static"):
+    os.makedirs("static")
+
+# Это и есть тот самый "роут" на папку статик
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
@@ -327,11 +333,22 @@ async def generate_proxy(request: Request):
     text = data.get("text")
     voice = data.get("voice", "ru_v10_oleg")
     
+    if not text:
+        return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
+
+    # 1. Генерируем уникальное имя файла, чтобы они не перезаписывали друг друга
+    file_name = f"voice_{uuid.uuid4().hex}.mp3"
+    file_path = os.path.join("static", file_name)
+
     async with httpx.AsyncClient() as client:
         try:
+            # Твой адрес на Hugging Face (проверь, что он верный)
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
             
+            # Берем токен из переменных окружения Render
+            headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+            
+            # Делаем запрос к нейронке
             response = await client.get(
                 hf_url, 
                 params={"text": text, "voice": voice}, 
@@ -340,18 +357,19 @@ async def generate_proxy(request: Request):
             )
             
             if response.status_code == 200:
-                # Генерируем имя файла
-                file_name = f"{uuid.uuid4()}.mp3"
-                file_path = os.path.join("static", file_name)
-                
-                # Сохраняем аудио в папку static
+                # 2. Сохраняем полученный звук в файл в папку static
                 with open(file_path, "wb") as f:
                     f.write(response.content)
                 
-                # Возвращаем JSON, который ждет твой JavaScript
+                # 3. Возвращаем JSON, который ждет твой JavaScript
+                # Теперь JS увидит 'audio_url' и плеер заиграет!
                 return {"audio_url": f"/static/{file_name}"}
             else:
-                return JSONResponse(status_code=response.status_code, content={"detail": "HF Error"})
+                return JSONResponse(
+                    status_code=response.status_code, 
+                    content={"detail": f"Ошибка нейронки: {response.status_code}"}
+                )
+                
         except Exception as e:
             return JSONResponse(status_code=500, content={"detail": str(e)})
 @app.get("/", response_class=HTMLResponse)
