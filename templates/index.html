@@ -191,7 +191,6 @@ async function sendChat() {
     }
 }
 
-// ЛОГИКА ОЗВУЧКИ
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
     const text = document.getElementById('text-input').value;
@@ -204,7 +203,7 @@ async function generateAudio() {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/generate', {
+        const response = await fetch('/api/generate', { // Проверь роут в main.py
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({text, voice, mode})
@@ -214,27 +213,26 @@ async function generateAudio() {
         if (data.audio_url) {
             const player = document.getElementById('player');
             
-            // 1. Плееру даем ПРЯМУЮ ссылку на mp3, чтобы он ожил и заиграл
+            // 1. Плеер получает прямой путь к mp3 (чтобы он был АКТИВНЫМ)
             player.src = data.audio_url; 
-            
-            // 2. Вытаскиваем имя файла (например, voice_abc123.mp3)
-            const fileName = data.audio_url.split('/').pop();
-            
-            // Показываем блок с плеером
             document.getElementById('result-audio').classList.remove('hidden');
             player.play();
 
-            // 3. ИСПРАВЛЕНИЕ: Кнопку "СКАЧАТЬ" настраиваем на ПЕРЕХОД к странице ожидания
+            // 2. Вытаскиваем имя файла (например, voice_123.mp3)
+            const fileName = data.audio_url.split('/').pop();
+
+            // 3. КНОПКА ТЕПЕРЬ ПЕРЕКИДЫВАЕТ НА СТРАНИЦУ ОЖИДАНИЯ
             document.getElementById('download-redirect-btn').onclick = (e) => {
                 e.preventDefault();
-                // Теперь кидает на wait_page.html через роут /download
+                // Переход на wait_page.html через роут /download
                 window.location.href = `/download?file=${fileName}`; 
             };
-        } else {
-            alert("Ошибка: " + (data.detail || "Сервер занят"));
+
+        } else { 
+            alert("Ошибка сервера: " + (data.detail || "Неизвестная ошибка")); 
         }
-    } catch (e) {
-        alert("Ошибка связи");
+    } catch (e) { 
+        alert("Ошибка связи"); 
     } finally {
         btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
         btn.disabled = false;
