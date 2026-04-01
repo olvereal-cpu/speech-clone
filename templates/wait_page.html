@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-20 animate-fade-in text-center">
-    <!-- Иконка подготовки -->
     <div class="mb-8 inline-block p-6 bg-blue-50 rounded-[40px] text-blue-600">
         <svg class="w-16 h-16 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
@@ -17,18 +16,14 @@
         Подождите <span id="timer" class="text-blue-600 text-xl">30</span> секунд...
     </p>
 
-    <!-- БЛОК РЕКЛАМЫ (Сюда вставляй коды тизеров или баннеров) -->
     <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[40px] p-10 mb-12 min-h-[250px] flex items-center justify-center relative overflow-hidden">
         <div class="absolute top-4 left-4 text-[9px] font-black text-gray-300 uppercase tracking-widest">Рекламный блок</div>
         
-        <!-- Пример места под баннер -->
         <div class="text-gray-400 font-medium italic">
             Здесь будет ваша реклама...
-            <!-- <script> твой код рекламы </script> -->
-        </div>
+            </div>
     </div>
 
-    <!-- КНОПКА СКАЧИВАНИЯ (Появится после таймера) -->
     <div id="download-container" class="hidden opacity-0 transform translate-y-4 transition-all duration-700">
         <a id="download-link" href="#" class="inline-flex items-center gap-4 bg-gray-900 text-white px-12 py-6 rounded-3xl font-black text-sm uppercase tracking-[0.2em] hover:bg-blue-600 hover:scale-105 transition-all shadow-2xl">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +34,6 @@
         <p class="mt-6 text-gray-400 text-[10px] font-bold uppercase tracking-widest">Ссылка активна в течение часа</p>
     </div>
 
-    <!-- ТИЗЕР PREMIUM (Чтобы не ждать в следующий раз) -->
     <div class="mt-20 p-8 bg-blue-600 rounded-[35px] text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-100">
         <div class="text-left">
             <p class="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Надоело ждать?</p>
@@ -56,31 +50,33 @@
     const downloadContainer = document.getElementById('download-container');
     const downloadLink = document.getElementById('download-link');
 
-    // Получаем имя файла из URL (например, ?file=uuid.mp3)
+    // Получаем имя файла из URL (например, ?file=voice_uuid.mp3)
     const urlParams = new URLSearchParams(window.location.search);
     const fileName = urlParams.get('file');
 
-    if (!fileName) {
-        statusText.innerHTML = "<span class='text-red-500'>ФАЙЛ НЕ НАЙДЕН</span>";
+    if (!fileName || fileName === "undefined") {
+        statusText.innerHTML = "<span class='text-red-500'>ОШИБКА: ФАЙЛ НЕ УКАЗАН</span>";
     } else {
         const countdown = setInterval(() => {
             timeLeft--;
-            timerElement.innerText = timeLeft;
+            if (timerElement) timerElement.innerText = timeLeft;
 
             if (timeLeft <= 0) {
                 clearInterval(countdown);
                 
-                // Прячем таймер и показываем кнопку
-                statusText.innerHTML = "<span class='text-green-500 animate-pulse'>ВАШ ФАЙЛ ГОТОВ!</span>";
+                // Прячем таймер и показываем сообщение о готовности
+                statusText.innerHTML = "<span class='text-green-500 animate-pulse font-black'>ВАШ ФАЙЛ ГОТОВ!</span>";
                 
+                // Показываем контейнер с кнопкой
                 downloadContainer.classList.remove('hidden');
                 setTimeout(() => {
                     downloadContainer.classList.remove('opacity-0', 'translate-y-4');
                 }, 100);
 
-                // Ставим правильную ссылку на файл
-                // Путь должен совпадать с тем, где хранятся файлы в FastAPI (static/audio/)
-                downloadLink.href = `/static/audio/${fileName}`;
+                // СТАВИМ ПРАВИЛЬНЫЙ ПУТЬ
+                // Так как в main.py мы монтировали app.mount("/static", ...), 
+                // путь к файлу будет /static/имя_файла.mp3
+                downloadLink.href = `/static/${fileName}`;
                 downloadLink.setAttribute('download', fileName);
             }
         }, 1000);
