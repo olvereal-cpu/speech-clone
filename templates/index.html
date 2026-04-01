@@ -269,39 +269,42 @@ async function generateAudio() {
             const player = document.getElementById('player');
             const resultBox = document.getElementById('result-audio');
             
-            // 1. Создаем прямую ссылку с кэш-киллером
             const fileName = data.audio_url.split('/').pop();
-            const finalPath = `/static/${fileName}?t=${Date.now()}`;
-
-            console.log("Логи 206 подтверждают файл. Подаем в плеер:", finalPath);
+            const finalPath = `/static/${fileName}?v=${Date.now()}`;
 
             if (player) {
-                // Плеер может быть серым, если он скрыт или src пустой.
-                // Сначала показываем контейнер.
+                // ПОЛНЫЙ СБРОС ТЕГА
+                player.pause();
+                player.innerHTML = ''; // Очищаем внутренние source, если были
+                
+                // Создаем элемент source вручную, чтобы точно указать type
+                const source = document.createElement('source');
+                source.src = finalPath;
+                source.type = 'audio/mpeg'; 
+                
+                player.appendChild(source);
                 if (resultBox) resultBox.classList.remove('hidden');
+                
+                player.load(); // Принудительная загрузка
 
-                // Даем микро-паузу, чтобы DOM обновился
+                // Даем 500мс и пытаемся "толкнуть" плеер
                 setTimeout(() => {
-                    player.pause();
-                    player.src = finalPath;
-                    player.load(); // Принудительно заставляем браузер начать чтение
-                    
-                    // Пробуем запустить. Если браузер блокирует — плеер просто останется активным.
-                    player.play().catch(e => {
-                        console.log("Автоплей не сработал. Олег, просто нажми кнопку Play на самом плеере.");
-                    });
-                }, 300); 
+                    if (player.readyState > 0) {
+                        console.log("Плеер ожил, файл распознан!");
+                        player.play().catch(() => console.log("Нужен ручный клик"));
+                    } else {
+                        console.warn("Плеер все еще тупит, пробуем переназначить src напрямую");
+                        player.src = finalPath;
+                    }
+                }, 500);
             }
 
-            // Настройка кнопки перехода/скачивания
             const dlBtn = document.getElementById('download-redirect-btn');
             if (dlBtn) {
-                dlBtn.onclick = (e) => {
-                    e.preventDefault();
-                    window.location.href = `/wait-download?file=${fileName}`;
-                };
+                dlBtn.onclick = () => window.location.href = `/wait-download?file=${fileName}`;
             }
         }
+   
     } catch (e) {
         console.error(e);
         alert("Ошибка: " + e.message);
