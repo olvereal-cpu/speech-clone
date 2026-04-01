@@ -351,114 +351,92 @@ async def api_admin_gen(
         raise HTTPException(status_code=403, detail="Доступ запрещен")
         
     try:
-        # --- 0. ЛОГИКА АВТОПИЛОТА / РУЧНОГО ВВОДА ---
-        target_topic = req.message.strip()
-        
-        if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
-            print("🤖 Режим автопилота: придумываю хайповую IT-тему...")
-            niches = [
-                "Глубокая разработка: Python, FastAPI, микросервисы и чистая архитектура",
-                "AI для бизнеса: RAG-системы, автоматизация саппорта и внедрение LLM в рабочие процессы",
-                "Инструментарий профи: Секреты Cursor, VS Code, продвинутый промпт-инжиниринг и AI-кодинг",
-                "DevOps и Cloud: Развертывание в Docker, облака Render/Vercel и магия Supabase",
-                "IT-стратегия: Анализ трендов 2026, личный опыт выживания в индустрии, найм и карьера",
-                "Лайфхаки и продуктивность: Как разработчику успевать всё, автоматизировать рутину и не выгорать"
-            ]
-            
-            current_niche = random.choice(niches)
-            
-            topic_prompt = f"""
-            Ты — главный редактор топового IT-издания (уровня Хабра или TechCrunch). 
-            Твоя задача: превратить скучную нишу {current_niche} в виральный, "мясной" заголовок.
+        # --- 0. ЛОГИКА АВТОПИЛОТА: ГЕНЕРАТОР УНИКАЛЬНЫХ СМЫСЛОВ ---
+target_topic = req.message.strip()
 
-            ПРАВИЛА:
-            - Никаких "Введение в...", "Основы...", "Преимущества...". Это скучно!
-            - Добавь личный опыт, цифры или жесткую проблему (например: "5 фатальных ошибок...", "Как мы сэкономили $5000 на...", "Почему ваш ИИ — это просто дорогой чат-бот").
-            - Используй сильные глаголы: 'ускорил', 'сломал', 'внедрил', 'выкинул', 'автоматизировал'.
-            - Тема должна звучать как инсайд от практикующего инженера или владельца бизнеса.
-            - Направление: {current_niche}.
+if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
+    print("🤖 Автопилот: создаю уникальный социальный инсайд...")
+    
+    # Это векторы развития, а не готовые заголовки
+    niches = [
+        "Цифровое бессмертие и трансформация личности",
+        "Психология одиночества в эпоху алгоритмов",
+        "Кибербезопасность семьи и кража личности через ИИ",
+        "Воспитание детей и новые навыки для 2030 года",
+        "Любовь, Tinder и цифровые суррогаты близости",
+        "Биохакинг, чипы и слияние человека с кодом",
+        "Экономика выживания: профессии, которые ИИ заберет завтра",
+        "Ментальное здоровье и борьба с информационным шумом"
+    ]
+    
+    selected_niche = random.choice(niches)
+    
+    # Генерируем хлёсткий короткий заголовок на базе ниши
+    topic_prompt = f"""
+    Ты — главный редактор Esquire. Придумай провокационный заголовок для статьи.
+    НИША: {selected_niche}
+    
+    ПРАВИЛА:
+    - СТРОГО: от 3 до 6 слов. Без кавычек.
+    - Тема должна быть про ЖИЗНЬ и ОБЩЕСТВО, а не про софт.
+    - Это должен быть "крючок": страх, любопытство или инсайд.
+    - Пример: 'Почему твой голос больше не твой', 'ИИ-няня: кто растит наших детей'.
+    """
 
-            Ответь ТОЛЬКО текстом одного заголовка без кавычек и лишних знаков.
-            """
-        
-            
-            # Генерация через Gemini 3.1
-            generated_topic = await mm.generate(topic_prompt)
-            target_topic = generated_topic.strip().replace('"', '')
-        
-        print(f"📝 Генерация статьи по теме: {target_topic}")
+    generated_topic = await mm.generate(topic_prompt)
+    target_topic = generated_topic.strip().replace('"', '').replace('.', '')
 
-        # --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА (ТВОЙ SEO + МОЙ КОНТЕКСТ) ---
-       
-        prompt = f"""
-        Напиши экспертную, глубокую и человечную статью на тему: {target_topic}.
-        
-        ТРЕБОВАНИЯ К СТИЛЮ:
-        - Никакой "воды" и шаблонных фраз вроде "в современном мире".
-        - Используй сторителлинг: начни с реальной проблемы или интригующего факта.
-        - Обращайся к читателю на "вы", задавай риторические вопросы.
-        - Чередуй короткие и длинные предложения (создавай ритм текста).
-        - Добавь немного юмора или уместной иронии.
-        
-        SEO-ПАРАМЕТРЫ:
-        - Заголовок (Title) должен содержать ключевое слово и быть кликабельным (Clickbait-style, но честный).
-        - Используй подзаголовки <h2> с ключевыми словами и эмодзи.
-        - Добавь в текст LSI-фразы (тематические слова, связанные с {target_topic}).
-        - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
+print(f"📝 Тема: {target_topic}")
 
-        ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ (поле photo_keywords):
-        - СТРОГО ЗАПРЕЩЕНО использовать слова: 'computer', 'laptop', 'monitor', 'typing', 'office'.
-        - Вместо "железа" используй визуальные метафоры и атмосферные английские слова.
-        - Если тема про код/алгоритмы — используй 'abstract digital waves', 'matrix code', 'cyberpunk city'.
-        - Если тема про будущее/ИИ — используй 'neon lights', 'space nebula', 'futuristic architecture', 'humanoid light'.
-        - Если тема про бизнес/рост — используй 'mountain peak', 'rocket launch', 'ocean storm'.
-        - Ключевые слова должны быть эстетичными и передавать настроение, а не предмет.
+# --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА ---
 
-        Верни ответ СТРОГО в формате JSON:
-        {{
-          "title": "Заголовок",
-          "excerpt": "SEO-описание",
-          "content": "HTML-текст статьи (включая мнение эксперта в красивом div)",
-          
-        }}
-       
+prompt = f"""
+Напиши экспертную и человечную статью: {target_topic}.
 
-        !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
-        В самом конце статьи добавь блок "Мнение эксперта", оформив его СТРОГО в следующем HTML-виде:
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
-          <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
-            <span style="margin-right: 8px;">⚡</span> Мнение эксперта
-          </h4>
-          <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
-            [Здесь текст мнения, СТРОГО релевантный теме "{target_topic}"]
-          </p>
-        </div>
-        
-        Верни ответ СТРОГО в формате JSON:
-        {{
-          "title": "Заголовок статьи",
-          "excerpt": "Мета-описание (150-160 символов) для поисковиков, которое заставляет кликнуть.",
-          "content": "HTML-текст: вступление, <h2> подзаголовки с эмодзи, списки <ul>, акценты <strong>, FAQ блок и заключение с призывом.",
-          
-        }}
-        """
-        
-        # 2. ГЕНЕРАЦИЯ КОНТЕНТА
-        raw_res = await mm.generate(prompt)
-        
-        # --- ЗАЩИТА ОТ ОШИБКИ JSON ---
-        try:
-            # Gemini часто оборачивает JSON в блоки кода ```json ... ```, убираем их
-            json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
-            data = json.loads(json_str)
-        except Exception as e:
-            print(f"❌ ОШИБКА JSON ПАРСИНГА: {e}")
-            data = {
-                "title": target_topic, 
-                "photo_keywords": "it, technology, digital", 
-                "content": f"<p>{raw_res}</p>", # Записываем как есть, если JSON не удался
-                "excerpt": "Интересная статья о современных IT-технологиях."
-            }
+ТРЕБОВАНИЯ К СТИЛЮ:
+- Пиши живо, с иронией, как для людей. Минимум терминов.
+- Структура: Интригующее начало -> 2-3 подзаголовка h2 -> FAQ блок.
+
+ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ (photo_keywords):
+- ЗАПРЕЩЕНО: 'computer', 'laptop', 'monitor', 'office'.
+- ИСПОЛЬЗУЙ МЕТАФОРЫ: 'cinematic lighting', 'surreal art', 'neon bokeh', 'atmospheric city'.
+
+!!! ВАЖНО: МНЕНИЕ ЭКСПЕРТА !!!
+Вставь этот HTML-блок СТРОГО в самый конец поля 'content':
+<div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; color: #e2e8f0; font-family: sans-serif;">
+  <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
+    <span style="margin-right: 8px;">⚡</span> Мнение эксперта
+  </h4>
+  <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
+    [Твой жесткий и краткий вывод по теме "{target_topic}"]
+  </p>
+</div>
+
+Верни ответ СТРОГО в формате JSON:
+{{
+  "title": "{target_topic}",
+  "excerpt": "Краткое превью (150 симв), заставляющее кликнуть.",
+  "content": "HTML-текст статьи (включая блок эксперта в конце)",
+  "photo_keywords": "3-4 атмосферных слова для Pexels"
+}}
+"""
+
+# --- 2. ГЕНЕРАЦИЯ И ЗАЩИТА ---
+raw_res = await mm.generate(prompt)
+
+try:
+    json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
+    data = json.loads(json_str)
+    if "photo_keywords" not in data:
+        data["photo_keywords"] = "abstract digital cinematic"
+except Exception as e:
+    print(f"❌ JSON ERROR: {e}")
+    data = {
+        "title": target_topic,
+        "excerpt": "Честный взгляд на технологии и наше будущее.",
+        "content": f"<p>{raw_res}</p>",
+        "photo_keywords": "futuristic atmosphere"
+    }
         
         # 3. ПОДГОТОВКА СЛАГА И ФОТО
         final_title = data.get('title', target_topic)
