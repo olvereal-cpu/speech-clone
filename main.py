@@ -12,6 +12,9 @@ import requests
 import urllib.parse
 import logging
 import math
+import soundfile as sf
+from fastapi.responses import StreamingResponse
+from kokoro_onnx import Kokoro
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
@@ -266,6 +269,13 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
+# Загружаем модель из твоей папки v_data
+try:
+    # Проверь, что файлы в папке называются именно так
+    kokoro = Kokoro("v_data/kokoro-v0_19.onnx", "v_data/voices.bin")
+except Exception as e:
+    print(f"Ошибка загрузки TTS: {e}")
+    kokoro = None
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
@@ -599,6 +609,23 @@ async def get_posts(page: int = 1, limit: int = 6):
         return {"error": str(e)}
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
+@app.get("/api/speak")
+async def speak(text: str, voice: str = "af_sky"):
+    if not kokoro:
+        return {"error": "Модель не загружена на сервере"}
+    
+    try:
+        # Создаем аудио (lang="en-us" для теста, потом поменяем на "ru")
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        
+        # Записываем результат в буфер памяти
+        buffer = io.BytesIO()
+        sf.write(buffer, samples, sample_rate, format='wav')
+        buffer.seek(0)
+        
+        return StreamingResponse(buffer, media_type="audio/wav")
+    except Exception as e:
+        return {"error": str(e)}
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request): return templates.TemplateResponse(request=request, name="voices.html")
 
