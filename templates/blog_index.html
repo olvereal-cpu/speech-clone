@@ -127,37 +127,40 @@
             {% endfor %}
         </div>
 
-        {% if total_pages > 1 %}
-        <div class="flex items-center justify-center space-x-3 mt-20">
-            {% if current_page > 1 %}
-            <a href="?page={{ current_page - 1 }}" class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group">
-                <i class="fas fa-chevron-left text-[10px]"></i>
-            </a>
-            {% endif %}
-
-            <div class="flex items-center bg-gray-100 p-1.5 rounded-[22px] border border-gray-200">
-                {% for p in range(1, total_pages + 1) %}
-                    {% if p == current_page %}
-                    <span class="w-10 h-10 flex items-center justify-center bg-white rounded-[18px] text-[11px] font-black text-blue-600 shadow-sm border border-gray-100">
-                        {{ p }}
-                    </span>
-                    {% else %}
-                    <a href="?page={{ p }}" class="w-10 h-10 flex items-center justify-center text-[11px] font-black text-gray-400 hover:text-gray-900 transition-colors">
-                        {{ p }}
-                    </a>
-                    {% endif %}
-                {% endfor %}
-            </div>
-
-            {% if current_page < total_pages %}
-            <a href="?page={{ current_page + 1 }}" class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group">
-                <i class="fas fa-chevron-right text-[10px]"></i>
-            </a>
-            {% endif %}
-        </div>
+        {% if not is_single and total_pages > 1 %}
+    <div class="flex items-center justify-center space-x-3 mt-20">
+        
+        {# Кнопка "Назад" #}
+        {% if current_page > 1 %}
+        <a href="?page={{ current_page - 1 }}" class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group">
+            <i class="fas fa-chevron-left text-[10px]"></i>
+        </a>
         {% endif %}
 
-    {% endif %}
+        {# Список страниц #}
+        <div class="flex items-center bg-gray-100 p-1.5 rounded-[22px] border border-gray-200">
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == current_page %}
+                <span class="w-10 h-10 flex items-center justify-center bg-white rounded-[18px] text-[11px] font-black text-blue-600 shadow-sm border border-gray-100">
+                    {{ p }}
+                </span>
+                {% else %}
+                <a href="?page={{ p }}" class="w-10 h-10 flex items-center justify-center text-[11px] font-black text-gray-400 hover:text-gray-900 transition-colors">
+                    {{ p }}
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        {# Кнопка "Вперед" #}
+        {% if current_page < total_pages %}
+        <a href="?page={{ current_page + 1 }}" class="w-12 h-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-gray-900 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group">
+            <i class="fas fa-chevron-right text-[10px]"></i>
+        </a>
+        {% endif %}
+
+    </div>
+{% endif %}
 
 </main>
 
