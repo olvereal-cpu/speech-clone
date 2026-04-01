@@ -257,32 +257,72 @@ async function generateAudio() {
 
         const data = await response.json();
         
+       async function generateAudio() {
+    const btn = document.getElementById('gen-btn');
+    const textElement = document.getElementById('text-input');
+    const voiceElement = document.getElementById('voice-select');
+    const modeElement = document.getElementById('mode-select');
+
+    if (!textElement || !btn) return;
+
+    const text = textElement.value;
+    const voice = voiceElement ? voiceElement.value : 'default';
+    const mode = modeElement ? modeElement.value : 'standard';
+
+    if (!text) { 
+        alert("Бро, введи текст!"); 
+        return; 
+    }
+
+    btn.innerText = "ГЕНЕРАЦИЯ...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text, voice, mode})
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
         if (data.audio_url) {
             const player = document.getElementById('player');
             const resultAudio = document.getElementById('result-audio');
             
             const fileName = data.audio_url.split('/').pop();
-            const finalPath = `/static/${fileName}?t=${new Date().getTime()}`;
-
-            console.log("Пытаюсь загрузить файл:", finalPath);
+            const finalPath = `/static/${fileName}?t=${Date.now()}`;
 
             if (player) {
+                // 1. Сбрасываем плеер полностью
                 player.pause();
-                player.removeAttribute('src'); 
+                player.src = ""; 
                 player.load();
-                
-                player.src = finalPath;
-                if (resultAudio) resultAudio.classList.remove('hidden');
-                
-                player.oncanplaythrough = () => {
-                    console.log("Файл готов к игре!");
-                    player.play().catch(e => console.log("Нажми кнопку Play сам"));
-                };
 
-                player.onerror = () => {
-                    console.error("Ошибка плеера. Код:", player.error.code);
-                    alert("Бро, плеер не смог подгрузить файл.");
-                };
+                // 2. Ждем полсекунды, чтобы Render "дописал" файл
+                setTimeout(() => {
+                    console.log("Загружаем аудио:", finalPath);
+                    player.src = finalPath;
+                    
+                    if (resultAudio) resultAudio.classList.remove('hidden');
+                    
+                    player.load();
+
+                    player.oncanplaythrough = () => {
+                        console.log("Файл готов!");
+                        player.play().catch(() => console.log("Нужен клик пользователя"));
+                    };
+
+                    player.onerror = () => {
+                        console.error("Ошибка загрузки. Пробую еще раз...");
+                        // Тихий перезапуск без алерта
+                        player.load();
+                    };
+                }, 500); 
             }
 
             const redirectBtn = document.getElementById('download-redirect-btn');
