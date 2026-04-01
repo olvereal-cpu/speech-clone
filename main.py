@@ -15,6 +15,7 @@ import urllib.request
 import logging
 import math
 import soundfile as sf
+import mimetypes
 from fastapi.responses import StreamingResponse, JSONResponse
 from datetime import datetime
 from typing import Optional
