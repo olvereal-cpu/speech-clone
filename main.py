@@ -101,6 +101,15 @@ BLOG_POSTS = [
 ]
 
 VOICES = {
+    # --- УЛУЧШЕННЫЕ (PREMIUM) ---
+    "🌟 Олег (Premium)": "ru_v10_oleg",
+    "🌟 Елена (Premium)": "ru_v10_elena",
+    "🌟 Ирина (Premium)": "ru_v10_irina",
+    "🌟 Тарас (Premium)": "ru_v10_taras",
+    "🌟 Sky (Premium-HQ)": "af_sky",
+    "🌟 Bella (Premium-HQ)": "af_bella",
+    "🌟 Adam (Premium-HQ)": "am_adam",
+    # --- СТАНДАРТНЫЕ ---
     "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
     "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇰🇿 Айгуль": "kk-KZ-AigulNeural",
     "🇺🇸 Guy (EN)": "en-US-GuyNeural", "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
@@ -145,23 +154,48 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Регистрируем пользователя в базе, если его там нет (для рассылки)
+    # 1. Регистрация в базе
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (message.from_user.id,))
     conn.commit()
     conn.close()
 
-    # Проверка обязательной подписки
+    # 2. Проверка подписки (если не админ)
     if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
         kb = InlineKeyboardBuilder()
         kb.button(text="📢 Подписаться на канал", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")
         kb.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
-        return await message.answer("⚠️ Для использования бота необходимо подписаться на наш канал!", reply_markup=kb.adjust(1).as_markup())
+        return await message.answer(
+            "⚠️ **Для использования бота необходимо подписаться на наш канал!**", 
+            parse_mode="Markdown", 
+            reply_markup=kb.adjust(1).as_markup()
+        )
 
+    # 3. Если подписан — выводим красивое меню выбора голосов
     kb = InlineKeyboardBuilder()
-    for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
-    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
+    # Берем голоса из нашего общего словаря VOICES
+    for name, v_id in VOICES.items():
+        kb.button(text=name, callback_data=f"v_{v_id}")
+    
+    # Добавляем кнопку доната в конец
+    kb.adjust(2).row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
+    
+    welcome_text = (
+        "👋 **Приветствуем в SpeechClone!**\n\n"
+        "Выберите подходящий голос для озвучки:\n"
+        "• 🌟 **Premium** — максимально живое звучание.\n"
+        "• 🇷🇺/🇰🇿 **Стандарт** — классические голоса.\n\n"
+        "**Просто отправьте текст** после выбора голоса, и я его озвучу."
+    )
+    
+    await message.answer(welcome_text, parse_mode="Markdown", reply_markup=kb.as_markup())
+
+@dp.callback_query(F.data == "sub_check_done")
+async def sub_check_done(call: types.CallbackQuery):
+    if await check_sub(call.from_user.id):
+        await call.message.answer("✅ Спасибо за подписку! Теперь выберите голос в меню /start")
+    else:
+        await call.answer("❌ Вы еще не подписались!", show_alert=True)
 
 # --- АДМИН-ФУНКЦИИ ---
 
@@ -265,6 +299,22 @@ async def handle_text(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
+# --- FASTAPI ---
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+# --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
+class ChatRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
+class KeyCheck(BaseModel): key: str
+class AdminGenRequest(BaseModel): 
+    message: str
+    category: Optional[str] = "Технологии"
+    color: Optional[str] = "blue"
+
+# --- МАРШРУТЫ САЙТА ---
 # --- НАСТРОЙКИ TTS (ЧЕРЕЗ HUGGING FACE) ---
 # Замени на свою прямую ссылку на Space (обязательно с /dev/api/tts или твоим эндпоинтом)
 "https://sercos-my-tts-api.hf.space/dev/api/tts" 
@@ -301,17 +351,6 @@ async def speak(text: str, voice: str = "af_sky"):
             status_code=500, 
             content={"error": f"Ошибка подключения к HF: {str(e)}"}
         )
-
-# --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
-class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
-class KeyCheck(BaseModel): key: str
-class AdminGenRequest(BaseModel): 
-    message: str
-    category: Optional[str] = "Технологии"
-    color: Optional[str] = "blue"
-
-# --- МАРШРУТЫ САЙТА ---
 import math
 from fastapi import Request, HTTPException
 from fastapi.responses import HTMLResponse
@@ -687,11 +726,25 @@ async def api_generate_web(r: TTSRequest):
     try:
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
-        rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-        await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
+        
+        # Автоматическое определение типа голоса по префиксу
+        is_premium = any(p in r.voice for p in ["af_", "am_", "ru_v10_"])
+
+        if is_premium:
+            # Запрос к улучшенному движку
+            resp = requests.post(HF_KOKORO_URL, json={"text": r.text, "voice": r.voice}, timeout=60)
+            if resp.status_code == 200:
+                with open(path, "wb") as f: f.write(resp.content)
+            else:
+                return JSONResponse(status_code=500, content={"detail": "Ошибка движка озвучки"})
+        else:
+            # Обычный движок
+            rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+            await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
+            
         return {"audio_url": f"/wait-download?file={fid}"}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        return JSONResponse(status_code=500, content={"detail": "Техническая ошибка"})
         
 @app.on_event("startup")
 async def startup_event():
