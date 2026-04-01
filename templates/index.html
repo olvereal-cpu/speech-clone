@@ -198,151 +198,108 @@
 </div>
 
 <script>
+// Переключение чата
 function toggleChat() {
-    document.getElementById('chat-window').classList.toggle('hidden');
+    const win = document.getElementById('chat-window');
+    if (win) win.classList.toggle('hidden');
 }
 
+// Отправка в чат
 async function sendChat() {
     const input = document.getElementById('chat-input');
     const box = document.getElementById('chat-box');
+    if (!input || !box || !input.value.trim()) return;
+
     const text = input.value;
-    if (!text) return;
-    box.innerHTML += `<div class="text-right"><p class="bg-blue-600 text-white p-3 rounded-2xl inline-block text-[11px] font-bold">Вы: ${text}</p></div>`;
+    box.innerHTML += `<div class="text-right"><p class="bg-blue-600 text-white p-2 rounded-xl inline-block mb-2">${text}</p></div>`;
     input.value = "";
-    box.scrollTop = box.scrollHeight;
+    
     try {
-        const response = await fetch('/chat', {
+        const res = await fetch('/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({message: text})
         });
-        const data = await response.json();
-        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-400 p-3 rounded-2xl inline-block text-[11px] font-bold">Бро: ${data.reply}</p></div>`;
-        box.scrollTop = box.scrollHeight;
+        const data = await res.json();
+        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-300 p-2 rounded-xl inline-block mb-2">Бро: ${data.reply}</p></div>`;
     } catch (e) {
-        box.innerHTML += `<p class="text-red-500 text-[10px] text-center uppercase font-black">Сбой...</p>`;
+        box.innerHTML += `<p class="text-red-500 text-center text-xs">Ошибка чата</p>`;
     }
+    box.scrollTop = box.scrollHeight;
 }
 
+// ОСНОВНАЯ ФУНКЦИЯ ГЕНЕРАЦИИ
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
-    const textElement = document.getElementById('text-input');
-    const voiceElement = document.getElementById('voice-select');
-    const modeElement = document.getElementById('mode-select');
-
-    if (!textElement || !btn) return;
-
-    const text = textElement.value;
-    const voice = voiceElement ? voiceElement.value : 'default';
-    const mode = modeElement ? modeElement.value : 'standard';
-
-    if (!text) { 
-        alert("Бро, введи текст!"); 
-        return; 
+    const textInput = document.getElementById('text-input');
+    
+    if (!btn || !textInput) {
+        console.error("Элементы интерфейса не найдены!");
+        return;
     }
 
+    const text = textInput.value.trim();
+    if (!text) {
+        alert("Бро, введи текст!");
+        return;
+    }
+
+    // 1. Визуальная блокировка кнопки
     btn.innerText = "ГЕНЕРАЦИЯ...";
     btn.disabled = true;
+    btn.style.opacity = "0.5";
 
     try {
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, voice, mode})
+            body: JSON.stringify({
+                text: text,
+                voice: document.getElementById('voice-select')?.value || 'default',
+                mode: document.getElementById('mode-select')?.value || 'standard'
+            })
         });
 
-        if (!response.ok) {
-            throw new Error(`Ошибка сервера: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-       async function generateAudio() {
-    const btn = document.getElementById('gen-btn');
-    const textElement = document.getElementById('text-input');
-    const voiceElement = document.getElementById('voice-select');
-    const modeElement = document.getElementById('mode-select');
-
-    if (!textElement || !btn) return;
-
-    const text = textElement.value;
-    const voice = voiceElement ? voiceElement.value : 'default';
-    const mode = modeElement ? modeElement.value : 'standard';
-
-    if (!text) { 
-        alert("Бро, введи текст!"); 
-        return; 
-    }
-
-    btn.innerText = "ГЕНЕРАЦИЯ...";
-    btn.disabled = true;
-
-    try {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, voice, mode})
-        });
-
-        if (!response.ok) {
-            throw new Error(`Ошибка сервера: ${response.status}`);
-        }
+        if (!response.ok) throw new Error("Сервер вернул ошибку");
 
         const data = await response.json();
         
         if (data.audio_url) {
             const player = document.getElementById('player');
-            const resultAudio = document.getElementById('result-audio');
-            
+            const resultBox = document.getElementById('result-audio');
             const fileName = data.audio_url.split('/').pop();
-            const finalPath = `/static/${fileName}?t=${Date.now()}`;
-
+            
+            // Сбрасываем плеер и показываем его
             if (player) {
-                // 1. Сбрасываем плеер полностью
                 player.pause();
-                player.src = ""; 
+                player.src = `/static/${fileName}?t=${Date.now()}`;
+                if (resultBox) resultBox.classList.remove('hidden');
                 player.load();
-
-                // 2. Ждем полсекунды, чтобы Render "дописал" файл
+                
+                // Пытаемся заиграть через полсекунды (задержка для Render)
                 setTimeout(() => {
-                    console.log("Загружаем аудио:", finalPath);
-                    player.src = finalPath;
-                    
-                    if (resultAudio) resultAudio.classList.remove('hidden');
-                    
-                    player.load();
-
-                    player.oncanplaythrough = () => {
-                        console.log("Файл готов!");
-                        player.play().catch(() => console.log("Нужен клик пользователя"));
-                    };
-
-                    player.onerror = () => {
-                        console.error("Ошибка загрузки. Пробую еще раз...");
-                        // Тихий перезапуск без алерта
-                        player.load();
-                    };
-                }, 500); 
+                    player.play().catch(() => console.log("Нажми Play сам"));
+                }, 500);
             }
 
-            const redirectBtn = document.getElementById('download-redirect-btn');
-            if (redirectBtn) {
-                redirectBtn.onclick = (e) => {
-                    e.preventDefault();
-                    window.location.href = `/wait-download?file=${fileName}`; 
-                };
+            // Настройка кнопки скачивания
+            const dlBtn = document.getElementById('download-redirect-btn');
+            if (dlBtn) {
+                dlBtn.onclick = () => window.location.href = `/wait-download?file=${fileName}`;
             }
         }
     } catch (e) {
         console.error(e);
-        alert("Ошибка связи");
+        alert("Ошибка: " + e.message);
     } finally {
+        // 2. ОБЯЗАТЕЛЬНО возвращаем кнопку в рабочее состояние
         btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
         btn.disabled = false;
+        btn.style.opacity = "1";
     }
 }
 
-// Слушатель для чата
+// Слушатель Enter для чата
 document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
