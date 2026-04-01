@@ -449,9 +449,29 @@ async def api_admin_gen(
         except Exception as e:
             print(f"🚨 Ошибка Pexels: {e}")
 
-        # --- 4. СОХРАНЕНИЕ В SUPABASE ---
+        # --- 4. СОХРАНЕНИЕ В SUPABASE (ИСПРАВЛЕННЫЙ SLUG) ---
         final_title = data.get("title", target_topic)
-        slug_name = re.sub(r'[^a-z0-9]+', '-', final_title.lower()).strip('-')
+        
+        # Интегрируем твой транслит прямо сюда
+        def internal_slugify(text):
+            chars = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+                'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+                'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+                'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+            }
+            text = text.lower().strip()
+            # Сначала транслит букв
+            result = "".join(chars.get(c, c) for c in text)
+            # Потом замена всего лишнего на дефисы
+            result = re.sub(r'[^a-z0-9]+', '-', result)
+            return result.strip('-')
+
+        slug_name = internal_slugify(final_title)
+
+        # Если вдруг слаг пустой — страховка
+        if not slug_name:
+            slug_name = f"post-{random.randint(1000, 9999)}"
 
         res = supabase.table("posts").insert({
             "title": final_title,
@@ -461,7 +481,7 @@ async def api_admin_gen(
             "content": data.get('content', '')
         }).execute()
 
-        print(f"🚀 Статья опубликована: {final_title}")
+        print(f"🚀 Статья опубликована: {final_title} | SLUG: {slug_name}")
 
         return {
             "status": "success", 
