@@ -321,16 +321,12 @@ class AdminGenRequest(BaseModel):
 # 1. Считываем токен из переменных окружения Render
 # Он должен называться точно так же, как в Dashboard (HF_TOKEN)
 HF_TOKEN = os.getenv("HF_TOKEN")
-
 @app.post("/api/generate")
-async def speak_proxy(request: Request):
+async def generate_proxy(request: Request):
     data = await request.json()
     text = data.get("text")
     voice = data.get("voice", "ru_v10_oleg")
     
-    if not text:
-        return JSONResponse(status_code=400, content={"error": "Нет текста"})
-
     async with httpx.AsyncClient() as client:
         try:
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
@@ -341,24 +337,23 @@ async def speak_proxy(request: Request):
                 params={"text": text, "voice": voice}, 
                 headers=headers, 
                 timeout=60.0
-            ) # <-- Проверь, чтобы тут была одна скобка
+            )
             
             if response.status_code == 200:
-                return StreamingResponse(
-                    io.BytesIO(response.content), 
-                    media_type="audio/mpeg"
-                ) # <-- И тут одна
+                # Генерируем имя файла
+                file_name = f"{uuid.uuid4()}.mp3"
+                file_path = os.path.join("static", file_name)
+                
+                # Сохраняем аудио в папку static
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+                
+                # Возвращаем JSON, который ждет твой JavaScript
+                return {"audio_url": f"/static/{file_name}"}
             else:
-                return JSONResponse(
-                    status_code=response.status_code, 
-                    content={"error": "HF Error"}
-                )
+                return JSONResponse(status_code=response.status_code, content={"detail": "HF Error"})
         except Exception as e:
-            return JSONResponse(
-                status_code=500, 
-                content={"error": str(e)}
-            )
-# Убедись, что после этого блока нет лишних одиноких скобок )
+            return JSONResponse(status_code=500, content={"detail": str(e)})
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
