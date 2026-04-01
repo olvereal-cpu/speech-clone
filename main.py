@@ -304,14 +304,7 @@ async def handle_text(message: types.Message):
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
-# Проверяем, есть ли папка, чтобы не было ошибки при запуске
-if not os.path.exists("static"):
-    os.makedirs("static")
-
-# Это и есть тот самый "роут" на папку статик
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
@@ -391,7 +384,14 @@ async def home(request: Request):
             name="index.html", 
             context={"posts": []}
         )
-
+2. И ТОЛЬКО В САМОМ КОНЦЕ МОНТИРУЕМ СТАТИКУ
+# Это критично! Если поднять выше - будет "Not Found"
+mimetypes.add_type('audio/mpeg', '.mp3')
+if not os.path.exists("static"):
+    os.makedirs("static")
+# Принудительно учим систему, что файлы .mp3 — это аудио
+mimetypes.add_type('audio/mpeg', '.mp3')
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
