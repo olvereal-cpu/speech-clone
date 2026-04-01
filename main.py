@@ -15,7 +15,6 @@ import logging
 import math
 import soundfile as sf
 from fastapi.responses import StreamingResponse
-from kokoro_onnx import Kokoro
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
@@ -36,7 +35,8 @@ from slugify import slugify
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
+# ССЫЛКА НА ТВОЙ API НА HUGGING FACE
+HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/dev/api/tts"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -265,58 +265,42 @@ async def handle_text(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
-import os
-import urllib.request
-import io
-import soundfile as sf
-from fastapi.responses import StreamingResponse
-from kokoro_onnx import Kokoro
+# --- НАСТРОЙКИ TTS (ЧЕРЕЗ HUGGING FACE) ---
+# Замени на свою прямую ссылку на Space (обязательно с /dev/api/tts или твоим эндпоинтом)
+"https://sercos-my-tts-api.hf.space/dev/api/tts" 
 
-# --- НАСТРОЙКИ TTS ---
-MODEL_PATH = "v_data/kokoro-v0_19.onnx"
-VOICES_PATH = "v_data/voices.bin"
-# Прямая ссылка на модель (оригинал, который мы скачивали)
-MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx"
-
-def ensure_model_exists():
-    """Проверяет наличие модели и скачивает её, если нужно"""
-    if not os.path.exists("v_data"):
-        os.makedirs("v_data")
-    if not os.path.exists(MODEL_PATH):
-        print("Начинаю скачивание модели (300MB). Это займет около 1-2 минут на сервере...")
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        print("Модель успешно загружена в v_data!")
-
-# --- FASTAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
-
-# Сначала проверяем/скачиваем файл, потом инициализируем нейронку
-ensure_model_exists()
-
-try:
-    kokoro = Kokoro(MODEL_PATH, VOICES_PATH)
-    print("Kokoro-TTS успешно запущена!")
-except Exception as e:
-    print(f"Ошибка загрузки TTS: {e}")
-    kokoro = None
-
-# Добавь этот роут ниже, чтобы можно было проверить звук
 @app.get("/api/speak")
 async def speak(text: str, voice: str = "af_sky"):
-    if not kokoro:
-        return {"error": "Модель не загружена на сервере"}
+    """
+    Прокси-роут: принимает запрос от сайта, перекидывает его на Hugging Face, 
+    получает аудио и отдает обратно в браузер.
+    """
     try:
-        # Генерируем аудио
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
-        buffer = io.BytesIO()
-        sf.write(buffer, samples, sample_rate, format='wav')
-        buffer.seek(0)
-        return StreamingResponse(buffer, media_type="audio/wav")
+        # Отправляем POST запрос на твой Спейс
+        # Передаем текст и голос в формате JSON
+        response = requests.post(
+            HF_KOKORO_URL, 
+            json={"text": text, "voice": voice}, 
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            # Превращаем байты ответа в поток и отдаем как wav-файл
+            return StreamingResponse(
+                io.BytesIO(response.content), 
+                media_type="audio/wav"
+            )
+        else:
+            return JSONResponse(
+                status_code=response.status_code, 
+                content={"error": f"Ошибка Hugging Face: {response.text}"}
+            )
+            
     except Exception as e:
-        return {"error": str(e)}
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Ошибка подключения к HF: {str(e)}"}
+        )
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
