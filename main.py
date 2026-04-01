@@ -105,7 +105,7 @@ BLOG_POSTS = [
 
 
    # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (БЕЗ ЛИШНИХ ТЕХНОЛОГИЙ) ---
-VOICE {
+VOICES = {
     # 🇰🇿 КАЗАХСТАН
     "kk": {"type": "new", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
     "edge_kk_Aigul": {"type": "old", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
