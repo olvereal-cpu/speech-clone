@@ -364,6 +364,25 @@ if not os.path.exists("static"):
 # Принудительно учим систему, что файлы .mp3 — это аудио
 mimetypes.add_type('audio/mpeg', '.mp3')
 app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    try:
+        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
+        all_posts = res.data if res.data else []
+        
+        # ИСПРАВЛЕНО: Явное указание аргументов
+        return templates.TemplateResponse(
+            request=request, 
+            name="index.html", 
+            context={"posts": all_posts}
+        )
+    except Exception as e:
+        print(f"Ошибка на главной: {e}")
+        return templates.TemplateResponse(
+            request=request, 
+            name="index.html", 
+            context={"posts": []}
+        )
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
