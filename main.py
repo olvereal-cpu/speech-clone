@@ -10,6 +10,7 @@ import markdown
 import random
 import requests
 import urllib.parse
+import urllib.request
 import logging
 import math
 import soundfile as sf
@@ -264,18 +265,58 @@ async def handle_text(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
+import os
+import urllib.request
+import io
+import soundfile as sf
+from fastapi.responses import StreamingResponse
+from kokoro_onnx import Kokoro
+
+# --- НАСТРОЙКИ TTS ---
+MODEL_PATH = "v_data/kokoro-v0_19.onnx"
+VOICES_PATH = "v_data/voices.bin"
+# Прямая ссылка на модель (оригинал, который мы скачивали)
+MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx"
+
+def ensure_model_exists():
+    """Проверяет наличие модели и скачивает её, если нужно"""
+    if not os.path.exists("v_data"):
+        os.makedirs("v_data")
+    if not os.path.exists(MODEL_PATH):
+        print("Начинаю скачивание модели (300MB). Это займет около 1-2 минут на сервере...")
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Модель успешно загружена в v_data!")
+
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
-# Загружаем модель из твоей папки v_data
+
+# Сначала проверяем/скачиваем файл, потом инициализируем нейронку
+ensure_model_exists()
+
 try:
-    # Проверь, что файлы в папке называются именно так
-    kokoro = Kokoro("v_data/kokoro-v0_19.onnx", "v_data/voices.bin")
+    kokoro = Kokoro(MODEL_PATH, VOICES_PATH)
+    print("Kokoro-TTS успешно запущена!")
 except Exception as e:
     print(f"Ошибка загрузки TTS: {e}")
     kokoro = None
+
+# Добавь этот роут ниже, чтобы можно было проверить звук
+@app.get("/api/speak")
+async def speak(text: str, voice: str = "af_sky"):
+    if not kokoro:
+        return {"error": "Модель не загружена на сервере"}
+    try:
+        # Генерируем аудио
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        buffer = io.BytesIO()
+        sf.write(buffer, samples, sample_rate, format='wav')
+        buffer.seek(0)
+        return StreamingResponse(buffer, media_type="audio/wav")
+    except Exception as e:
+        return {"error": str(e)}
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
@@ -609,25 +650,6 @@ async def get_posts(page: int = 1, limit: int = 6):
         return {"error": str(e)}
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
-@app.get("/api/speak")
-async def speak(text: str, voice: str = "af_sky"):
-    if not kokoro:
-        return {"error": "Модель не загружена на сервере"}
-    
-    try:
-        # Создаем аудио (lang="en-us" для теста, потом поменяем на "ru")
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
-        
-        # Записываем результат в буфер памяти
-        buffer = io.BytesIO()
-        sf.write(buffer, samples, sample_rate, format='wav')
-        buffer.seek(0)
-        
-        return StreamingResponse(buffer, media_type="audio/wav")
-    except Exception as e:
-        return {"error": str(e)}
-@app.get("/voices", response_class=HTMLResponse)
-async def voices_page(request: Request): return templates.TemplateResponse(request=request, name="voices.html")
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
