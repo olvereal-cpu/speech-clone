@@ -72,14 +72,10 @@
                     downloadContainer.classList.remove('opacity-0', 'translate-y-4');
                 }, 100);
 
-                // СТАВИМ ПРАВИЛЬНЫЙ ПУТЬ (Убрал лишнее /audio/)
+                // СТАВИМ ПРАВИЛЬНЫЙ ПУТЬ
                 downloadLink.href = `/static/${fileName}`;
                 downloadLink.setAttribute('download', fileName);
             }
-        }, 1000);
-    }
-</script>
-{% endblock %}
         }, 1000);
     }
 </script>
