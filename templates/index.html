@@ -213,14 +213,22 @@ async function generateAudio() {
         
         if (data.audio_url) {
             const player = document.getElementById('player');
-            const fileId = data.audio_url.split('file=')[1];
-            player.src = `/download?file=${fileId}`;
             
+            // 1. Плееру даем ПРЯМУЮ ссылку на mp3, чтобы он ожил и заиграл
+            player.src = data.audio_url; 
+            
+            // 2. Вытаскиваем имя файла (например, voice_abc123.mp3)
+            const fileName = data.audio_url.split('/').pop();
+            
+            // Показываем блок с плеером
             document.getElementById('result-audio').classList.remove('hidden');
             player.play();
 
-            document.getElementById('download-redirect-btn').onclick = () => {
-                window.location.href = data.audio_url; 
+            // 3. ИСПРАВЛЕНИЕ: Кнопку "СКАЧАТЬ" настраиваем на ПЕРЕХОД к странице ожидания
+            document.getElementById('download-redirect-btn').onclick = (e) => {
+                e.preventDefault();
+                // Теперь кидает на wait_page.html через роут /download
+                window.location.href = `/download?file=${fileName}`; 
             };
         } else {
             alert("Ошибка: " + (data.detail || "Сервер занят"));
