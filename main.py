@@ -343,9 +343,8 @@ async def api_admin_gen(
     req: AdminGenRequest, 
     x_secret_key: str = Header(None)
 ):
-    # ПАРОЛЬ
+    # 1. АВТОРИЗАЦИЯ
     MY_SECRET = "Barakuda"
-
     if x_secret_key != MY_SECRET:
         print(f"🚫 Попытка несанкционированного доступа!")
         raise HTTPException(status_code=403, detail="Доступ запрещен")
@@ -356,8 +355,6 @@ async def api_admin_gen(
 
         if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
             print("🤖 Автопилот: создаю уникальный социальный инсайд...")
-            
-            # Векторы развития для ИИ
             niches = [
                 "Цифровое бессмертие и трансформация личности",
                 "Психология одиночества в эпоху алгоритмов",
@@ -368,44 +365,43 @@ async def api_admin_gen(
                 "Экономика выживания: профессии, которые ИИ заберет завтра",
                 "Ментальное здоровье и борьба с информационным шумом"
             ]
-            
             selected_niche = random.choice(niches)
             
-            # Генерируем хлёсткий короткий заголовок
             topic_prompt = f"""
             Ты — главный редактор Esquire. Придумай провокационный заголовок для статьи.
             НИША: {selected_niche}
-            
             ПРАВИЛА:
             - СТРОГО: от 3 до 6 слов. Без кавычек.
             - Тема должна быть про ЖИЗНЬ и ОБЩЕСТВО, а не про софт.
             - Это должен быть "крючок": страх, любопытство или инсайд.
             - Пример: 'Почему твой голос больше не твой', 'ИИ-няня: кто растит наших детей'.
             """
-
             generated_topic = await mm.generate(topic_prompt)
             target_topic = generated_topic.strip().replace('"', '').replace('.', '')
 
         print(f"📝 Тема: {target_topic}")
 
-        # --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА ---
-
+        # --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА (ПОЛНАЯ ВЕРСИЯ) ---
         prompt = f"""
         Напиши экспертную, глубокую и человечную статью на тему: {target_topic}.
 
         ТРЕБОВАНИЯ К СТИЛЮ:
-        - Пиши живо, с иронией, как для людей. Минимум терминов.
-        - Никакой "воды" и фраз вроде "в современном мире".
+        - Никакой "воды" и шаблонных фраз вроде "в современном мире".
         - Используй сторителлинг: начни с реальной проблемы или интригующего факта.
-        - Обращайся к читателю на "вы", чередуй короткие и длинные предложения.
-        - Структура: Интригующее начало -> 2-3 подзаголовка <h2> с эмодзи -> Блок FAQ <h3>.
+        - Обращайся к читателю на "вы", задавай риторические вопросы.
+        - Чередуй короткие и длинные предложения (создавай ритм текста).
+        - Добавь немного юмора или уместной иронии.
+        
+        SEO-ПАРАМЕТРЫ:
+        - Используй подзаголовки <h2> с ключевыми словами и эмодзи.
+        - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
 
         ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ (поле photo_keywords):
         - СТРОГО ЗАПРЕЩЕНО использовать: 'computer', 'laptop', 'monitor', 'typing', 'office'.
-        - ИСПОЛЬЗУЙ МЕТАФОРЫ: 'cinematic lighting', 'surreal digital art', 'neon bokeh', 'atmospheric night city', 'abstract futuristic textures'.
+        - ИСПОЛЬЗУЙ МЕТАФОРЫ: 'cinematic lighting', 'surreal digital art', 'neon bokeh', 'atmospheric night city'.
 
         !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
-        В самом конце текста (внутри поля content) добавь блок "Мнение эксперта", оформив его СТРОГО в этом HTML:
+        В самом конце текста (в поле content) добавь блок "Мнение эксперта", оформив его СТРОГО в этом HTML:
         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
           <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
             <span style="margin-right: 8px;">⚡</span> Мнение эксперта
@@ -418,127 +414,64 @@ async def api_admin_gen(
         Верни ответ СТРОГО в формате JSON:
         {{
           "title": "{target_topic}",
-          "excerpt": "Короткое превью (150-160 симв), бьющее в боль читателя.",
+          "excerpt": "Мета-описание (150-160 символов) для поисковиков.",
           "content": "HTML-текст статьи (включая подзаголовки, списки и блок эксперта в конце)",
-          "photo_keywords": "3-5 атмосферных английских слов для поиска фото"
+          "photo_keywords": "3-5 атмосферных английских слов"
         }}
         """
 
-        # --- 2. ГЕНЕРАЦИЯ И ЗАЩИТА ---
+        # --- 2. ГЕНЕРАЦИЯ И ПАРСИНГ ---
         raw_res = await mm.generate(prompt)
+        match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if match:
+            data = json.loads(match.group(0))
+        else:
+            raise Exception("Ошибка формата JSON")
 
-        try:
-            # Gemini иногда добавляет ```json ... ```, чистим регуляркой
-            json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
-            data = json.loads(json_str)
-            
-            # Проверка наличия ключей для Pexels
-            if "photo_keywords" not in data or not data["photo_keywords"]:
-                data["photo_keywords"] = "abstract digital cinematic atmosphere"
-                
-        except Exception as e:
-            print(f"❌ JSON ERROR: {e}")
-            data = {
-                "title": target_topic,
-                "excerpt": "Честный взгляд на технологии, общество и наше общее будущее.",
-                "content": f"<p>{raw_res}</p>",
-                "photo_keywords": "futuristic nebula neon"
-            }
-
-        # Здесь возвращаем результат (или сохраняй в БД, если нужно)
-        return data
-
-    except Exception as e:
-        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
-        
-        # 3. ПОДГОТОВКА СЛАГА И ФОТО
-        final_title = data.get('title', target_topic)
-        slug_name = slugify(final_title)
-        
-    # --- ВЕРСИЯ 8.0: УМНОЕ РАЗНООБРАЗИЕ (БЕЗ МОНИТОРОВ) ---
+        # --- 3. РАБОТА С ИЗОБРАЖЕНИЕМ (PEXELS) ---
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
+        raw_keywords = data.get('photo_keywords', 'abstract future').lower()
+        forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'screen', 'keyboard', 'typing']
         
-        # 1. Очистка ключей от ИИ (убираем всё, что ведет к мониторам)
-        raw_keywords = data.get('photo_keywords', 'technology evolution').lower()
-        forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'screen', 'keyboard', 'desktop', 'workplace', 'typing']
-        
-        # Оставляем только "чистые" смыслы (например: "ai", "brain", "future")
         clean_ai_list = [w for w in raw_keywords.replace(",", " ").split() if w not in forbidden]
-        clean_ai = " ".join(clean_ai_list[:3]) # Берем до 3-х ключевых слов
+        art_styles = ["cinematic photography", "surreal digital art", "bokeh city lights", "atmospheric lighting", "abstract pattern"]
         
-        # 2. Рандомный художественный фильтр (чтобы картинки были в разном стиле)
-        art_styles = [
-            "cinematic photography", "surreal digital art", "double exposure", 
-            "bokeh city lights", "minimalist architecture", "organic textures", 
-            "industrial detail", "atmospheric lighting", "abstract pattern",
-            "retro-futurism", "nature and technology fusion"
-        ]
-        chosen_style = random.choice(art_styles)
-        
-        # 3. Формируем запрос: Ключи ИИ + Стиль
-        # Пример: "brain evolution cinematic photography"
-        query = f"{clean_ai} {chosen_style}".strip()
-        
+        query = f"{' '.join(clean_ai_list[:2])} {random.choice(art_styles)}".strip()
         img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
-        print(f"🎨 Генерация образа: {query}")
-
         try:
-            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=30&orientation=landscape"
-            headers = {"Authorization": PEXELS_KEY}
-            response = requests.get(px_url, headers=headers, timeout=15)
-            
-            if response.status_code == 200:
-                px_data = response.json()
-                photos = px_data.get('photos', [])
+            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=15&orientation=landscape"
+            px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
+            if px_res.status_code == 200:
+                photos = px_res.json().get('photos', [])
                 if photos:
-                    # Выбираем из 30 результатов - это даст ОГРОМНОЕ разнообразие
                     img_url = random.choice(photos)['src']['large']
-                    print(f"✅ УСПЕХ! Найдено уникальное фото: {img_url}")
-                else:
-                    # Если ИИ прислал слишком сложное, откатываемся на стиль
-                    print("⚠️ Слишком сложный запрос, ищем по стилю...")
-                    alt_res = requests.get(f"https://api.pexels.com/v1/search?query={urllib.parse.quote(chosen_style)}&per_page=15", headers=headers)
-                    img_url = random.choice(alt_res.json()['photos'])['src']['large']
         except Exception as e:
-            print(f"🚨 Ошибка Pexels: {str(e)}")
+            print(f"🚨 Ошибка Pexels: {e}")
 
-        # ВАЖНО: img_url пойдет дальше в Supabase
-       # --- 4. СОХРАНЕНИЕ В SUPABASE ---
-        # Подготавливаем чистые данные из того, что прислал ИИ
+        # --- 4. СОХРАНЕНИЕ В SUPABASE ---
         final_title = data.get("title", target_topic)
-        
-        # Генерируем slug (адрес статьи), если его нет. 
-        # Заменяем пробелы на дефисы и переводим в нижний регистр
-        import re
         slug_name = re.sub(r'[^a-z0-9]+', '-', final_title.lower()).strip('-')
-        
-        # Получаем URL картинки (убедись, что переменная img_url была создана выше при поиске в Pexels)
-        # Если поиска картинок нет, поставь заглушку или проверь наличие переменной
-        final_img_url = img_url if 'img_url' in locals() else "https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg"
 
-        # Выполняем вставку
         res = supabase.table("posts").insert({
             "title": final_title,
             "slug": slug_name,
-            "image_url": final_img_url,
+            "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content', '')
         }).execute()
 
-        print(f"✅ Статья успешно опубликована в Supabase: {final_title}")
+        print(f"🚀 Статья опубликована: {final_title}")
 
         return {
             "status": "success", 
             "title": final_title, 
             "slug": slug_name,
-            "supabase_id": res.data[0].get('id') if res.data else None
+            "image": img_url
         }
 
     except Exception as e:
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
-        # Возвращаем 500 ошибку, чтобы фронтенд понимал, что что-то пошло не так
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
