@@ -464,49 +464,51 @@ async def api_admin_gen(
         final_title = data.get('title', target_topic)
         slug_name = slugify(final_title)
         
-     # --- ВЕРСИЯ 3.0: ГАРАНТИРОВАННОЕ ФОТО ---
+     # --- ВЕРСИЯ 4.0: БРОНЕБОЙНЫЙ PEXELS (REQUESTS) ---
+        import requests
+        
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
         
-        # 1. Берем ключи и чистим от мусора
-        raw_keywords = data.get('photo_keywords', 'abstract technology').lower()
-        forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'working', 'desktop', 'screen', 'keyboard']
-        clean_words = [w for w in raw_keywords.replace(",", " ").split() if w not in forbidden]
+        # 1. Темы, которые Пекселс любит (без мониторов)
+        safe_list = ["cyberpunk neon", "abstract digital", "futuristic space", "neural network art"]
+        chosen_theme = random.choice(safe_list)
         
-        # 2. Темы-спасатели (если основной поиск подведет)
-        backups = ["nebula space", "cyberpunk neon city", "abstract digital wave", "geometric futuristic"]
+        # 2. Очистка ключей от ИИ (берем только первые 2 слова для точности)
+        ai_keys = data.get('photo_keywords', '').lower().replace(",", " ").split()
+        forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'screen']
+        clean_ai = " ".join([w for w in ai_keys if w not in forbidden][:2])
         
-        # Собираем запрос
-        style = random.choice(backups)
-        final_query = f"{' '.join(clean_words[:2])} {style}".strip()
-        search_term = urllib.parse.quote(final_query)
+        # Финальный поисковый запрос
+        query = f"{clean_ai} {chosen_theme}".strip()
         
+        # Ссылка-заглушка (пусть будет, но мы постараемся её не видеть)
         img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
-        try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=15&orientation=landscape"
-                response = await client.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=15)
-                
-                if response.status_code == 200:
-                    px_data = response.json()
-                    photos = px_data.get('photos', [])
-                    
-                    if not photos:
-                        # ЕСЛИ НИЧЕГО НЕ НАШЛИ - Ищем по запасному слову без примесей
-                        print(f"⚠️ Ничего не нашли по '{final_query}', пробуем запасной вариант...")
-                        alt_term = urllib.parse.quote(random.choice(backups))
-                        alt_res = await client.get(f"https://api.pexels.com/v1/search?query={alt_term}&per_page=10", 
-                                                   headers={"Authorization": PEXELS_KEY})
-                        photos = alt_res.json().get('photos', [])
+        print(f"🔍 Ищем в Pexels: {query}")
 
-                    if photos:
-                        img_url = random.choice(photos)['src']['large']
-                        print(f"✅ ФОТО ПОДОБРАНО: {img_url}")
+        try:
+            # Используем обычный requests вместо асинхронного
+            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=15&orientation=landscape"
+            headers = {"Authorization": PEXELS_KEY}
+            
+            response = requests.get(px_url, headers=headers, timeout=15)
+            
+            if response.status_code == 200:
+                px_data = response.json()
+                if px_data.get('photos'):
+                    # Берем случайное из 15 результатов
+                    img_url = random.choice(px_data['photos'])['src']['large']
+                    print(f"✅ УСПЕХ! Найдено фото: {img_url}")
                 else:
-                    print(f"❌ Pexels ответил ошибкой: {response.status_code}")
-                    
+                    # Если поиск не дал результатов, пробуем чисто по теме
+                    print(f"⚠️ Ничего не нашли, пробуем чистый стиль...")
+                    res_alt = requests.get(f"https://api.pexels.com/v1/search?query={urllib.parse.quote(chosen_theme)}", headers=headers)
+                    img_url = random.choice(res_alt.json()['photos'])['src']['large']
+            else:
+                print(f"❌ Ошибка API: {response.status_code}")
+
         except Exception as e:
-            print(f"🚨 Ошибка в блоке Pexels: {str(e)}")
+            print(f"🚨 Ошибка в коде Pexels: {str(e)}")
 
         # ВАЖНО: img_url пойдет дальше в Supabase
         # 4. СОХРАНЕНИЕ В SUPABASE
