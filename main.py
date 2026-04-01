@@ -322,7 +322,7 @@ class AdminGenRequest(BaseModel):
 # Он должен называться точно так же, как в Dashboard (HF_TOKEN)
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-@app.post("/api/generate")  # Изменили на POST и путь /api/generate
+@app.post("/api/generate")
 async def speak_proxy(request: Request):
     data = await request.json()
     text = data.get("text")
@@ -332,22 +332,33 @@ async def speak_proxy(request: Request):
         return JSONResponse(status_code=400, content={"error": "Нет текста"})
 
     async with httpx.AsyncClient() as client:
-        hf_url = "https://sercos-my-tts-api.hf.space/generate"
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        
-        # Шлем GET на Хуган, так как там движок ждет GET
-        response = await client.get(
-            hf_url, 
-            params={"text": text, "voice": voice}, 
-            headers=headers, 
-            timeout=60.0
-        )
-        
-        if response.status_code == 200:
-            return StreamingResponse(io.BytesIO(response.content), media_type="audio/mpeg")
-        else:
-            return JSONResponse(status_code=response.status_code, content={"error": "HF Error"})
+        try:
+            hf_url = "https://sercos-my-tts-api.hf.space/generate"
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            
+            response = await client.get(
+                hf_url, 
+                params={"text": text, "voice": voice}, 
+                headers=headers, 
+                timeout=60.0
+            ) # <-- Проверь, чтобы тут была одна скобка
+            
+            if response.status_code == 200:
+                return StreamingResponse(
+                    io.BytesIO(response.content), 
+                    media_type="audio/mpeg"
+                ) # <-- И тут одна
+            else:
+                return JSONResponse(
+                    status_code=response.status_code, 
+                    content={"error": "HF Error"}
+                )
+        except Exception as e:
+            return JSONResponse(
+                status_code=500, 
+                content={"error": str(e)}
             )
+# Убедись, что после этого блока нет лишних одиноких скобок )
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
