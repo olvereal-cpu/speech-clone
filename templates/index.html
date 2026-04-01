@@ -224,40 +224,30 @@ async function sendChat() {
     }
 }
 
-async function generateAudio() {
-    const btn = document.getElementById('gen-btn');
-    const text = document.getElementById('text-input').value;
-    const voice = document.getElementById('voice-select').value;
-    const mode = document.getElementById('mode-select').value;
-
-    if (!text) { alert("Бро, введи текст!"); return; }
-
-    btn.innerText = "ГЕНЕРАЦИЯ...";
-    btn.disabled = true;
-
-    try {
-        const response = await fetch('/api/generate', { 
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({text, voice, mode})
-        });
-        const data = await response.json();
-        
-        if (data.audio_url) {
+if (data.audio_url) {
             const player = document.getElementById('player');
             
-            // 1. Плеер оживает (прямая ссылка на файл)
-            player.src = data.audio_url; 
-            document.getElementById('result-audio').classList.remove('hidden');
-            player.play();
-
-            // 2. Достаем имя файла
+            // 1. Извлекаем чистое имя файла (например, voice_123.mp3)
             const fileName = data.audio_url.split('/').pop();
+            
+            // 2. ФОРМИРУЕМ ПРЯМОЙ ПУТЬ ДЛЯ ПЛЕЕРА
+            // Это гарантирует, что плеер пойдет именно в папку static
+            const finalPath = `/static/${fileName}`;
 
-            // 3. КНОПКА ПЕРЕКИДЫВАЕТ НА ТВОЙ РОУТ /wait-download
+            // Принудительно обновляем плеер
+            player.src = finalPath; 
+            document.getElementById('result-audio').classList.remove('hidden');
+            
+            // ВАЖНО: заставляем браузер перегрузить аудио-ресурс
+            player.load(); 
+            
+            // Пробуем запустить воспроизведение
+            player.play().catch(err => console.log("Автоплей заблокирован браузером"));
+
+            // 3. КНОПКА ПЕРЕХОДА НА СТРАНИЦУ ОЖИДАНИЯ
             document.getElementById('download-redirect-btn').onclick = (e) => {
                 e.preventDefault();
-                // ТЕПЕРЬ АДРЕС СОВПАДАЕТ С ТЕМ, ЧТО В MAIN.PY
+                // Передаем ТОЛЬКО имя файла, чтобы роут /wait-download его подхватил
                 window.location.href = `/wait-download?file=${fileName}`; 
             };
 
