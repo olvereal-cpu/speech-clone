@@ -322,56 +322,31 @@ class AdminGenRequest(BaseModel):
 # Он должен называться точно так же, как в Dashboard (HF_TOKEN)
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-@app.get("/api/speak")
-async def speak(text: str, voice: str = "ru_v10_oleg"):
-    """
-    Асинхронный прокси-роут для связи с Hugging Face через Docker.
-    """
+@app.post("/api/generate")  # Изменили на POST и путь /api/generate
+async def speak_proxy(request: Request):
+    data = await request.json()
+    text = data.get("text")
+    voice = data.get("voice", "ru_v10_oleg")
+    
     if not text:
-        return JSONResponse(status_code=400, content={"error": "Текст не может быть пустым"})
+        return JSONResponse(status_code=400, content={"error": "Нет текста"})
 
     async with httpx.AsyncClient() as client:
-        try:
-            hf_url = "https://sercos-my-tts-api.hf.space/generate"
-            
-            # 2. Формируем заголовок авторизации с твоим hf_VBg...
-            headers = {}
-            if HF_TOKEN:
-                headers["Authorization"] = f"Bearer {HF_TOKEN}"
-            
-            # 3. Отправляем запрос С ЗАГОЛОВКАМИ (headers)
-            response = await client.get(
-                hf_url, 
-                params={"text": text, "voice": voice}, 
-                headers=headers, # Это самое важное изменение!
-                timeout=60.0
-            )
-            
-            if response.status_code == 200:
-                return StreamingResponse(
-                    io.BytesIO(response.content), 
-                    media_type="audio/mpeg" 
-                )
-            else:
-                # Теперь в логах Рендера будет видно, что именно ответил Хуган
-                print(f"HF Error Response: {response.text}")
-                return JSONResponse(
-                    status_code=response.status_code, 
-                    content={
-                        "error": f"HF Error: {response.status_code}", 
-                        "detail": response.text
-                    }
-                )
-                
-        except httpx.RequestError as e:
-            return JSONResponse(
-                status_code=500, 
-                content={"error": f"Ошибка соединения с Space: {str(e)}"}
-            )
-        except Exception as e:
-            return JSONResponse(
-                status_code=500, 
-                content={"error": f"Внутренняя ошибка: {str(e)}"}
+        hf_url = "https://sercos-my-tts-api.hf.space/generate"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        
+        # Шлем GET на Хуган, так как там движок ждет GET
+        response = await client.get(
+            hf_url, 
+            params={"text": text, "voice": voice}, 
+            headers=headers, 
+            timeout=60.0
+        )
+        
+        if response.status_code == 200:
+            return StreamingResponse(io.BytesIO(response.content), media_type="audio/mpeg")
+        else:
+            return JSONResponse(status_code=response.status_code, content={"error": "HF Error"})
             )
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
