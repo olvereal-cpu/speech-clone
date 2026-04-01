@@ -230,7 +230,6 @@ async function generateAudio() {
     const voiceElement = document.getElementById('voice-select');
     const modeElement = document.getElementById('mode-select');
 
-    // Проверка на существование элементов (чтобы скрипт не падал)
     if (!textElement || !btn) return;
 
     const text = textElement.value;
@@ -242,7 +241,6 @@ async function generateAudio() {
         return; 
     }
 
-    // Блокируем кнопку
     btn.innerText = "ГЕНЕРАЦИЯ...";
     btn.disabled = true;
 
@@ -263,37 +261,30 @@ async function generateAudio() {
             const player = document.getElementById('player');
             const resultAudio = document.getElementById('result-audio');
             
-            // 1. Берем чистое имя файла
             const fileName = data.audio_url.split('/').pop();
-            // 2. Добавляем временную метку (t=...), чтобы браузер НЕ БРАЛ файл из кэша
             const finalPath = `/static/${fileName}?t=${new Date().getTime()}`;
 
             console.log("Пытаюсь загрузить файл:", finalPath);
 
             if (player) {
-                // ПОЛНЫЙ СБРОС ПЛЕЕРА
                 player.pause();
                 player.removeAttribute('src'); 
                 player.load();
                 
-                // УСТАНОВКА НОВОГО ФАЙЛА
                 player.src = finalPath;
                 if (resultAudio) resultAudio.classList.remove('hidden');
                 
-                // Ждем, пока браузер "прощупает" файл
                 player.oncanplaythrough = () => {
                     console.log("Файл готов к игре!");
-                    player.play().catch(e => console.log("Нажми кнопку Play сам, браузер блокирует автостарт"));
+                    player.play().catch(e => console.log("Нажми кнопку Play сам"));
                 };
 
-                // Если возникнет ошибка загрузки — мы её увидим
                 player.onerror = () => {
                     console.error("Ошибка плеера. Код:", player.error.code);
-                    alert("Бро, плеер не смог подгрузить файл. Попробуй обновить страницу.");
+                    alert("Бро, плеер не смог подгрузить файл.");
                 };
             }
 
-            // 3. КНОПКА ПЕРЕХОДА
             const redirectBtn = document.getElementById('download-redirect-btn');
             if (redirectBtn) {
                 redirectBtn.onclick = (e) => {
@@ -301,8 +292,24 @@ async function generateAudio() {
                     window.location.href = `/wait-download?file=${fileName}`; 
                 };
             }
-document.getElementById('chat-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendChat();
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка связи");
+    } finally {
+        btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
+        btn.disabled = false;
+    }
+}
+
+// Слушатель для чата
+document.addEventListener('DOMContentLoaded', () => {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChat();
+        });
+    }
 });
 </script>
 
