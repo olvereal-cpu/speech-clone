@@ -449,7 +449,7 @@ async def api_admin_gen(
         except Exception as e:
             print(f"🚨 Ошибка Pexels: {e}")
 
-        # --- 4. СОХРАНЕНИЕ В SUPABASE (ИСПРАВЛЕННЫЙ SLUG) ---
+        # --- 4. СОХРАНЕНИЕ В SUPABASE (ИСПРАВЛЕННЫЙ SLUG + ПРОВЕРКА ТЕКСТА) ---
         final_title = data.get("title", target_topic)
         
         # Интегрируем твой транслит прямо сюда
@@ -473,12 +473,28 @@ async def api_admin_gen(
         if not slug_name:
             slug_name = f"post-{random.randint(1000, 9999)}"
 
+        # --- ЗАЩИТА ОТ ПУСТОГО КОНТЕНТА ---
+        # Проверяем разные ключи, которые может выдать ИИ
+        final_content = data.get('content') or data.get('text') or data.get('article')
+        
+        # Если в JSON пусто, берем сырой ответ raw_res (fallback)
+        if not final_content:
+            print("⚠️ Контент в JSON не найден, использую сырой текст")
+            final_content = raw_res if 'raw_res' in locals() else "Текст не был сгенерирован"
+
+        # Если excerpt пустой, создаем его из начала контента
+        final_excerpt = data.get('excerpt', '')
+        if not final_excerpt and final_content:
+             # Убираем теги для анонса (если функция clean_html доступна)
+             final_excerpt = final_content[:160].replace('<p>', '').replace('</p>', '') + "..."
+
+        # Вставляем данные
         res = supabase.table("posts").insert({
             "title": final_title,
             "slug": slug_name,
             "image_url": img_url,
-            "excerpt": data.get('excerpt', ''),
-            "content": data.get('content', '')
+            "excerpt": final_excerpt,
+            "content": final_content  # Теперь здесь точно не будет пусто
         }).execute()
 
         print(f"🚀 Статья опубликована: {final_title} | SLUG: {slug_name}")
@@ -487,7 +503,8 @@ async def api_admin_gen(
             "status": "success", 
             "title": final_title, 
             "slug": slug_name,
-            "image": img_url
+            "image": img_url,
+            "content_status": "filled" if final_content else "empty"
         }
 
     except Exception as e:
