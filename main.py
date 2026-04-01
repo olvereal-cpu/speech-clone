@@ -318,9 +318,9 @@ class AdminGenRequest(BaseModel):
 
 # --- МАРШРУТЫ САЙТА ---
 # Роут для работы с твоим Hugging Face
-import httpx  # Лучше для FastAPI, чем requests
-import io
-from fastapi.responses import StreamingResponse, JSONResponse
+# 1. Считываем токен из переменных окружения Render
+# Он должен называться точно так же, как в Dashboard (HF_TOKEN)
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 @app.get("/api/speak")
 async def speak(text: str, voice: str = "ru_v10_oleg"):
@@ -330,25 +330,31 @@ async def speak(text: str, voice: str = "ru_v10_oleg"):
     if not text:
         return JSONResponse(status_code=400, content={"error": "Текст не может быть пустым"})
 
-    # Используем httpx.AsyncClient для асинхронного запроса (не блокирует поток)
     async with httpx.AsyncClient() as client:
         try:
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
             
-            # Передаем параметры через params, httpx сам их закодирует
+            # 2. Формируем заголовок авторизации с твоим hf_VBg...
+            headers = {}
+            if HF_TOKEN:
+                headers["Authorization"] = f"Bearer {HF_TOKEN}"
+            
+            # 3. Отправляем запрос С ЗАГОЛОВКАМИ (headers)
             response = await client.get(
                 hf_url, 
                 params={"text": text, "voice": voice}, 
+                headers=headers, # Это самое важное изменение!
                 timeout=60.0
             )
             
             if response.status_code == 200:
-                # Возвращаем аудио напрямую пользователю
                 return StreamingResponse(
                     io.BytesIO(response.content), 
                     media_type="audio/mpeg" 
                 )
             else:
+                # Теперь в логах Рендера будет видно, что именно ответил Хуган
+                print(f"HF Error Response: {response.text}")
                 return JSONResponse(
                     status_code=response.status_code, 
                     content={
