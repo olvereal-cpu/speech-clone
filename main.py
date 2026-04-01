@@ -11,6 +11,7 @@ import random
 import requests
 import urllib.parse
 import logging
+import math
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
@@ -296,22 +297,51 @@ async def home(request: Request):
             {"posts": []}
         )
 
+import math
+
 @app.get("/blog", response_class=HTMLResponse)
-async def blog_list(request: Request):
+async def blog_list(request: Request, page: int = 1):
     try:
-        # Берем данные ТОЛЬКО из Supabase
-        res = supabase.table("posts").select("*").order("created_at", desc=True).execute()
+        limit = 6  # Сколько статей показывать на одной странице
+        start = (page - 1) * limit
+        end = start + limit - 1
+
+        # Берем данные из Supabase с учетом диапазона (пагинация)
+        # .select("*", count="exact") позволяет узнать общее число записей
+        res = supabase.table("posts") \
+            .select("*", count="exact") \
+            .order("created_at", desc=True) \
+            .range(start, end) \
+            .execute()
+        
         all_posts = res.data if res.data else []
+        total_posts = res.count if res.count else 0
+        
+        # Считаем количество страниц
+        total_pages = math.ceil(total_posts / limit) if total_posts > 0 else 1
         
         return templates.TemplateResponse(
-            request, 
             "blog_index.html", 
-            {"posts": all_posts, "is_single": False}
+            {
+                "request": request, 
+                "posts": all_posts, 
+                "is_single": False,
+                "current_page": page,      # Добавлено для шаблона
+                "total_pages": total_pages  # Добавлено для шаблона
+            }
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse(
-            request, "blog_index.html", {"posts": [], "is_single": False}
+            "blog_index.html", 
+            {
+                "request": request, 
+                "posts": [], 
+                "is_single": False,
+                "current_page": 1,
+                "total_pages": 1
+            }
+        )
         )
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
