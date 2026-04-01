@@ -230,6 +230,7 @@ async function sendChat() {
 }
 
 // ОСНОВНАЯ ФУНКЦИЯ ГЕНЕРАЦИИ
+// ОСНОВНАЯ ФУНКЦИЯ ГЕНЕРАЦИИ
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
     const textInput = document.getElementById('text-input');
@@ -245,14 +246,14 @@ async function generateAudio() {
         return;
     }
 
-    // 1. Визуальная блокировка кнопки
+    // Блокировка кнопки
     btn.innerText = "ГЕНЕРАЦИЯ...";
     btn.disabled = true;
     btn.style.opacity = "0.5";
 
     try {
-        // УБРАЛИ /api/, теперь адрес совпадает с сервером
-        const response = await fetch('/generate', { 
+        // Добавил /api/ назад, раз ты так решил
+        const response = await fetch('/api/generate', { 
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -262,19 +263,14 @@ async function generateAudio() {
             })
         });
 
-        // Если сервер всё равно ругается, мы увидим это в консоли
+        // Читаем JSON только ОДИН раз
+        const data = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || `Ошибка сервера: ${response.status}`);
+            throw new Error(data.detail || `Ошибка сервера: ${response.status}`);
         }
 
-        const data = await response.json()
-
-        if (!response.ok) throw new Error("Сервер вернул ошибку");
-
-        const data = await response.json();
-        
-       if (data.audio_url) {
+        if (data.audio_url) {
             const player = document.getElementById('player');
             const resultBox = document.getElementById('result-audio');
             
@@ -282,30 +278,19 @@ async function generateAudio() {
             const finalPath = `/static/${fileName}?v=${Date.now()}`;
 
             if (player) {
-                // ПОЛНЫЙ СБРОС ТЕГА
                 player.pause();
-                player.innerHTML = ''; // Очищаем внутренние source, если были
+                // Назначаем src напрямую — это работает стабильнее, чем возня с <source>
+                player.src = finalPath;
                 
-                // Создаем элемент source вручную, чтобы точно указать type
-                const source = document.createElement('source');
-                source.src = finalPath;
-                source.type = 'audio/mpeg'; 
-                
-                player.appendChild(source);
                 if (resultBox) resultBox.classList.remove('hidden');
                 
-                player.load(); // Принудительная загрузка
+                player.load();
 
-                // Даем 500мс и пытаемся "толкнуть" плеер
-                setTimeout(() => {
-                    if (player.readyState > 0) {
-                        console.log("Плеер ожил, файл распознан!");
-                        player.play().catch(() => console.log("Нужен ручный клик"));
-                    } else {
-                        console.warn("Плеер все еще тупит, пробуем переназначить src напрямую");
-                        player.src = finalPath;
-                    }
-                }, 500);
+                // Вместо setTimeout используем событие готовности
+                player.oncanplaythrough = () => {
+                    player.play().catch(() => console.log("Нужен клик для старта"));
+                    player.oncanplaythrough = null;
+                };
             }
 
             const dlBtn = document.getElementById('download-redirect-btn');
@@ -318,7 +303,7 @@ async function generateAudio() {
         console.error(e);
         alert("Ошибка: " + e.message);
     } finally {
-        // 2. ОБЯЗАТЕЛЬНО возвращаем кнопку в рабочее состояние
+        // Возвращаем кнопку в строй
         btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
         btn.disabled = false;
         btn.style.opacity = "1";
