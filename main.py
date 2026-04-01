@@ -464,42 +464,51 @@ async def api_admin_gen(
         final_title = data.get('title', target_topic)
         slug_name = slugify(final_title)
         
-       # --- ОБНОВЛЕННЫЙ PEXELS API (СТОП-МОНИТОР) ---
+      # --- ОБНОВЛЕННЫЙ PEXELS API (ПОЛНЫЙ БАН МОНИТОРОВ) ---
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
         
-        # 1. Берем ключи от ИИ
-        raw_keywords = data.get('photo_keywords', 'technology')
+        # 1. Получаем ключи от ИИ и ПРИНУДИТЕЛЬНО вырезаем мусор
+        raw_keywords = data.get('photo_keywords', 'technology').lower()
+        forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'working', 'desktop', 'screen']
         
-        # 2. Список "анти-скука" стилей (выбираем один случайно)
+        # Очищаем ключи ИИ от запрещенных слов
+        clean_keywords = " ".join([word for word in raw_keywords.replace(",", " ").split() if word not in forbidden])
+        
+        # 2. Список "атмосферных" стилей без привязки к железу
         random_styles = [
-            "abstract neon", "cyberpunk aesthetic", "futuristic minimalist", 
-            "digital waves", "dark atmosphere", "macro tech", "blurred lights",
-            "isometric 3d render"
+            "abstract neon geometry", "cyberpunk city night", "futuristic tech waves", 
+            "digital neural network architecture", "dark aesthetic cinematic", 
+            "minimalist bokeh lights", "liquid metal macro", "space nebula galaxy"
         ]
         chosen_style = random.choice(random_styles)
         
-        # 3. Формируем запрос: ключи ИИ + наш стиль - стоп-слова
-        # Добавляем в поиск "-computer -laptop", чтобы Pexels пытался их исключить
-        refined_query = f"{raw_keywords} {chosen_style} -computer -laptop"
-        search_term = urllib.parse.quote(refined_query.replace(",", " "))
+        # 3. Формируем финальный поисковый запрос
+        # Если ИИ прислал только мусор, используем просто стиль
+        final_query = f"{clean_keywords} {chosen_style}".strip()
+        search_term = urllib.parse.quote(final_query)
         
+        # Заглушка на случай сбоя
         img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
         try:
             async with httpx.AsyncClient() as client:
-                # Берем 15 вариантов (per_page=15), чтобы был выбор для рандома
-                px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=15&orientation=landscape"
-                px_res = await client.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
+                # Запрашиваем 20 вариантов для максимального рандома
+                px_url = f"https://api.pexels.com/v1/search?query={search_term}&per_page=20&orientation=landscape"
+                px_res = await client.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=15)
                 
                 if px_res.status_code == 200:
                     px_data = px_res.json()
                     if px_data.get('photos'):
-                        # Выбираем случайное фото из ПЕРВЫХ 15 результатов
-                        # Это гарантирует, что даже на одну тему картинки будут разные
+                        # Выбираем случайное фото из большой выборки
                         img_url = random.choice(px_data['photos'])['src']['large']
-                        print(f"✅ Фото успешно привязано (Стиль: {chosen_style}): {img_url}")
+                        print(f"✅ УСПЕХ! Тема: '{final_query}'. Фото: {img_url}")
+                    else:
+                        print(f"⚠️ Pexels не нашел фото по запросу: {final_query}")
+                else:
+                    print(f"❌ Ошибка Pexels API: {px_res.status_code}")
+                    
         except Exception as img_err:
-            print(f"⚠️ Ошибка Pexels: {img_err}")
+            print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА PEXELS: {img_err}")
         # 4. СОХРАНЕНИЕ В SUPABASE
         supabase.table("posts").insert({
             "title": final_title,
