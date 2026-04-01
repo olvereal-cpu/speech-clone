@@ -337,6 +337,48 @@ async def read_post(request: Request, slug: str):
         print(f"Ошибка чтения статьи {slug}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
+@app.get("/sitemap.xml")
+async def get_sitemap():
+    try:
+        # 1. Тянем все существующие статьи из базы
+        # Нам нужны только slug и дата (чтобы поисковик знал, когда обновлено)
+        posts_res = supabase.table("posts").select("slug", "created_at").execute()
+        posts = posts_res.data
+
+        # 2. Твой основной домен (ЗАМЕНИ НА СВОЙ РЕАЛЬНЫЙ АДРЕС)
+        base_url = "https://твой-сайт.kz" 
+
+        # 3. Начинаем собирать XML структуру
+        xml_head = '<?xml version="1.0" encoding="UTF-8"?>'
+        xml_urlset_open = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        
+        # Добавляем главную страницу
+        items = [f'<url><loc>{base_url}/</loc><priority>1.0</priority></url>']
+
+        # Добавляем все 16+ статей из базы
+        for post in posts:
+            slug = post.get('slug')
+            if slug:
+                url_item = f"""
+                <url>
+                    <loc>{base_url}/blog/{slug}</loc>
+                    <changefreq>weekly</changefreq>
+                    <priority>0.8</priority>
+                </url>
+                """
+                items.append(url_item)
+
+        xml_urlset_close = '</urlset>'
+        
+        # Собираем всё в одну строку
+        full_xml = xml_head + xml_urlset_open + "".join(items) + xml_urlset_close
+
+        # 4. Возвращаем как XML (это важно, чтобы браузер не писал "Not Found")
+        return Response(content=full_xml, media_type="application/xml")
+
+    except Exception as e:
+        print(f"🚨 Ошибка генерации карты сайта: {e}")
+        return {"error": "Could not generate sitemap"}
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
