@@ -3,6 +3,7 @@ import uuid
 import asyncio
 import sqlite3
 import json
+import httpx 
 import edge_tts
 import google.generativeai as genai
 import re
@@ -14,7 +15,7 @@ import urllib.request
 import logging
 import math
 import soundfile as sf
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
@@ -31,6 +32,7 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from supabase import create_client, Client
 from slugify import slugify
+from urllib.parse import quote
 
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
@@ -316,39 +318,55 @@ class AdminGenRequest(BaseModel):
 
 # --- МАРШРУТЫ САЙТА ---
 # Роут для работы с твоим Hugging Face
+import httpx  # Лучше для FastAPI, чем requests
+import io
+from fastapi.responses import StreamingResponse, JSONResponse
+
 @app.get("/api/speak")
 async def speak(text: str, voice: str = "ru_v10_oleg"):
-    try:
-        params = {
-            "text": text,
-            "voice": voice
-        }
-        
-        # Используем именно /generate, как на твоем скриншоте
-        hf_url = "https://sercos-my-tts-api.hf.space/generate"
-        
-        response = requests.get(
-            hf_url, 
-            params=params, 
-            timeout=60
-        )
-        
-        if response.status_code == 200:
-            return StreamingResponse(
-                io.BytesIO(response.content), 
-                media_type="audio/mpeg" 
-            )
-        else:
-            return JSONResponse(
-                status_code=response.status_code, 
-                content={"error": f"HF Error: {response.status_code}", "detail": response.text}
+    """
+    Асинхронный прокси-роут для связи с Hugging Face через Docker.
+    """
+    if not text:
+        return JSONResponse(status_code=400, content={"error": "Текст не может быть пустым"})
+
+    # Используем httpx.AsyncClient для асинхронного запроса (не блокирует поток)
+    async with httpx.AsyncClient() as client:
+        try:
+            hf_url = "https://sercos-my-tts-api.hf.space/generate"
+            
+            # Передаем параметры через params, httpx сам их закодирует
+            response = await client.get(
+                hf_url, 
+                params={"text": text, "voice": voice}, 
+                timeout=60.0
             )
             
-    except Exception as e:
-        return JSONResponse(
-            status_code=500, 
-            content={"error": f"Connect Error: {str(e)}"}
-        )
+            if response.status_code == 200:
+                # Возвращаем аудио напрямую пользователю
+                return StreamingResponse(
+                    io.BytesIO(response.content), 
+                    media_type="audio/mpeg" 
+                )
+            else:
+                return JSONResponse(
+                    status_code=response.status_code, 
+                    content={
+                        "error": f"HF Error: {response.status_code}", 
+                        "detail": response.text
+                    }
+                )
+                
+        except httpx.RequestError as e:
+            return JSONResponse(
+                status_code=500, 
+                content={"error": f"Ошибка соединения с Space: {str(e)}"}
+            )
+        except Exception as e:
+            return JSONResponse(
+                status_code=500, 
+                content={"error": f"Внутренняя ошибка: {str(e)}"}
+            )
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
