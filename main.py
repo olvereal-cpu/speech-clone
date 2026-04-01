@@ -347,21 +347,14 @@ logger = logging.getLogger(__name__)
 @app.get("/sitemap.xml")
 async def get_sitemap():
     try:
-        # 1. Проверяем соединение и тянем данные
-        # Убедись, что таблица называется "posts" и колонка "slug" существует
+        # 1. Получаем данные из Supabase
         response = supabase.table("posts").select("slug").execute()
-        
-        # Если Supabase вернул ошибку или данных нет
-        if not hasattr(response, 'data') or response.data is None:
-            logger.error("Supabase вернул пустой ответ или ошибку")
-            return Response(content="Error: No data from Supabase", status_code=500)
-
         posts = response.data
         
-        # 2. Твой домен (Укажи его БЕЗ слэша в конце)
-        base_url = "https://твой-сайт.kz" 
+        # 2. ПРОПИШИ СВОЙ РЕАЛЬНЫЙ ДОМЕН ЗДЕСЬ (БЕЗ СЛЭША В КОНЦЕ)
+        base_url = "https://speechclone.online" 
 
-        # 3. Формируем XML вручную (максимально просто, чтобы не сломалось)
+        # 3. Сборка XML
         xml_lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -371,20 +364,17 @@ async def get_sitemap():
         for post in posts:
             slug = post.get('slug')
             if slug:
-                # Очищаем slug от лишних пробелов, если они есть
-                clean_slug = slug.strip()
-                xml_lines.append(f'<url><loc>{base_url}/blog/{clean_slug}</loc><priority>0.8</priority></url>')
+                # Формируем полную ссылку на статью
+                xml_lines.append(f'<url><loc>{base_url}/blog/{slug}</loc><priority>0.8</priority></url>')
 
         xml_lines.append('</urlset>')
         
-        full_xml = "".join(xml_lines)
-
-        return Response(content=full_xml, media_type="application/xml")
+        return Response(content="".join(xml_lines), media_type="application/xml")
 
     except Exception as e:
-        # Это выведет реальную ошибку в консоль твоего хостинга (Render)
-        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА SITEMAP: {str(e)}") 
-        return Response(content=f"Error: {str(e)}", status_code=500)
+        print(f"🚨 Ошибка: {e}")
+        # Если база не отвечает, вернем хотя бы главную страницу, чтобы не было ошибки 500
+        return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
@@ -558,6 +548,32 @@ async def api_admin_gen(
     except Exception as e:
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+@app.get("/api/posts")
+async def get_posts(page: int = 1, limit: int = 6):
+    try:
+        # Считаем диапазон для Supabase
+        start = (page - 1) * limit
+        end = start + limit - 1
+
+        # Запрос: берем данные + общее количество (count)
+        # Сортируем: самые свежие (desc=True) сверху
+        res = supabase.table("posts") \
+            .select("*", count="exact") \
+            .order("created_at", desc=True) \
+            .range(start, end) \
+            .execute()
+
+        total_count = res.count or 0
+        total_pages = (total_count + limit - 1) // limit
+
+        return {
+            "posts": res.data,
+            "total_pages": total_pages,
+            "current_page": page,
+            "total_posts": total_count
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
