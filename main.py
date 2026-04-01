@@ -321,7 +321,7 @@ class AdminGenRequest(BaseModel):
 # 1. Считываем токен из переменных окружения Render
 # Он должен называться точно так же, как в Dashboard (HF_TOKEN)
 HF_TOKEN = os.getenv("HF_TOKEN")
-@app.post("/api/generate")
+@app.post("/api/generate") # Это "вход" для твоего сайта
 async def generate_proxy(request: Request):
     data = await request.json()
     text = data.get("text")
@@ -330,62 +330,33 @@ async def generate_proxy(request: Request):
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
 
-    # 1. Генерируем уникальное имя файла, чтобы они не перезаписывали друг друга
-    file_name = f"voice_{uuid.uuid4().hex}.mp3"
+    file_name = f"voice_{uuid.uuid4().hex}.wav"
     file_path = os.path.join("static", file_name)
 
     async with httpx.AsyncClient() as client:
         try:
-            # Твой адрес на Hugging Face (проверь, что он верный)
+            # СТЫКОВКА: Здесь мы обращаемся к Хугану БЕЗ /api и через GET
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
             
-            # Берем токен из переменных окружения Render
             headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
             
-            # Делаем запрос к нейронке
+            # ВНИМАНИЕ: Тут client.get — это "ключ", который открывает замок на Хугане
             response = await client.get(
                 hf_url, 
                 params={"text": text, "voice": voice}, 
                 headers=headers, 
-                timeout=60.0
+                timeout=120.0 
             )
             
             if response.status_code == 200:
-                # 2. Сохраняем полученный звук в файл в папку static
                 with open(file_path, "wb") as f:
                     f.write(response.content)
-                
-                # 3. Возвращаем JSON, который ждет твой JavaScript
-                # Теперь JS увидит 'audio_url' и плеер заиграет!
                 return {"audio_url": f"/static/{file_name}"}
             else:
-                return JSONResponse(
-                    status_code=response.status_code, 
-                    content={"detail": f"Ошибка нейронки: {response.status_code}"}
-                )
+                return JSONResponse(status_code=response.status_code, content={"detail": f"Ошибка HF: {response.status_code}"})
                 
         except Exception as e:
             return JSONResponse(status_code=500, content={"detail": str(e)})
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    try:
-        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
-        all_posts = res.data if res.data else []
-        
-        # ИСПРАВЛЕНО: Явное указание аргументов
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": all_posts}
-        )
-    except Exception as e:
-        print(f"Ошибка на главной: {e}")
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": []}
-        )
-
 # Это критично! Если поднять выше - будет "Not Found"
 
 if not os.path.exists("static"):
