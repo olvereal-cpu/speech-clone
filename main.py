@@ -342,7 +342,7 @@ async def blog_list(request: Request, page: int = 1):
                 "total_pages": 1
             }
         )
-        )
+        
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
