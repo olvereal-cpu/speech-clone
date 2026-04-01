@@ -505,20 +505,41 @@ async def api_admin_gen(
             print(f"🚨 Ошибка Pexels: {str(e)}")
 
         # ВАЖНО: img_url пойдет дальше в Supabase
-        # 4. СОХРАНЕНИЕ В SUPABASE
-        supabase.table("posts").insert({
+       # --- 4. СОХРАНЕНИЕ В SUPABASE ---
+        # Подготавливаем чистые данные из того, что прислал ИИ
+        final_title = data.get("title", target_topic)
+        
+        # Генерируем slug (адрес статьи), если его нет. 
+        # Заменяем пробелы на дефисы и переводим в нижний регистр
+        import re
+        slug_name = re.sub(r'[^a-z0-9]+', '-', final_title.lower()).strip('-')
+        
+        # Получаем URL картинки (убедись, что переменная img_url была создана выше при поиске в Pexels)
+        # Если поиска картинок нет, поставь заглушку или проверь наличие переменной
+        final_img_url = img_url if 'img_url' in locals() else "https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg"
+
+        # Выполняем вставку
+        res = supabase.table("posts").insert({
             "title": final_title,
             "slug": slug_name,
-            "image_url": img_url,
+            "image_url": final_img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content', '')
         }).execute()
 
-        return {"status": "success", "title": final_title, "slug": slug_name}
+        print(f"✅ Статья успешно опубликована в Supabase: {final_title}")
+
+        return {
+            "status": "success", 
+            "title": final_title, 
+            "slug": slug_name,
+            "supabase_id": res.data[0].get('id') if res.data else None
+        }
 
     except Exception as e:
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
-        return {"status": "error", "message": str(e)}
+        # Возвращаем 500 ошибку, чтобы фронтенд понимал, что что-то пошло не так
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
 @app.get("/voices", response_class=HTMLResponse)
