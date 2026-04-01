@@ -67,14 +67,15 @@
         </div>
 
         <div id="result-audio" class="hidden mt-10 p-8 bg-blue-50 rounded-[30px] flex flex-col items-center border-2 border-blue-100">
-            <div class="w-full flex items-center gap-4 mb-6">
-                 <audio id="player" controls class="w-full"></audio>
-            </div>
-            <button id="download-redirect-btn" class="bg-black text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
-                <span>📥 СКАЧАТЬ В MP3</span>
-            </button>
-        </div>
+    <div class="w-full flex items-center gap-4 mb-6">
+        <audio id="player" controls preload="auto" playsinline class="w-full"></audio>
     </div>
+    
+    <button id="download-redirect-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-200 uppercase tracking-wider">
+        Скачать готовый файл
+    </button>
+</div>
+   
 
     <!-- БЛОК SPEECHCLONE PLUS -->
     <div class="mb-16 transform hover:scale-[1.01] transition-all duration-500">
