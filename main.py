@@ -384,9 +384,9 @@ async def home(request: Request):
             name="index.html", 
             context={"posts": []}
         )
-2. И ТОЛЬКО В САМОМ КОНЦЕ МОНТИРУЕМ СТАТИКУ
+
 # Это критично! Если поднять выше - будет "Not Found"
-mimetypes.add_type('audio/mpeg', '.mp3')
+
 if not os.path.exists("static"):
     os.makedirs("static")
 # Принудительно учим систему, что файлы .mp3 — это аудио
