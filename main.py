@@ -36,7 +36,7 @@ SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ССЫЛКА НА ТВОЙ API НА HUGGING FACE
-HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/dev/api/tts"
+HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -315,46 +315,40 @@ class AdminGenRequest(BaseModel):
     color: Optional[str] = "blue"
 
 # --- МАРШРУТЫ САЙТА ---
-# --- НАСТРОЙКИ TTS (ЧЕРЕЗ HUGGING FACE) ---
-# Замени на свою прямую ссылку на Space (обязательно с /dev/api/tts или твоим эндпоинтом)
-"https://sercos-my-tts-api.hf.space/dev/api/tts" 
-
+# Роут для работы с твоим Hugging Face
 @app.get("/api/speak")
-async def speak(text: str, voice: str = "af_sky"):
-    """
-    Прокси-роут: принимает запрос от сайта, перекидывает его на Hugging Face, 
-    получает аудио и отдает обратно в браузер.
-    """
+async def speak(text: str, voice: str = "ru_v10_oleg"):
     try:
-        # Отправляем POST запрос на твой Спейс
-        # Передаем текст и голос в формате JSON
-        response = requests.post(
-            HF_KOKORO_URL, 
-            json={"text": text, "voice": voice}, 
+        params = {
+            "text": text,
+            "voice": voice
+        }
+        
+        # Используем именно /generate, как на твоем скриншоте
+        hf_url = "https://sercos-my-tts-api.hf.space/generate"
+        
+        response = requests.get(
+            hf_url, 
+            params=params, 
             timeout=60
         )
         
         if response.status_code == 200:
-            # Превращаем байты ответа в поток и отдаем как wav-файл
             return StreamingResponse(
                 io.BytesIO(response.content), 
-                media_type="audio/wav"
+                media_type="audio/mpeg" 
             )
         else:
             return JSONResponse(
                 status_code=response.status_code, 
-                content={"error": f"Ошибка Hugging Face: {response.text}"}
+                content={"error": f"HF Error: {response.status_code}", "detail": response.text}
             )
             
     except Exception as e:
         return JSONResponse(
             status_code=500, 
-            content={"error": f"Ошибка подключения к HF: {str(e)}"}
+            content={"error": f"Connect Error: {str(e)}"}
         )
-import math
-from fastapi import Request, HTTPException
-from fastapi.responses import HTMLResponse
-
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
