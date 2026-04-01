@@ -277,37 +277,37 @@ class AdminGenRequest(BaseModel):
     color: Optional[str] = "blue"
 
 # --- МАРШРУТЫ САЙТА ---
+import math
+from fastapi import Request, HTTPException
+from fastapi.responses import HTMLResponse
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
         res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
         all_posts = res.data if res.data else []
         
-        # ПЕРВЫМ аргументом идет request, ВТОРЫМ — имя шаблона, ТРЕТЬИМ — словарь данных
+        # ИСПРАВЛЕНО: Явное указание аргументов
         return templates.TemplateResponse(
-            request, 
-            "index.html", 
-            {"posts": all_posts}
+            request=request, 
+            name="index.html", 
+            context={"posts": all_posts}
         )
     except Exception as e:
         print(f"Ошибка на главной: {e}")
         return templates.TemplateResponse(
-            request, 
-            "index.html", 
-            {"posts": []}
+            request=request, 
+            name="index.html", 
+            context={"posts": []}
         )
-
-import math
 
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
-        limit = 6  # Сколько статей показывать на одной странице
+        limit = 6  
         start = (page - 1) * limit
         end = start + limit - 1
 
-        # Берем данные из Supabase с учетом диапазона (пагинация)
-        # .select("*", count="exact") позволяет узнать общее число записей
         res = supabase.table("posts") \
             .select("*", count="exact") \
             .order("created_at", desc=True) \
@@ -316,38 +316,35 @@ async def blog_list(request: Request, page: int = 1):
         
         all_posts = res.data if res.data else []
         total_posts = res.count if res.count else 0
-        
-        # Считаем количество страниц
         total_pages = math.ceil(total_posts / limit) if total_posts > 0 else 1
         
+        # ИСПРАВЛЕНО: Убран "request" из словаря и вынесен в аргументы
         return templates.TemplateResponse(
-            "blog_index.html", 
-            {
-                "request": request, 
+            request=request,
+            name="blog_index.html", 
+            context={
                 "posts": all_posts, 
                 "is_single": False,
-                "current_page": page,      # Добавлено для шаблона
-                "total_pages": total_pages  # Добавлено для шаблона
+                "current_page": page,
+                "total_pages": total_pages
             }
         )
     except Exception as e:
         print(f"Ошибка списка блога: {e}")
         return templates.TemplateResponse(
-            "blog_index.html", 
-            {
-                "request": request, 
+            request=request,
+            name="blog_index.html", 
+            context={
                 "posts": [], 
                 "is_single": False,
                 "current_page": 1,
                 "total_pages": 1
             }
         )
-        
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
 async def read_post(request: Request, slug: str):
     try:
-        # Ищем в Supabase
         res = supabase.table("posts").select("*").eq("slug", slug).execute()
         
         if not res.data:
@@ -355,24 +352,20 @@ async def read_post(request: Request, slug: str):
             
         post = res.data[0]
         
-        # ВАЖНО: используем blog_index.html, так как post.html у тебя нет!
+        # ИСПРАВЛЕНО: Правильный формат вызова для одиночной статьи
         return templates.TemplateResponse(
-            request, 
-            "blog_index.html", 
-            {
-                "posts": [post], # Шаблон ждет список
-                "is_single": True
+            request=request,
+            name="blog_index.html", 
+            context={
+                "posts": [post],
+                "is_single": True,
+                "current_page": 1, # Добавил, чтобы шаблон не ругался на отсутствие переменной
+                "total_pages": 1
             }
         )
     except Exception as e:
         print(f"Ошибка чтения статьи {slug}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
-
-from fastapi import Response
-import logging
-
-# Настройка логов, чтобы видеть ошибки в консоли Render
-logger = logging.getLogger(__name__)
 
 @app.get("/sitemap.xml")
 async def get_sitemap():
