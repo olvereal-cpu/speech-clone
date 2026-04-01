@@ -50,12 +50,12 @@
     const downloadContainer = document.getElementById('download-container');
     const downloadLink = document.getElementById('download-link');
 
-    // Получаем имя файла из URL (например, ?file=voice_uuid.mp3)
+    // Получаем имя файла из URL (например, ?file=uuid.mp3)
     const urlParams = new URLSearchParams(window.location.search);
     const fileName = urlParams.get('file');
 
-    if (!fileName || fileName === "undefined") {
-        statusText.innerHTML = "<span class='text-red-500'>ОШИБКА: ФАЙЛ НЕ УКАЗАН</span>";
+    if (!fileName || fileName === 'undefined') {
+        statusText.innerHTML = "<span class='text-red-500'>ОШИБКА: ФАЙЛ НЕ НАЙДЕН</span>";
     } else {
         const countdown = setInterval(() => {
             timeLeft--;
@@ -64,21 +64,22 @@
             if (timeLeft <= 0) {
                 clearInterval(countdown);
                 
-                // Прячем таймер и показываем сообщение о готовности
-                statusText.innerHTML = "<span class='text-green-500 animate-pulse font-black'>ВАШ ФАЙЛ ГОТОВ!</span>";
+                // Прячем таймер и показываем кнопку
+                statusText.innerHTML = "<span class='text-green-500 animate-pulse'>ВАШ ФАЙЛ ГОТОВ!</span>";
                 
-                // Показываем контейнер с кнопкой
                 downloadContainer.classList.remove('hidden');
                 setTimeout(() => {
                     downloadContainer.classList.remove('opacity-0', 'translate-y-4');
                 }, 100);
 
-                // СТАВИМ ПРАВИЛЬНЫЙ ПУТЬ
-                // Так как в main.py мы монтировали app.mount("/static", ...), 
-                // путь к файлу будет /static/имя_файла.mp3
+                // СТАВИМ ПРАВИЛЬНЫЙ ПУТЬ (Убрал лишнее /audio/)
                 downloadLink.href = `/static/${fileName}`;
                 downloadLink.setAttribute('download', fileName);
             }
+        }, 1000);
+    }
+</script>
+{% endblock %}
         }, 1000);
     }
 </script>
