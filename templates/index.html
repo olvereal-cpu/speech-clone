@@ -251,7 +251,8 @@ async function generateAudio() {
     btn.style.opacity = "0.5";
 
     try {
-        const response = await fetch('/api/generate', {
+        // УБРАЛИ /api/, теперь адрес совпадает с сервером
+        const response = await fetch('/generate', { 
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -260,6 +261,14 @@ async function generateAudio() {
                 mode: document.getElementById('mode-select')?.value || 'standard'
             })
         });
+
+        // Если сервер всё равно ругается, мы увидим это в консоли
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `Ошибка сервера: ${response.status}`);
+        }
+
+        const data = await response.json()
 
         if (!response.ok) throw new Error("Сервер вернул ошибку");
 
