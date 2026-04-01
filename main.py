@@ -359,10 +359,12 @@ async def generate_proxy(request: Request):
             return JSONResponse(status_code=500, content={"detail": str(e)})
 # Это критично! Если поднять выше - будет "Not Found"
 
+# 1. Подготовка окружения (не удалять!)
 if not os.path.exists("static"):
     os.makedirs("static")
-# Принудительно учим систему, что файлы .mp3 — это аудио
+
 mimetypes.add_type('audio/mpeg', '.mp3')
+mimetypes.add_type('audio/wav', '.wav')
 app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
