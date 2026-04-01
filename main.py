@@ -103,25 +103,52 @@ BLOG_POSTS = [
     }
 ]
 
-VOICES = {
-    # --- УЛУЧШЕННЫЕ (PREMIUM) ---
-    "🌟 Олег (Premium)": "ru_v10_oleg",
-    "🌟 Елена (Premium)": "ru_v10_elena",
-    "🌟 Ирина (Premium)": "ru_v10_irina",
-    "🌟 Тарас (Premium)": "ru_v10_taras",
-    "🌟 Sky (Premium-HQ)": "af_sky",
-    "🌟 Bella (Premium-HQ)": "af_bella",
-    "🌟 Adam (Premium-HQ)": "am_adam",
-    # --- СТАНДАРТНЫЕ ---
-    "🇷🇺 Дмитрий": "ru-RU-DmitryNeural", "🇷🇺 Светлана": "ru-RU-SvetlanaNeural",
-    "🇰🇿 Даулет": "kk-KZ-DauletNeural", "🇰🇿 Айгуль": "kk-KZ-AigulNeural",
-    "🇺🇸 Guy (EN)": "en-US-GuyNeural", "🇺🇦 Остап (UA)": "uk-UA-OstapNeural",
-    "🇹🇷 Ahmet (TR)": "tr-TR-AhmetNeural", "🇪🇸 Alvaro (ES)": "es-ES-AlvaroNeural",
-    "🇩🇪 Conrad (DE)": "de-DE-ConradNeural", "🇵🇱 Marek (PL)": "pl-PL-MarekNeural",
-    "🇫🇷 Remy (FR)": "fr-FR-RemyNeural", "🇯🇵 Keita (JP)": "ja-JP-KeitaNeural",
-    "🇨🇳 Yunxi (CN)": "zh-CN-YunxiNeural"
-}
 
+   # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (БЕЗ ЛИШНИХ ТЕХНОЛОГИЙ) ---
+VOICE_CONFIG = {
+    # 🇰🇿 КАЗАХСТАН
+    "kk": {"type": "new", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
+    "edge_kk_Aigul": {"type": "old", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
+    "edge_kk_Daulet": {"type": "old", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
+    
+    # 🌟 ПРЕМИУМ КЛОНЫ (HQ)
+    "ru_oleg": {"type": "new", "label": "👤 Олег (Клон HQ)"},
+    "ru_elena": {"type": "new", "label": "👩 Елена (Клон HQ)"},
+    "af_sky": {"type": "new", "label": "✨ Sky (Женский HQ)"},
+    "af_bella": {"type": "new", "label": "🌸 Bella (Женский HQ)"},
+    "am_adam": {"type": "new", "label": "🔥 Adam (Мужской HQ)"},
+    "bf_emma": {"type": "new", "label": "🇬🇧 Emma (British HQ)"},
+    "bm_george": {"type": "new", "label": "🇬🇧 George (British HQ)"},
+    
+    # 🇷🇺 РУССКИЙ
+    "ru": {"type": "new", "label": "🇷🇺 Русский (Нейросеть HQ)"},
+    "edge_ru_Dmitry": {"type": "old", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
+    "edge_ru_Svetlana": {"type": "old", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
+    
+    # 🌍 МИРОВЫЕ ЯЗЫКИ (NEW ENGINE)
+    "en": {"type": "new", "label": "🇺🇸 English"},
+    "uk": {"type": "new", "label": "🇺🇦 Українська"},
+    "be": {"type": "new", "label": "🇧🇾 Беларуская"},
+    "tr": {"type": "new", "label": "🇹🇷 Türkçe"},
+    "de": {"type": "new", "label": "🇩🇪 Deutsch"},
+    "fr": {"type": "new", "label": "🇫🇷 Français"},
+    "pl": {"type": "new", "label": "🇵🇱 Polski"},
+    "cs": {"type": "new", "label": "🇨🇿 Čeština"},
+    "es": {"type": "new", "label": "🇪🇸 Español"},
+    "it": {"type": "new", "label": "🇮🇹 Italiano"},
+    "pt": {"type": "new", "label": "🇵🇹 Português"},
+    "nl": {"type": "new", "label": "🇳🇱 Nederlands"},
+    "sv": {"type": "new", "label": "🇸🇪 Svenska"},
+    "da": {"type": "new", "label": "🇩🇰 Dansk"},
+    "fi": {"type": "new", "label": "🇫🇮 Suomi"},
+    "hu": {"type": "new", "label": "🇭🇺 Magyar"},
+    "ro": {"type": "new", "label": "🇷🇴 Română"},
+    "zh": {"type": "new", "label": "🇨🇳 中文 (Chinese)"},
+    "ja": {"type": "new", "label": "🇯🇵 日本語 (Japanese)"},
+    "ko": {"type": "new", "label": "🇰🇷 한국어 (Korean)"},
+    "ar": {"type": "new", "label": "🇸🇦 العربية (Arabic)"},
+    "hi": {"type": "new", "label": "🇮🇳 हिन्दी (Hindi)"}
+}
 # --- БД ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
