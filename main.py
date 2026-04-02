@@ -412,7 +412,7 @@ async def generate_audio_universal(request: Request):
 
     async with httpx.AsyncClient() as client:
         
-    try:
+        try:
         # --- БЛОК 1: PIPER (.onnx) ---
         if voice.endswith(".onnx"):
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
