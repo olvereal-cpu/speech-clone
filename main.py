@@ -410,50 +410,53 @@ async def generate_audio_universal(request: Request):
 
     try:
         async with httpx.AsyncClient() as client:
-            # --- БЛОК 1: PIPER (Gradio API) ---
+            # --- БЛОК 1: PIPER (Gradio Fix) ---
             if voice.endswith(".onnx"):
-                # 1. URL для Gradio API (добавляем /api/predict)
-                hf_url = "https://sercos-oleg-studio-v2.hf.space/api/predict"
+                # 1. Пробуем /run/predict вместо /api/predict
+                hf_url = "https://sercos-oleg-studio-v2.hf.space/run/predict"
                 
                 token = os.getenv('TOKEN_PIPER')
                 headers = {"Authorization": f"Bearer {token}"}
                 
-                # 2. Формат данных для Gradio (у него всегда список 'data')
+                # 2. Формируем правильный конверт для Gradio
                 payload = {
                     "data": [
-                        text,          # Текст
-                        voice,         # Имя голоса (Gradio сам подставит путь к v_data)
-                        1.0,           # Скорость (length_scale)
-                        0.667,         # Шум (noise_scale)
-                        0.333          # Шум в фоне (noise_w)
+                        text,    # Текст
+                        voice,   # Имя голоса
+                        1.0,     # Speed
+                        0.667,   # Noise
+                        0.333    # Noise W
                     ],
-                    "fn_index": 0      # Индекс функции в Gradio (обычно 0)
+                    "event_data": None,
+                    "fn_index": 0,  # Индекс функции (обычно 0)
+                    "session_hash": "oleg_session_123" # Любая случайная строка
                 }
 
-                print(f"🚀 Отправка в Gradio: {voice}")
+                print(f"📡 Отправка на Space (Gradio): {hf_url}")
 
-                response = await client.post(
-                    hf_url, 
-                    json=payload, 
-                    headers=headers, 
-                    timeout=120.0
-                )
-
-                if response.status_code == 200:
-                    # Gradio возвращает путь к файлу в JSON
-                    result = response.json()
-                    # Обычно это ['data'][0]['name'] или прямая ссылка
-                    file_url = f"https://sercos-oleg-studio-v2.hf.space/file={result['data'][0]['name']}"
-                    
-                    # Скачиваем сам файл аудио
-                    audio_res = await client.get(file_url, headers=headers)
-                    if audio_res.status_code == 200:
-                        with open(file_path, "wb") as f:
-                            f.write(audio_res.content)
-                        return {"audio_url": f"/static/{file_name}"}
+                response = await client.post(hf_url, json=payload, headers=headers, timeout=120.0)
                 
-                print(f"❌ Ошибка Gradio: {response.status_code} - {response.text}")
-                return JSONResponse(status_code=500, content={"detail": "Gradio API Error"})
+                if response.status_code == 200:
+                    result = response.json()
+                    # В Gradio ответ лежит в result['data'][0]
+                    file_info = result.get("data", [None])[0]
+                    
+                    # Извлекаем имя файла
+                    hf_fn = file_info.get("name") if isinstance(file_info, dict) else file_info
+                    
+                    if hf_fn:
+                        # Ссылка на скачивание (через /file=)
+                        download_url = f"https://sercos-oleg-studio-v2.hf.space/file={hf_fn}"
+                        audio_res = await client.get(download_url, headers=headers)
+                        
+                        if audio_res.status_code == 200:
+                            with open(file_path, "wb") as f:
+                                f.write(audio_res.content)
+                            return {"audio_url": f"/static/{file_name}"}
+                
+                # Если всё еще 404 или другая ошибка, выводим в лог ТЕКСТ ответа
+                print(f"❌ Ошибка Space ({response.status_code}): {response.text}")
+                return JSONResponse(status_code=response.status_code, content={"detail": "Piper Space Error"})
 
             # --- БЛОК 2: KOKORO (af_, am_...) ---
             elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
