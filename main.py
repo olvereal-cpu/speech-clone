@@ -402,12 +402,16 @@ async def generate_audio_universal(request: Request):
     
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
+
+    # --- ВСЁ ЧТО НИЖЕ ДОЛЖНО БЫТЬ С ОТСТУПОМ В 4 ПРОБЕЛА ---
     
-# 1. Генерируем имя локального файла (куда сохраним результат)
-ext = "wav" if voice.endswith(".onnx") else "mp3"
-file_name = f"voice_{uuid.uuid4().hex}.{ext}"
-file_path = os.path.join("static", file_name)
-async with httpx.AsyncClient() as client:
+    # 1. Генерируем имя локального файла
+    ext = "wav" if voice.endswith(".onnx") else "mp3"
+    file_name = f"voice_{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join("static", file_name)
+
+    async with httpx.AsyncClient() as client:
+        
     try:
         # --- БЛОК 1: PIPER (.onnx) ---
         if voice.endswith(".onnx"):
