@@ -412,67 +412,51 @@ file_path = os.path.join("static", file_name)
 
 async with httpx.AsyncClient() as client:
     try:
-        # --- БЛОК 1: PIPER (Запрос к Hugging Face Space) ---
+        # --- БЛОК 1: PIPER ---
         if voice.endswith(".onnx"):
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
             token = os.getenv('TOKEN_PIPER')
             
             if not token:
-                print("❌ ОШИБКА: TOKEN_PIPER не найден в переменных окружения!")
-                return JSONResponse(status_code=500, content={"detail": "Server Config Error: Missing Token"})
+                print("❌ ОШИБКА: TOKEN_PIPER не найден!")
+                return JSONResponse(status_code=500, content={"detail": "Server Config Error"})
 
             headers = {"Authorization": f"Bearer {token}"}
-            
-            # ВАЖНО: Добавляем v_data/ к имени голоса перед отправкой
             voice_path = f"v_data/{voice}"
             
-            print(f"🚀 Отправка запроса к Piper: голос={voice_path}")
-
             response = await client.get(
                 hf_url, 
-                params={
-                    "text": text, 
-                    "voice": voice_path # Теперь API увидит v_data/имя.onnx
-                }, 
+                params={"text": text, "voice": voice_path}, 
                 headers=headers, 
                 timeout=120.0
             )
             
             if response.status_code == 200:
-                with open(file_path, "wb") as f: 
-                    f.write(response.content)
-                print(f"✅ Озвучка готова: {file_name}")
+                with open(file_path, "wb") as f: f.write(response.content)
                 return {"audio_url": f"/static/{file_name}"}
             else:
-                error_msg = response.text
-                print(f"❌ Piper API Error {response.status_code}: {error_msg}")
-                return JSONResponse(
-                    status_code=response.status_code, 
-                    content={"detail": f"Piper Space Error: {response.status_code}"}
-                )
+                return JSONResponse(status_code=response.status_code, content={"detail": "Piper Error"})
 
-        # --- БЛОК 2: ДРУГИЕ НЕЙРОСЕТИ (Edge TTS и т.д.) ---
-        # Твой существующий код для обычных голосов...
+        # --- БЛОК 2: KOKORO (ПЕРЕНЕСЛИ СЮДА) ---
+        elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
+            hf_url = "https://твоя-ссылка-на-kokoro.hf.space/generate" 
+            headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+            
+            response = await client.post(
+                hf_url, 
+                json={"text": text, "voice": voice}, 
+                headers=headers, 
+                timeout=60.0
+            )
+            if response.status_code == 200:
+                with open(file_path, "wb") as f: f.write(response.content)
+                return {"audio_url": f"/static/{file_name}"}
+            else:
+                return JSONResponse(status_code=response.status_code, content={"detail": "Kokoro Error"})
 
     except Exception as e:
         print(f"🔥 Критическая ошибка: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": f"Internal Error: {str(e)}"})
-
-            # --- БЛОК 2: KOKORO (Используем старый HF_TOKEN) ---
-        elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
-                # Укажи здесь актуальный URL своего Kokoro Space
-                hf_url = "https://твоя-ссылка-на-kokoro.hf.space/generate" 
-                headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
-                # Kokoro обычно ждет POST с JSON
-                response = await client.post(
-                    hf_url, 
-                    json={"text": text, "voice": voice}, 
-                    headers=headers, 
-                    timeout=60.0
-                )
-                if response.status_code == 200:
-                    with open(file_path, "wb") as f: f.write(response.content)
-                    return {"audio_url": f"/static/{file_name}"}
 
             # --- БЛОК 3: EDGE TTS (Стандарт - токены НЕ нужны) ---
             else:
