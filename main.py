@@ -305,17 +305,19 @@ async def send_invoice(call: types.CallbackQuery):
 async def pre_checkout(query: PreCheckoutQuery):
     await bot.answer_pre_checkout_query(query.id, ok=True)
 
-@dp.callback_query(F.data.startswith("v:")) # Мы договорились использовать v: для сжатия
+@dp.callback_query(F.data.startswith("v:"))
 async def set_voice(call: types.CallbackQuery):
-    # 1. Извлекаем чистый код (например, 'r_ol')
+    # 1. Извлекаем полное имя (например, 'ru_RU-ruslan-medium.onnx')
+    # Используем .replace("v:", ""), как у тебя и было
     voice_code = call.data.replace("v:", "") 
     
-    # 2. Проверяем, есть ли такой код в нашем конфиге
+    # 2. Проверяем, есть ли такой код в нашем новом словаре VOICES
     if voice_code not in VOICES:
         await call.answer("Голос не найден в списке!", show_alert=True)
         return
 
-    # 3. Сохраняем в базу ТОЛЬКО строку 'voice_code'
+    # 3. Сохраняем в базу данных (SQLite)
+    # Здесь всё отлично, сохраняем полное имя файла
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -326,9 +328,13 @@ async def set_voice(call: types.CallbackQuery):
     conn.commit()
     conn.close()
 
-    # 4. Отвечаем пользователю красиво
-    label = VOICES[voice_code]['label']
-    await call.message.answer(f"✅ Установлен голос: {label}")
+    # 4. ОТВЕЧАЕМ ПОЛЬЗОВАТЕЛЮ (ИСПРАВЛЕНО)
+    # ТАК КАК МЫ УБРАЛИ ["label"], берем значение напрямую из VOICES[voice_code]
+    label = VOICES[voice_code] 
+    
+    await call.message.answer(f"✅ Установлен голос: {label}\n\nТеперь пришлите текст для озвучки.")
+    
+    # Убираем "часики" с кнопки
     await call.answer()
 
 @dp.message(F.text)
