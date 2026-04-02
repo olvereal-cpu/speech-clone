@@ -397,14 +397,12 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 async def generate_audio_universal(request: Request):
     data = await request.json()
     text = data.get("text")
-    voice = data.get("voice", "ru-RU-SvetlanaNeural") # Стандарт по умолчанию
+    voice = data.get("voice", "ru-RU-SvetlanaNeural")
     mode = data.get("mode", "natural")
     
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
-
-
-
+    
 # 1. Генерируем имя локального файла (куда сохраним результат)
 ext = "wav" if voice.endswith(".onnx") else "mp3"
 file_name = f"voice_{uuid.uuid4().hex}.{ext}"
