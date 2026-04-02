@@ -403,58 +403,56 @@ async def generate_audio_universal(request: Request):
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
 
-    # --- ВСЁ ЧТО НИЖЕ ДОЛЖНО БЫТЬ С ОТСТУПОМ В 4 ПРОБЕЛА ---
-    
     # 1. Генерируем имя локального файла
     ext = "wav" if voice.endswith(".onnx") else "mp3"
     file_name = f"voice_{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join("static", file_name)
 
-    async with httpx.AsyncClient() as client:
-        
-        try:
-        # --- БЛОК 1: PIPER (.onnx) ---
+    try:
+        async with httpx.AsyncClient() as client:
+            # --- БЛОК 1: PIPER (.onnx) ---
             if voice.endswith(".onnx"):
-               hf_url = "https://sercos-my-tts-api.hf.space/generate"
-               token = os.getenv('TOKEN_PIPER')
-               headers = {"Authorization": f"Bearer {token}"}
-               voice_path = f"v_data/{voice}"
-            
-            response = await client.get(hf_url, params={"text": text, "voice": voice_path}, headers=headers, timeout=120.0)
-            if response.status_code == 200:
-                with open(file_path, "wb") as f: f.write(response.content)
-                return {"audio_url": f"/static/{file_name}"}
-            else:
-                return JSONResponse(status_code=response.status_code, content={"detail": "Piper Error"})
+                hf_url = "https://sercos-my-tts-api.hf.space/generate"
+                token = os.getenv('TOKEN_PIPER')
+                headers = {"Authorization": f"Bearer {token}"}
+                voice_path = f"v_data/{voice}"
+                
+                response = await client.get(hf_url, params={"text": text, "voice": voice_path}, headers=headers, timeout=120.0)
+                if response.status_code == 200:
+                    with open(file_path, "wb") as f: 
+                        f.write(response.content)
+                    return {"audio_url": f"/static/{file_name}"}
+                else:
+                    return JSONResponse(status_code=response.status_code, content={"detail": "Piper Error"})
 
-        # --- БЛОК 2: KOKORO (af_, am_...) ---
-        elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
-            hf_url = "https://sercos-my-tts-api.hf.space/generate" 
-            headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
-            
-            response = await client.post(hf_url, json={"text": text, "voice": voice}, headers=headers, timeout=60.0)
-            if response.status_code == 200:
-                with open(file_path, "wb") as f: f.write(response.content)
-                return {"audio_url": f"/static/{file_name}"}
-            else:
-                return JSONResponse(status_code=response.status_code, content={"detail": "Kokoro Error"})
+            # --- БЛОК 2: KOKORO (af_, am_...) ---
+            elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
+                hf_url = "https://sercos-my-tts-api.hf.space/generate" 
+                headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+                
+                response = await client.post(hf_url, json={"text": text, "voice": voice}, headers=headers, timeout=60.0)
+                if response.status_code == 200:
+                    with open(file_path, "wb") as f: 
+                        f.write(response.content)
+                    return {"audio_url": f"/static/{file_name}"}
+                else:
+                    return JSONResponse(status_code=response.status_code, content={"detail": "Kokoro Error"})
 
-        # --- БЛОК 3: EDGE TTS (Все остальные голоса) ---
-        else:
-            rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-            communicate = edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%"))
-            await communicate.save(file_path)
-            return {"audio_url": f"/static/{file_name}"}
+            # --- БЛОК 3: EDGE TTS (Все остальные голоса) ---
+            else:
+                import edge_tts
+                rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+                communicate = edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%"))
+                await communicate.save(file_path)
+                return {"audio_url": f"/static/{file_name}"}
 
     except Exception as e:
         print(f"🔥 Критическая ошибка: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": f"Internal Error: {str(e)}"})
-# Это критично! Если поднять выше - будет "Not Found"
 
-# 1. Подготовка окружения (не удалять!)
+# 1. Подготовка окружения (вне функции)
 if not os.path.exists("static"):
     os.makedirs("static")
-
 mimetypes.add_type('audio/mpeg', '.mp3')
 mimetypes.add_type('audio/wav', '.wav')
 app.mount("/static", StaticFiles(directory="static"), name="static")
