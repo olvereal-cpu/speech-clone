@@ -107,26 +107,38 @@ BLOG_POSTS = []
 
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
-    # 🇰🇿 КАЗАХСТАН
-    "k_n": {"type": "kokoro", "id": "kk_v1", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
-    "k_ai": {"type": "edge", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
-    "k_da": {"type": "edge", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
+    # --- СТУДИЙНЫЕ  ---
+    "ru_RU-denis-medium.onnx": "🎙 ДЕНИС (МУЖСКОЙ)",
+    "ru_RU-dmitri-medium.onnx": "🎙 ДМИТРИЙ (МУЖСКОЙ)",
+    "ru_RU-irina-medium.onnx": "🎙 ИРИНА (ЖЕНСКИЙ)",
+    "ru_RU-ruslan-medium.onnx": "🎙 РУСЛАН (МУЖСКОЙ)",
+    "ru_RU-tatyana-medium.onnx": "🎙 ТАТЬЯНА (ЖЕНСКИЙ)",
+    "ru_RU-victoria-medium.onnx": "🎙 ВИКТОРИЯ (ЖЕНСКИЙ)",
     
-    # 🌟 ПРЕМИУМ КЛОНЫ (HQ) - Перенаправляем на Piper/Kokoro
-    "r_ol": {"type": "kokoro", "id": "ru_v10_oleg", "label": "👤 Олег (Клон HQ)"},
-    "r_el": {"type": "kokoro", "id": "ru_v10_elena", "label": "👩 Елена (Клон HQ)"},
-    "a_sk": {"type": "piper", "id": "sky", "label": "✨ Sky (Женский HQ)"},
-    "a_be": {"type": "piper", "id": "bella", "label": "🌸 Bella (Женский HQ)"},
-    "a_ad": {"type": "piper", "id": "adam", "label": "🔥 Adam (Мужской HQ)"},
-    
-    # 🇷🇺 РУССКИЙ
-    "r_n": {"type": "kokoro", "id": "ru_v10_alpha", "label": "🇷🇺 Русский (Нейросеть HQ)"},
-    "r_dm": {"type": "edge", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
-    "r_sv": {"type": "edge", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
-    
-    # ПРИМЕР ДЛЯ ТВОИХ НОВЫХ ГОЛОСОВ PIPER
-    "p_denis": {"type": "piper", "id": "denis", "label": "🎙 Денис (Piper HQ)"}
+    # --- PREMIUM  ---
+    "af_sky": "🌟 SKY (PREMIUM)",
+    "af_bella": "🌟 BELLA (PREMIUM)",
+    "af_nicole": "🌟 NICOLE (PREMIUM)",
+    "am_adam": "🌟 ADAM (PREMIUM)",
+    "am_michael": "🌟 MICHAEL (PREMIUM)",
+    "bf_emma": "🌟 EMMA (UK)",
+    "bm_george": "🌟 GEORGE (UK)",
+
+    # --- СТАНДАРТ  ---
+    "ru-RU-SvetlanaNeural": "💃 СВЕТЛАНА (RU)",
+    "ru-RU-DmitryNeural": "🤵 ДМИТРИЙ (RU)",
+    "kk-KZ-AigulNeural": "💃 АЙГУЛЬ (KZ)",
+    "kk-KZ-DauletNeural": "🤵 ДӘУЛЕТ (KZ)",
+    "uk-UA-PolinaNeural": "💃 ПОЛІНА (UA)",
+    "uk-UA-OstapNeural": "🤵 ОСТАП (UA)",
+    "en-US-JennyNeural": "🇺🇸 JENNY (US)",
+    "tr-TR-EmelNeural": "🇹🇷 EMEL (TR)",
+    "de-DE-KatjaNeural": "🇩🇪 KATJA (DE)",
+    "fr-FR-DeniseNeural": "🇫🇷 DENISE (FR)",
+    "es-ES-ElviraNeural": "🇪🇸 ELVIRA (ES)",
+    "pl-PL-ZofiaNeural": "🇵🇱 ZOFIA (PL)"
 }
+
 
 # --- БД ---
 def init_db():
