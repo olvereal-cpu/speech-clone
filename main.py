@@ -381,45 +381,36 @@ async def handle_text(message: types.Message):
 
         # 3. ГЕНЕРАЦИЯ
         audio_data = None
+        # Фикс для Render: принудительно IPv4
+        connector = aiohttp.TCPConnector(family=socket.AF_INET)
 
-        if v_id.endswith(".onnx"): # PIPER
-            hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
-            params = {"text": message.text, "voice": v_id, "speed": 0.9} # Управление скоростью здесь!
-            async with aiohttp.ClientSession() as session:
-                async with session.get(hf_url, params=params, headers={"Authorization": f"Bearer {os.getenv('TOKEN_PIPER')}"}, timeout=120) as resp:
-                    if resp.status == 200: audio_data = await resp.read()
+        if v_id.endswith(".onnx") or v_id.startswith(("af_", "am_")):
+            # Выбираем URL и Токен
+            if v_id.endswith(".onnx"):
+                hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
+                # Используем TOKEN_PIPER (проверь его в настройках Render!)
+                token = os.getenv('TOKEN_PIPER')
+                params = {"text": message.text, "voice": v_id, "speed": 0.9}
+            else:
+                hf_url = "https://sercos-oleg-kokoro.hf.space/tts"
+                # Используем ТОТ ЖЕ токен или HF_TOKEN
+                token = os.getenv('HF_TOKEN') 
+                params = {"text": message.text, "voice": v_id}
 
-        elif v_id.startswith(("af_", "am_")): # KOKORO
-            hf_url = "https://sercos-oleg-kokoro.hf.space/tts"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(hf_url, params={"text": message.text, "voice": v_id}, headers={"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}, timeout=120) as resp:
-                    if resp.status == 200: audio_data = await resp.read()
+            async with aiohttp.ClientSession(connector=connector) as session:
+                headers = {"Authorization": f"Bearer {token}"}
+                async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
+                    if resp.status == 200:
+                        audio_data = await resp.read()
+                    else:
+                        print(f"❌ Ошибка HF ({resp.status}): {await resp.text()}")
 
         else: # EDGE-TTS
             communicate = edge_tts.Communicate(message.text, v_id)
             await communicate.save(path)
-            with open(path, "rb") as f: audio_data = f.read()
-
-        # 4. СОХРАНЕНИЕ НА ДИСК (чтобы сайт увидел файл)
-        if audio_data:
-            if not os.path.exists(path):
-                with open(path, "wb") as f:
-                    f.write(audio_data)
-
-            # 5. ОТПРАВКА ССЫЛКИ НА СТРАНИЦУ ОЖИДАНИЯ
-            # Пользователь переходит на сайт, ждет 30 сек и скачивает filename
-            kb = InlineKeyboardBuilder()
-            kb.button(text="📥 СКАЧАТЬ (через 30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
-            
-            await message.answer(
-                "✅ Аудио готово! Нажмите кнопку, чтобы перейти на страницу скачивания.", 
-                reply_markup=kb.as_markup()
-            )
-        else:
-            await message.answer("❌ Ошибка генерации. Попробуйте другой голос.")
-
-    except Exception as e:
-        await message.answer(f"❌ Критическая ошибка: {e}")
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    audio_data = f.read()
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
