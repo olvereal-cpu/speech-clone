@@ -412,62 +412,42 @@ file_path = os.path.join("static", file_name)
 
 async with httpx.AsyncClient() as client:
     try:
-        # --- БЛОК 1: PIPER ---
+        # --- БЛОК 1: PIPER (.onnx) ---
         if voice.endswith(".onnx"):
             hf_url = "https://sercos-my-tts-api.hf.space/generate"
             token = os.getenv('TOKEN_PIPER')
-            
-            if not token:
-                print("❌ ОШИБКА: TOKEN_PIPER не найден!")
-                return JSONResponse(status_code=500, content={"detail": "Server Config Error"})
-
             headers = {"Authorization": f"Bearer {token}"}
             voice_path = f"v_data/{voice}"
             
-            response = await client.get(
-                hf_url, 
-                params={"text": text, "voice": voice_path}, 
-                headers=headers, 
-                timeout=120.0
-            )
-            
+            response = await client.get(hf_url, params={"text": text, "voice": voice_path}, headers=headers, timeout=120.0)
             if response.status_code == 200:
                 with open(file_path, "wb") as f: f.write(response.content)
                 return {"audio_url": f"/static/{file_name}"}
             else:
                 return JSONResponse(status_code=response.status_code, content={"detail": "Piper Error"})
 
-        # --- БЛОК 2: KOKORO (ПЕРЕНЕСЛИ СЮДА) ---
+        # --- БЛОК 2: KOKORO (af_, am_...) ---
         elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
-            hf_url = "https://твоя-ссылка-на-kokoro.hf.space/generate" 
+            hf_url = "https://sercos-my-tts-api.hf.space/generate" 
             headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
             
-            response = await client.post(
-                hf_url, 
-                json={"text": text, "voice": voice}, 
-                headers=headers, 
-                timeout=60.0
-            )
+            response = await client.post(hf_url, json={"text": text, "voice": voice}, headers=headers, timeout=60.0)
             if response.status_code == 200:
                 with open(file_path, "wb") as f: f.write(response.content)
                 return {"audio_url": f"/static/{file_name}"}
             else:
                 return JSONResponse(status_code=response.status_code, content={"detail": "Kokoro Error"})
 
+        # --- БЛОК 3: EDGE TTS (Все остальные голоса) ---
+        else:
+            rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+            communicate = edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%"))
+            await communicate.save(file_path)
+            return {"audio_url": f"/static/{file_name}"}
+
     except Exception as e:
         print(f"🔥 Критическая ошибка: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": f"Internal Error: {str(e)}"})
-
-            # --- БЛОК 3: EDGE TTS (Стандарт - токены НЕ нужны) ---
-            else:
-                rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
-                communicate = edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%"))
-                await communicate.save(file_path)
-                return {"audio_url": f"/static/{file_name}"}
-
-        except Exception as e:
-            print(f"Критическая ошибка генерации: {e}")
-            return JSONResponse(status_code=500, content={"detail": str(e)})
 # Это критично! Если поднять выше - будет "Not Found"
 
 # 1. Подготовка окружения (не удалять!)
