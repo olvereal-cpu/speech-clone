@@ -459,7 +459,7 @@ async with httpx.AsyncClient() as client:
         return JSONResponse(status_code=500, content={"detail": f"Internal Error: {str(e)}"})
 
             # --- БЛОК 2: KOKORO (Используем старый HF_TOKEN) ---
-            elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
+        elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
                 # Укажи здесь актуальный URL своего Kokoro Space
                 hf_url = "https://твоя-ссылка-на-kokoro.hf.space/generate" 
                 headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
