@@ -360,69 +360,66 @@ async def handle_text(message: types.Message, state: FSMContext):
     # (твой код генерации аудио...)
 @dp.message(F.text)
 async def handle_text(message: types.Message):
+    # Проверки подписки и админа
+    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
+        return
+
     try:
         # 1. Получаем голос из базы
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
         conn.close()
+        v_id = res[0] if res else "ru-RU-DmitryNeural"
 
-        v_id = res[0] if res else "ru-RU-DmitryNeural" # По умолчанию Edge
+        # 2. Определяем расширение (Piper/Kokoro — .wav, Edge — .mp3)
+        is_docker = v_id.endswith(".onnx") or v_id.startswith(("af_", "am_"))
+        ext = ".wav" if is_docker else ".mp3"
         
-        fid = f"{uuid.uuid4()}.mp3"
-        path = os.path.join(AUDIO_DIR, fid)
+        fid = f"{uuid.uuid4()}"
+        filename = fid + ext
+        path = os.path.join(AUDIO_DIR, filename)
+
+        # 3. ГЕНЕРАЦИЯ
         audio_data = None
 
-        # --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ДВИЖКОВ ---
-
-        # ВАРИАНТ А: PIPER DOCKER
-        if v_id.endswith(".onnx"):
+        if v_id.endswith(".onnx"): # PIPER
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
-            token = os.getenv('TOKEN_PIPER')
-            headers = {"Authorization": f"Bearer {token}"}
+            params = {"text": message.text, "voice": v_id, "speed": 0.9} # Управление скоростью здесь!
             async with aiohttp.ClientSession() as session:
-                async with session.get(hf_url, params={"text": message.text, "voice": v_id}, headers=headers, timeout=120) as resp:
-                    if resp.status == 200:
-                        audio_data = await resp.read()
+                async with session.get(hf_url, params=params, headers={"Authorization": f"Bearer {os.getenv('TOKEN_PIPER')}"}, timeout=120) as resp:
+                    if resp.status == 200: audio_data = await resp.read()
 
-        # ВАРИАНТ Б: KOKORO DOCKER (Добавь свои префиксы или проверку имен)
-        elif v_id.startswith("af_") or v_id.startswith("am_"):
-            hf_url = "https://sercos-oleg-kokoro.hf.space/tts" # Твой адрес Кокоро
-            token = os.getenv('HF_TOKEN')
-            headers = {"Authorization": f"Bearer {token}"}
+        elif v_id.startswith(("af_", "am_")): # KOKORO
+            hf_url = "https://sercos-oleg-kokoro.hf.space/tts"
             async with aiohttp.ClientSession() as session:
-                async with session.get(hf_url, params={"text": message.text, "voice": v_id}, headers=headers, timeout=120) as resp:
-                    if resp.status == 200:
-                        audio_data = await resp.read()
+                async with session.get(hf_url, params={"text": message.text, "voice": v_id}, headers={"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}, timeout=120) as resp:
+                    if resp.status == 200: audio_data = await resp.read()
 
-        # ВАРИАНТ В: СТАРЫЙ ДОБРЫЙ EDGE-TTS
-        else:
-            # Если голос не .onnx и не Кокоро, используем Edge
+        else: # EDGE-TTS
             communicate = edge_tts.Communicate(message.text, v_id)
             await communicate.save(path)
-            # Читаем сохраненный файл для отправки в ТГ
-            with open(path, "rb") as f:
-                audio_data = f.read()
+            with open(path, "rb") as f: audio_data = f.read()
 
-        # --- ОТПРАВКА РЕЗУЛЬТАТА ---
+        # 4. СОХРАНЕНИЕ НА ДИСК (чтобы сайт увидел файл)
         if audio_data:
-            # Для Piper/Kokoro (если аудио еще не на диске) сохраняем его
             if not os.path.exists(path):
                 with open(path, "wb") as f:
                     f.write(audio_data)
 
-            # Отправляем в телеграм
-            voice_file = types.BufferedInputFile(audio_data, filename=fid)
-            await message.answer_voice(voice=voice_file)
-
-            # Твоя кнопка скачивания
-            kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ", url=f"{SITE_URL}/wait-download?file={fid}")
-            await message.answer("✅ Готово!", reply_markup=kb.as_markup())
+            # 5. ОТПРАВКА ССЫЛКИ НА СТРАНИЦУ ОЖИДАНИЯ
+            # Пользователь переходит на сайт, ждет 30 сек и скачивает filename
+            kb = InlineKeyboardBuilder()
+            kb.button(text="📥 СКАЧАТЬ (через 30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
+            
+            await message.answer(
+                "✅ Аудио готово! Нажмите кнопку, чтобы перейти на страницу скачивания.", 
+                reply_markup=kb.as_markup()
+            )
         else:
-            await message.answer("❌ Не удалось сгенерировать аудио.")
+            await message.answer("❌ Ошибка генерации. Попробуйте другой голос.")
 
     except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
-        print(f"Ошибка в боте: {e}")
+        await message.answer(f"❌ Критическая ошибка: {e}")
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
