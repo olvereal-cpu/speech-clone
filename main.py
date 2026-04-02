@@ -408,7 +408,7 @@ ext = "wav" if voice.endswith(".onnx") else "mp3"
 file_name = f"voice_{uuid.uuid4().hex}.{ext}"
 file_path = os.path.join("static", file_name)
 
-async with httpx.AsyncClient() as client:
+ async with httpx.AsyncClient() as client:
     try:
         # --- БЛОК 1: PIPER (.onnx) ---
         if voice.endswith(".onnx"):
