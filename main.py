@@ -410,20 +410,50 @@ async def generate_audio_universal(request: Request):
 
     try:
         async with httpx.AsyncClient() as client:
-            # --- БЛОК 1: PIPER (.onnx) ---
+            # --- БЛОК 1: PIPER (Gradio API) ---
             if voice.endswith(".onnx"):
-                hf_url = "https://sercos-my-tts-api.hf.space/generate"
+                # 1. URL для Gradio API (добавляем /api/predict)
+                hf_url = "https://sercos-oleg-studio-v2.hf.space/api/predict"
+                
                 token = os.getenv('TOKEN_PIPER')
                 headers = {"Authorization": f"Bearer {token}"}
-                voice_path = f"v_data/{voice}"
                 
-                response = await client.get(hf_url, params={"text": text, "voice": voice_path}, headers=headers, timeout=120.0)
+                # 2. Формат данных для Gradio (у него всегда список 'data')
+                payload = {
+                    "data": [
+                        text,          # Текст
+                        voice,         # Имя голоса (Gradio сам подставит путь к v_data)
+                        1.0,           # Скорость (length_scale)
+                        0.667,         # Шум (noise_scale)
+                        0.333          # Шум в фоне (noise_w)
+                    ],
+                    "fn_index": 0      # Индекс функции в Gradio (обычно 0)
+                }
+
+                print(f"🚀 Отправка в Gradio: {voice}")
+
+                response = await client.post(
+                    hf_url, 
+                    json=payload, 
+                    headers=headers, 
+                    timeout=120.0
+                )
+
                 if response.status_code == 200:
-                    with open(file_path, "wb") as f: 
-                        f.write(response.content)
-                    return {"audio_url": f"/static/{file_name}"}
-                else:
-                    return JSONResponse(status_code=response.status_code, content={"detail": "Piper Error"})
+                    # Gradio возвращает путь к файлу в JSON
+                    result = response.json()
+                    # Обычно это ['data'][0]['name'] или прямая ссылка
+                    file_url = f"https://sercos-oleg-studio-v2.hf.space/file={result['data'][0]['name']}"
+                    
+                    # Скачиваем сам файл аудио
+                    audio_res = await client.get(file_url, headers=headers)
+                    if audio_res.status_code == 200:
+                        with open(file_path, "wb") as f:
+                            f.write(audio_res.content)
+                        return {"audio_url": f"/static/{file_name}"}
+                
+                print(f"❌ Ошибка Gradio: {response.status_code} - {response.text}")
+                return JSONResponse(status_code=500, content={"detail": "Gradio API Error"})
 
             # --- БЛОК 2: KOKORO (af_, am_...) ---
             elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
