@@ -108,6 +108,9 @@ BLOG_POSTS = []
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
     # --- СТУДИЙНЫЕ  ---
+    "kk_KZ-issai-high.onnx": 🎙"🇰🇿 ISSAI (ВЫСОКОЕ КАЧЕСТВО)",
+    "kk_KZ-raya-x_low.onnx": 🎙"🇰🇿 РАЯ (БЫСТРЫЙ)",
+    "kk_KZ-iseke-x_low.onnx": 🎙"🇰🇿 ИСЕКЕ (БЫСТРЫЙ)",
     "ru_RU-denis-medium.onnx": "🎙 ДЕНИС (МУЖСКОЙ)",
     "ru_RU-dmitri-medium.onnx": "🎙 ДМИТРИЙ (МУЖСКОЙ)",
     "ru_RU-irina-medium.onnx": "🎙 ИРИНА (ЖЕНСКИЙ)",
@@ -337,6 +340,24 @@ async def set_voice(call: types.CallbackQuery):
     # Убираем "часики" с кнопки
     await call.answer()
 
+@dp.message() 
+async def handle_text(message: types.Message, state: FSMContext):
+    # --- ВОТ СЮДА ВСТАВЛЯЕМ ПРОВЕРКУ (В САМОЕ НАЧАЛО) ---
+    if message.text and len(message.text) > 2000:
+        await message.answer(
+            f"⚠️ Слишком длинный текст!\n"
+            f"Ваш текст: {len(message.text)} знаков.\n"
+            f"Лимит: 2000 знаков. Пожалуйста, сократите его."
+        )
+        return
+    # --- КОНЕЦ ПРОВЕРКИ ---
+
+    # 2. Дальше у тебя идет логика получения голоса из базы
+    user_id = message.from_user.id
+    # (твой код запроса к базе SQLite...)
+
+    # 3. Дальше идет отправка запроса на Hugging Face
+    # (твой код генерации аудио...)
 @dp.message(F.text)
 async def handle_text(message: types.Message):
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): return
