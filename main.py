@@ -197,15 +197,13 @@ async def cmd_start(message: types.Message):
 
     # Проходим по словарю и создаем кнопки голосов
     for name, info in VOICES.items():
-        # ТЕКСТ: Берем красивое название из словаря
-       button_text = info
-         
-        
-        # ДАННЫЕ: Берем только короткий ключ 'name'
+        # ТЕКСТ: Берем красивое название из словаря (теперь это просто строка)
+        button_text = info
+        # ДАННЫЕ: В callback_data отправляем полный ключ 'name'
         kb.button(text=button_text, callback_data=f"v:{name}")
 
     # Сначала выравниваем кнопки голосов по 2 в ряд
-    kb.adjust(2) 
+    kb.adjust(2)
     
     # А ТЕПЕРЬ добавляем кнопку доната отдельным рядом в самый низ
     kb.row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
