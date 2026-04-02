@@ -403,12 +403,7 @@ async def generate_audio_universal(request: Request):
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
 
-   import os
-import uuid
-import httpx
-from fastapi.responses import JSONResponse
 
-# ... (остальной код функции выше)
 
 # 1. Генерируем имя локального файла (куда сохраним результат)
 ext = "wav" if voice.endswith(".onnx") else "mp3"
