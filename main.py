@@ -314,14 +314,30 @@ async def send_invoice(call: types.CallbackQuery):
 async def pre_checkout(query: PreCheckoutQuery):
     await bot.answer_pre_checkout_query(query.id, ok=True)
 
-@dp.callback_query(F.data.startswith("v_"))
+@dp.callback_query(F.data.startswith("v:")) # Мы договорились использовать v: для сжатия
 async def set_voice(call: types.CallbackQuery):
-    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
+    # 1. Извлекаем чистый код (например, 'r_ol')
+    voice_code = call.data.replace("v:", "") 
+    
+    # 2. Проверяем, есть ли такой код в нашем конфиге
+    if voice_code not in VOICES:
+        await call.answer("Голос не найден в списке!", show_alert=True)
+        return
+
+    # 3. Сохраняем в базу ТОЛЬКО строку 'voice_code'
     conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO users (user_id, voice) VALUES (?, ?) '
+        'ON CONFLICT(user_id) DO UPDATE SET voice=excluded.voice', 
+        (call.from_user.id, voice_code)
+    )
     conn.commit()
     conn.close()
-    await call.message.answer("✅ Голос установлен!")
+
+    # 4. Отвечаем пользователю красиво
+    label = VOICES[voice_code]['label']
+    await call.message.answer(f"✅ Установлен голос: {label}")
     await call.answer()
 
 @dp.message(F.text)
