@@ -201,23 +201,25 @@ async def cmd_start(message: types.Message):
             reply_markup=kb.adjust(1).as_markup()
         )
 
-    # 3. Если подписан — выводим красивое меню выбора голосов
+   # 3. Если подписан — выводим красивое меню выбора голосов
     kb = InlineKeyboardBuilder()
 
-# name — это ключ (например, 'r_ol')
-# info — это все данные об этом голосе (тип, лейбл и т.д.)
-for name, info in VOICES.items():
-    # ТЕКСТ: Берем красивое название из словаря
-    button_text = info["label"] 
-    
-    # ДАННЫЕ: Берем только короткий ключ 'name'
-    # Используем двоеточие ':' как разделитель — это стандарт для aiogram
-    kb.button(text=button_text, callback_data=f"v:{name}")
+    # Проходим по словарю и создаем кнопки голосов
+    for name, info in VOICES.items():
+        # ТЕКСТ: Берем красивое название из словаря
+        button_text = info["label"] 
+        
+        # ДАННЫЕ: Берем только короткий ключ 'name'
+        kb.button(text=button_text, callback_data=f"v:{name}")
 
-kb.adjust(2) # Чтобы кнопки были по две в ряд и не уходили в бесконечность
+    # Сначала выравниваем кнопки голосов по 2 в ряд
+    kb.adjust(2) 
     
-    # Добавляем кнопку доната в конец
-    kb.adjust(2).row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
+    # А ТЕПЕРЬ добавляем кнопку доната отдельным рядом в самый низ
+    kb.row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
+    
+    # Отправляем клавиатуру пользователю
+    # await message.answer("Выберите голос:", reply_markup=kb.as_markup())
     
     welcome_text = (
         "👋 **Приветствуем в SpeechClone!**\n\n"
