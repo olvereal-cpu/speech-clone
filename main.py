@@ -44,7 +44,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
 # ТВОЯ НОВАЯ СТУДИЯ (PIPER)
 HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
-
+PIPER_AUTH = os.getenv("TOKEN_PIPER")
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -198,8 +198,8 @@ async def cmd_start(message: types.Message):
     # Проходим по словарю и создаем кнопки голосов
     for name, info in VOICES.items():
         # ТЕКСТ: Берем красивое название из словаря
-       # Теперь info — это и есть готовый текст для кнопки
-        button_text = info 
+       button_text = info
+         
         
         # ДАННЫЕ: Берем только короткий ключ 'name'
         kb.button(text=button_text, callback_data=f"v:{name}")
@@ -368,41 +368,65 @@ class AdminGenRequest(BaseModel):
 # 1. Считываем токен из переменных окружения Render
 # Он должен называться точно так же, как в Dashboard (HF_TOKEN)
 HF_TOKEN = os.getenv("HF_TOKEN")
-@app.post("/api/generate") # Это "вход" для твоего сайта
-async def generate_proxy(request: Request):
+@app.post("/api/generate")
+async def generate_audio_universal(request: Request):
     data = await request.json()
     text = data.get("text")
-    voice = data.get("voice", "ru_v10_oleg")
+    voice = data.get("voice", "ru-RU-SvetlanaNeural") # Стандарт по умолчанию
+    mode = data.get("mode", "natural")
     
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
 
-    file_name = f"voice_{uuid.uuid4().hex}.wav"
+    # 1. Генерируем имя файла (wav для Piper, mp3 для остальных)
+    ext = "wav" if voice.endswith(".onnx") else "mp3"
+    file_name = f"voice_{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join("static", file_name)
 
     async with httpx.AsyncClient() as client:
         try:
-            # СТЫКОВКА: Здесь мы обращаемся к Хугану БЕЗ /api и через GET
-            hf_url = "https://sercos-my-tts-api.hf.space/generate"
-            
-            headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
-            
-            # ВНИМАНИЕ: Тут client.get — это "ключ", который открывает замок на Хугане
-            response = await client.get(
-                hf_url, 
-                params={"text": text, "voice": voice}, 
-                headers=headers, 
-                timeout=120.0 
-            )
-            
-            if response.status_code == 200:
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
-                return {"audio_url": f"/static/{file_name}"}
+            # --- БЛОК 1: PIPER (Используем TOKEN_PIPER) ---
+            if voice.endswith(".onnx"):
+                hf_url = "https://sercos-my-tts-api.hf.space/generate"
+                headers = {"Authorization": f"Bearer {os.getenv('TOKEN_PIPER')}"}
+                # Используем GET, как требует API Piper
+                response = await client.get(
+                    hf_url, 
+                    params={"text": text, "voice": voice}, 
+                    headers=headers, 
+                    timeout=120.0
+                )
+                if response.status_code == 200:
+                    with open(file_path, "wb") as f: f.write(response.content)
+                    return {"audio_url": f"/static/{file_name}"}
+                else:
+                    return JSONResponse(status_code=response.status_code, content={"detail": f"Piper Error: {response.status_code}"})
+
+            # --- БЛОК 2: KOKORO (Используем старый HF_TOKEN) ---
+            elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
+                # Укажи здесь актуальный URL своего Kokoro Space
+                hf_url = "https://твоя-ссылка-на-kokoro.hf.space/generate" 
+                headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+                # Kokoro обычно ждет POST с JSON
+                response = await client.post(
+                    hf_url, 
+                    json={"text": text, "voice": voice}, 
+                    headers=headers, 
+                    timeout=60.0
+                )
+                if response.status_code == 200:
+                    with open(file_path, "wb") as f: f.write(response.content)
+                    return {"audio_url": f"/static/{file_name}"}
+
+            # --- БЛОК 3: EDGE TTS (Стандарт - токены НЕ нужны) ---
             else:
-                return JSONResponse(status_code=response.status_code, content={"detail": f"Ошибка HF: {response.status_code}"})
-                
+                rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+                communicate = edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%"))
+                await communicate.save(file_path)
+                return {"audio_url": f"/static/{file_name}"}
+
         except Exception as e:
+            print(f"Критическая ошибка генерации: {e}")
             return JSONResponse(status_code=500, content={"detail": str(e)})
 # Это критично! Если поднять выше - будет "Not Found"
 
