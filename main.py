@@ -77,8 +77,8 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        # Обновлено до 1.5 Flash (или 3.1, если доступна в твоем регионе)
-        self.target_model = 'gemini-1.5-flash' 
+        # Обновлено до gemini-3.1-flash-lite-preview
+        self.target_model = 'gemini-3.1-flash-lite-preview' 
         genai.configure(api_key=self.api_key)
         self.active_model = genai.GenerativeModel(model_name=self.target_model)
 
