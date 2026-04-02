@@ -104,28 +104,28 @@ BLOG_POSTS = [
 ]
 
 
-   # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (БЕЗ ЛИШНИХ ТЕХНОЛОГИЙ) ---
+  # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (СЖАТЫЙ ДЛЯ ТЕЛЕГРАМ) ---
 VOICES = {
     # 🇰🇿 КАЗАХСТАН
-    "kk": {"type": "new", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
-    "edge_kk_Aigul": {"type": "old", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
-    "edge_kk_Daulet": {"type": "old", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
+    "k_n": {"type": "new", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
+    "k_ai": {"type": "old", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
+    "k_da": {"type": "old", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
     
     # 🌟 ПРЕМИУМ КЛОНЫ (HQ)
-    "ru_oleg": {"type": "new", "label": "👤 Олег (Клон HQ)"},
-    "ru_elena": {"type": "new", "label": "👩 Елена (Клон HQ)"},
-    "af_sky": {"type": "new", "label": "✨ Sky (Женский HQ)"},
-    "af_bella": {"type": "new", "label": "🌸 Bella (Женский HQ)"},
-    "am_adam": {"type": "new", "label": "🔥 Adam (Мужской HQ)"},
-    "bf_emma": {"type": "new", "label": "🇬🇧 Emma (British HQ)"},
-    "bm_george": {"type": "new", "label": "🇬🇧 George (British HQ)"},
+    "r_ol": {"type": "new", "label": "👤 Олег (Клон HQ)"},
+    "r_el": {"type": "new", "label": "👩 Елена (Клон HQ)"},
+    "a_sk": {"type": "new", "label": "✨ Sky (Женский HQ)"},
+    "a_be": {"type": "new", "label": "🌸 Bella (Женский HQ)"},
+    "a_ad": {"type": "new", "label": "🔥 Adam (Мужской HQ)"},
+    "b_em": {"type": "new", "label": "🇬🇧 Emma (British HQ)"},
+    "b_ge": {"type": "new", "label": "🇬🇧 George (British HQ)"},
     
     # 🇷🇺 РУССКИЙ
-    "ru": {"type": "new", "label": "🇷🇺 Русский (Нейросеть HQ)"},
-    "edge_ru_Dmitry": {"type": "old", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
-    "edge_ru_Svetlana": {"type": "old", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
+    "r_n": {"type": "new", "label": "🇷🇺 Русский (Нейросеть HQ)"},
+    "r_dm": {"type": "old", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
+    "r_sv": {"type": "old", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
     
-    # 🌍 МИРОВЫЕ ЯЗЫКИ (NEW ENGINE)
+    # 🌍 МИРОВЫЕ ЯЗЫКИ (Короткие коды ISO)
     "en": {"type": "new", "label": "🇺🇸 English"},
     "uk": {"type": "new", "label": "🇺🇦 Українська"},
     "be": {"type": "new", "label": "🇧🇾 Беларуская"},
@@ -143,11 +143,11 @@ VOICES = {
     "fi": {"type": "new", "label": "🇫🇮 Suomi"},
     "hu": {"type": "new", "label": "🇭🇺 Magyar"},
     "ro": {"type": "new", "label": "🇷🇴 Română"},
-    "zh": {"type": "new", "label": "🇨🇳 中文 (Chinese)"},
-    "ja": {"type": "new", "label": "🇯🇵 日本語 (Japanese)"},
-    "ko": {"type": "new", "label": "🇰🇷 한국어 (Korean)"},
-    "ar": {"type": "new", "label": "🇸🇦 العربية (Arabic)"},
-    "hi": {"type": "new", "label": "🇮🇳 हिन्दी (Hindi)"}
+    "zh": {"type": "new", "label": "🇨🇳 中文"},
+    "ja": {"type": "new", "label": "🇯🇵 日本語"},
+    "ko": {"type": "new", "label": "🇰🇷 한국어"},
+    "ar": {"type": "new", "label": "🇸🇦 العربية"},
+    "hi": {"type": "new", "label": "🇮🇳 हिन्दी"}
 }
 # --- БД ---
 def init_db():
@@ -203,9 +203,18 @@ async def cmd_start(message: types.Message):
 
     # 3. Если подписан — выводим красивое меню выбора голосов
     kb = InlineKeyboardBuilder()
-    # Берем голоса из нашего общего словаря VOICES
-    for name, v_id in VOICES.items():
-        kb.button(text=name, callback_data=f"v_{v_id}")
+
+# name — это ключ (например, 'r_ol')
+# info — это все данные об этом голосе (тип, лейбл и т.д.)
+for name, info in VOICES.items():
+    # ТЕКСТ: Берем красивое название из словаря
+    button_text = info["label"] 
+    
+    # ДАННЫЕ: Берем только короткий ключ 'name'
+    # Используем двоеточие ':' как разделитель — это стандарт для aiogram
+    kb.button(text=button_text, callback_data=f"v:{name}")
+
+kb.adjust(2) # Чтобы кнопки были по две в ряд и не уходили в бесконечность
     
     # Добавляем кнопку доната в конец
     kb.adjust(2).row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
