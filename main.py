@@ -215,6 +215,7 @@ async def cmd_start(message: types.Message):
     welcome_text = (
         "👋 **Приветствуем в SpeechClone!**\n\n"
         "Выберите подходящий голос для озвучки:\n"
+        "• 🎙  **Студия** — студийное звучание\n"
         "• 🌟 **Premium** — максимально живое звучание.\n"
         "• 🇷🇺/🇰🇿 **Стандарт** — классические голоса.\n\n"
         "**Просто отправьте текст** после выбора голоса, и я его озвучу."
@@ -782,23 +783,32 @@ async def api_generate_web(r: TTSRequest):
         fid = f"{uuid.uuid4()}.mp3"
         path = os.path.join(AUDIO_DIR, fid)
         
-        # Автоматическое определение типа голоса по префиксу
-        is_premium = any(p in r.voice for p in ["af_", "am_", "ru_v10_"])
+        # 1. Проверяем, если это Piper (студийные голоса с расширением .onnx)
+        if r.voice.endswith(".onnx"):
+            # Запрос к Piper (обычно через GET с параметрами)
+            resp = requests.get(HF_PIPER_URL, params={"text": r.text, "voice": r.voice}, timeout=45)
+            if resp.status_code == 200:
+                with open(path, "wb") as f: f.write(resp.content)
+            else:
+                return JSONResponse(status_code=500, content={"detail": "Ошибка Piper"})
 
-        if is_premium:
-            # Запрос к улучшенному движку
+        # 2. Проверяем, если это Kokoro (премиум префиксы)
+        elif any(p in r.voice for p in ["af_", "am_", "bf_", "bm_"]):
             resp = requests.post(HF_KOKORO_URL, json={"text": r.text, "voice": r.voice}, timeout=60)
             if resp.status_code == 200:
                 with open(path, "wb") as f: f.write(resp.content)
             else:
-                return JSONResponse(status_code=500, content={"detail": "Ошибка движка озвучки"})
+                return JSONResponse(status_code=500, content={"detail": "Ошибка Kokoro"})
+
+        # 3. Во всех остальных случаях — Edge TTS
         else:
-            # Обычный движок
             rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
             await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
             
         return {"audio_url": f"/wait-download?file={fid}"}
+
     except Exception as e:
+        print(f"Ошибка: {e}")
         return JSONResponse(status_code=500, content={"detail": "Техническая ошибка"})
         
 @app.on_event("startup")
