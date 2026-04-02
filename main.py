@@ -108,9 +108,9 @@ BLOG_POSTS = []
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
     # --- СТУДИЙНЫЕ  ---
-    "kk_KZ-issai-high.onnx": 🎙"🇰🇿 ISSAI (ВЫСОКОЕ КАЧЕСТВО)",
-    "kk_KZ-raya-x_low.onnx": 🎙"🇰🇿 РАЯ (БЫСТРЫЙ)",
-    "kk_KZ-iseke-x_low.onnx": 🎙"🇰🇿 ИСЕКЕ (БЫСТРЫЙ)",
+    "kk_KZ-issai-high.onnx": "🎙 🇰🇿 ISSAI (ВЫСОКОЕ КАЧЕСТВО)",
+    "kk_KZ-raya-x_low.onnx": "🎙 🇰🇿 РАЯ (БЫСТРЫЙ)",
+    "kk_KZ-iseke-x_low.onnx": "🎙 🇰🇿 ИСЕКЕ (БЫСТРЫЙ)",
     "ru_RU-denis-medium.onnx": "🎙 ДЕНИС (МУЖСКОЙ)",
     "ru_RU-dmitri-medium.onnx": "🎙 ДМИТРИЙ (МУЖСКОЙ)",
     "ru_RU-irina-medium.onnx": "🎙 ИРИНА (ЖЕНСКИЙ)",
