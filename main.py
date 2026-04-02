@@ -35,11 +35,16 @@ from supabase import create_client, Client
 from slugify import slugify
 from urllib.parse import quote
 
+# --- КЛИЕНТЫ И API ---
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-# ССЫЛКА НА ТВОЙ API НА HUGGING FACE
+
+# ССЫЛКА НА ТВОЙ API НА HUGGING FACE (KOKORO)
 HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
+# ТВОЯ НОВАЯ СТУДИЯ (PIPER)
+HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
+
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -72,7 +77,8 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        self.target_model = 'gemini-3.1-flash-lite-preview' # Использование стабильной версии
+        # Обновлено до 1.5 Flash (или 3.1, если доступна в твоем регионе)
+        self.target_model = 'gemini-1.5-flash' 
         genai.configure(api_key=self.api_key)
         self.active_model = genai.GenerativeModel(model_name=self.target_model)
 
@@ -90,65 +96,38 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
-BLOG_FOLDER = os.path.join(BASE_DIR, "blog") # Папка для ваших 15 статей
+BLOG_FOLDER = os.path.join(BASE_DIR, "blog")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_FOLDER, exist_ok=True)
 
 # --- ВСТРОЕННЫЕ ПОСТЫ ---
-BLOG_POSTS = [
-    {
-       
-    }
-]
+BLOG_POSTS = []
 
-
-  # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (СЖАТЫЙ ДЛЯ ТЕЛЕГРАМ) ---
+# --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
     # 🇰🇿 КАЗАХСТАН
-    "k_n": {"type": "new", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
-    "k_ai": {"type": "old", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
-    "k_da": {"type": "old", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
+    "k_n": {"type": "kokoro", "id": "kk_v1", "label": "🇰🇿 Казахский (Нейросеть HQ)"},
+    "k_ai": {"type": "edge", "id": "kk-KZ-AigulNeural", "label": "👧 Айгуль (Стандарт)"},
+    "k_da": {"type": "edge", "id": "kk-KZ-DauletNeural", "label": "👦 Даулет (Стандарт)"},
     
-    # 🌟 ПРЕМИУМ КЛОНЫ (HQ)
-    "r_ol": {"type": "new", "label": "👤 Олег (Клон HQ)"},
-    "r_el": {"type": "new", "label": "👩 Елена (Клон HQ)"},
-    "a_sk": {"type": "new", "label": "✨ Sky (Женский HQ)"},
-    "a_be": {"type": "new", "label": "🌸 Bella (Женский HQ)"},
-    "a_ad": {"type": "new", "label": "🔥 Adam (Мужской HQ)"},
-    "b_em": {"type": "new", "label": "🇬🇧 Emma (British HQ)"},
-    "b_ge": {"type": "new", "label": "🇬🇧 George (British HQ)"},
+    # 🌟 ПРЕМИУМ КЛОНЫ (HQ) - Перенаправляем на Piper/Kokoro
+    "r_ol": {"type": "kokoro", "id": "ru_v10_oleg", "label": "👤 Олег (Клон HQ)"},
+    "r_el": {"type": "kokoro", "id": "ru_v10_elena", "label": "👩 Елена (Клон HQ)"},
+    "a_sk": {"type": "piper", "id": "sky", "label": "✨ Sky (Женский HQ)"},
+    "a_be": {"type": "piper", "id": "bella", "label": "🌸 Bella (Женский HQ)"},
+    "a_ad": {"type": "piper", "id": "adam", "label": "🔥 Adam (Мужской HQ)"},
     
     # 🇷🇺 РУССКИЙ
-    "r_n": {"type": "new", "label": "🇷🇺 Русский (Нейросеть HQ)"},
-    "r_dm": {"type": "old", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
-    "r_sv": {"type": "old", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
+    "r_n": {"type": "kokoro", "id": "ru_v10_alpha", "label": "🇷🇺 Русский (Нейросеть HQ)"},
+    "r_dm": {"type": "edge", "id": "ru-RU-DmitryNeural", "label": "👨 Дмитрий"},
+    "r_sv": {"type": "edge", "id": "ru-RU-SvetlanaNeural", "label": "👩 Светлана"},
     
-    # 🌍 МИРОВЫЕ ЯЗЫКИ (Короткие коды ISO)
-    "en": {"type": "new", "label": "🇺🇸 English"},
-    "uk": {"type": "new", "label": "🇺🇦 Українська"},
-    "be": {"type": "new", "label": "🇧🇾 Беларуская"},
-    "tr": {"type": "new", "label": "🇹🇷 Türkçe"},
-    "de": {"type": "new", "label": "🇩🇪 Deutsch"},
-    "fr": {"type": "new", "label": "🇫🇷 Français"},
-    "pl": {"type": "new", "label": "🇵🇱 Polski"},
-    "cs": {"type": "new", "label": "🇨🇿 Čeština"},
-    "es": {"type": "new", "label": "🇪🇸 Español"},
-    "it": {"type": "new", "label": "🇮🇹 Italiano"},
-    "pt": {"type": "new", "label": "🇵🇹 Português"},
-    "nl": {"type": "new", "label": "🇳🇱 Nederlands"},
-    "sv": {"type": "new", "label": "🇸🇪 Svenska"},
-    "da": {"type": "new", "label": "🇩🇰 Dansk"},
-    "fi": {"type": "new", "label": "🇫🇮 Suomi"},
-    "hu": {"type": "new", "label": "🇭🇺 Magyar"},
-    "ro": {"type": "new", "label": "🇷🇴 Română"},
-    "zh": {"type": "new", "label": "🇨🇳 中文"},
-    "ja": {"type": "new", "label": "🇯🇵 日本語"},
-    "ko": {"type": "new", "label": "🇰🇷 한국어"},
-    "ar": {"type": "new", "label": "🇸🇦 العربية"},
-    "hi": {"type": "new", "label": "🇮🇳 हिन्दी"}
+    # ПРИМЕР ДЛЯ ТВОИХ НОВЫХ ГОЛОСОВ PIPER
+    "p_denis": {"type": "piper", "id": "denis", "label": "🎙 Денис (Piper HQ)"}
 }
+
 # --- БД ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
