@@ -403,29 +403,65 @@ async def generate_audio_universal(request: Request):
     if not text:
         return JSONResponse(status_code=400, content={"detail": "Текст не введен"})
 
-    # 1. Генерируем имя файла (wav для Piper, mp3 для остальных)
-    ext = "wav" if voice.endswith(".onnx") else "mp3"
-    file_name = f"voice_{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join("static", file_name)
+   import os
+import uuid
+import httpx
+from fastapi.responses import JSONResponse
 
-    async with httpx.AsyncClient() as client:
-        try:
-            # --- БЛОК 1: PIPER (Используем TOKEN_PIPER) ---
-            if voice.endswith(".onnx"):
-                hf_url = "https://sercos-my-tts-api.hf.space/generate"
-                headers = {"Authorization": f"Bearer {os.getenv('TOKEN_PIPER')}"}
-                # Используем GET, как требует API Piper
-                response = await client.get(
-                    hf_url, 
-                    params={"text": text, "voice": voice}, 
-                    headers=headers, 
-                    timeout=120.0
+# ... (остальной код функции выше)
+
+# 1. Генерируем имя локального файла (куда сохраним результат)
+ext = "wav" if voice.endswith(".onnx") else "mp3"
+file_name = f"voice_{uuid.uuid4().hex}.{ext}"
+file_path = os.path.join("static", file_name)
+
+async with httpx.AsyncClient() as client:
+    try:
+        # --- БЛОК 1: PIPER (Запрос к Hugging Face Space) ---
+        if voice.endswith(".onnx"):
+            hf_url = "https://sercos-my-tts-api.hf.space/generate"
+            token = os.getenv('TOKEN_PIPER')
+            
+            if not token:
+                print("❌ ОШИБКА: TOKEN_PIPER не найден в переменных окружения!")
+                return JSONResponse(status_code=500, content={"detail": "Server Config Error: Missing Token"})
+
+            headers = {"Authorization": f"Bearer {token}"}
+            
+            # ВАЖНО: Добавляем v_data/ к имени голоса перед отправкой
+            voice_path = f"v_data/{voice}"
+            
+            print(f"🚀 Отправка запроса к Piper: голос={voice_path}")
+
+            response = await client.get(
+                hf_url, 
+                params={
+                    "text": text, 
+                    "voice": voice_path # Теперь API увидит v_data/имя.onnx
+                }, 
+                headers=headers, 
+                timeout=120.0
+            )
+            
+            if response.status_code == 200:
+                with open(file_path, "wb") as f: 
+                    f.write(response.content)
+                print(f"✅ Озвучка готова: {file_name}")
+                return {"audio_url": f"/static/{file_name}"}
+            else:
+                error_msg = response.text
+                print(f"❌ Piper API Error {response.status_code}: {error_msg}")
+                return JSONResponse(
+                    status_code=response.status_code, 
+                    content={"detail": f"Piper Space Error: {response.status_code}"}
                 )
-                if response.status_code == 200:
-                    with open(file_path, "wb") as f: f.write(response.content)
-                    return {"audio_url": f"/static/{file_name}"}
-                else:
-                    return JSONResponse(status_code=response.status_code, content={"detail": f"Piper Error: {response.status_code}"})
+
+        # --- БЛОК 2: ДРУГИЕ НЕЙРОСЕТИ (Edge TTS и т.д.) ---
+        # Твой существующий код для обычных голосов...
+
+    except Exception as e:
+        print(f"🔥 Критическая ошибка: {str(e)}")
+        return JSONResponse(status_code=500, content={"detail": f"Internal Error: {str(e)}"})
 
             # --- БЛОК 2: KOKORO (Используем старый HF_TOKEN) ---
             elif any(p in voice for p in ["af_", "am_", "bf_", "bm_"]):
