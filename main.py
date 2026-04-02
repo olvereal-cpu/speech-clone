@@ -198,7 +198,8 @@ async def cmd_start(message: types.Message):
     # Проходим по словарю и создаем кнопки голосов
     for name, info in VOICES.items():
         # ТЕКСТ: Берем красивое название из словаря
-        button_text = info["label"] 
+       # Теперь info — это и есть готовый текст для кнопки
+        button_text = info 
         
         # ДАННЫЕ: Берем только короткий ключ 'name'
         kb.button(text=button_text, callback_data=f"v:{name}")
