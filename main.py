@@ -414,11 +414,11 @@ async def generate_audio_universal(request: Request):
         
         try:
         # --- БЛОК 1: PIPER (.onnx) ---
-        if voice.endswith(".onnx"):
-            hf_url = "https://sercos-my-tts-api.hf.space/generate"
-            token = os.getenv('TOKEN_PIPER')
-            headers = {"Authorization": f"Bearer {token}"}
-            voice_path = f"v_data/{voice}"
+            if voice.endswith(".onnx"):
+               hf_url = "https://sercos-my-tts-api.hf.space/generate"
+               token = os.getenv('TOKEN_PIPER')
+               headers = {"Authorization": f"Bearer {token}"}
+               voice_path = f"v_data/{voice}"
             
             response = await client.get(hf_url, params={"text": text, "voice": voice_path}, headers=headers, timeout=120.0)
             if response.status_code == 200:
