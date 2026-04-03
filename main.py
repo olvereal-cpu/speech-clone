@@ -379,7 +379,14 @@ async def handle_text(message: types.Message):
         filename = fid + ext
         path = os.path.join(AUDIO_DIR, filename)
 
-        # 3. ГЕНЕРАЦИЯ
+       
+        # --- 3. ГЕНЕРАЦИЯ ---
+        print(f"🎙 Попытка генерации для голоса: {v_id}") # ЭТО ПОЯВИТСЯ В ЛОГАХ РЕНДЕРА
+        audio_data = None
+
+        if v_id.endswith(".onnx"):
+            print("📡 Отправляю запрос на PIPER...")
+            # ... твой код запроса ...
         audio_data = None
         # Фикс для Render: принудительно IPv4
         connector = aiohttp.TCPConnector(family=socket.AF_INET)
