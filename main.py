@@ -693,6 +693,8 @@ async def get_posts(page: int = 1, limit: int = 6):
         }
     except Exception as e:
         return {"error": str(e)}
+@app.get("/voices", response_class=HTMLResponse)
+async def voices_page(request: Request): return templates.TemplateResponse(request=request, name="voices.html")
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
