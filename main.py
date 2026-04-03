@@ -97,12 +97,6 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_FOLDER, exist_ok=True)
 
 # --- ВСТРОЕННЫЕ ПОСТЫ ---
-BLOG_POSTS = [
-    {
-       
-    }
-]
-
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
     # --- СТУДИЙНЫЕ  ---
@@ -295,14 +289,7 @@ async def handle_text(message: types.Message):
         fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
-        if is_kokoro:
-            if not kokoro:
-                await message.answer("❌ Модель Kokoro еще загружается на сервер...")
-                return
-            samples, sample_rate = kokoro.create(message.text, voice=v_id, speed=1.0, lang="en-us")
-            sf.write(path, samples, sample_rate, format='wav')
-
-        elif is_piper:
+         elif is_piper:
             token = os.getenv('TOKEN_PIPER')
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
@@ -328,46 +315,13 @@ async def handle_text(message: types.Message):
         await message.answer(f"❌ Ошибка: {e}")
 
 # --- НАСТРОЙКИ TTS ---
-MODEL_PATH = "v_data/kokoro-v0_19.onnx"
-VOICES_PATH = "v_data/voices.bin"
-MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx"
 
-def ensure_model_exists():
-    """Проверяет наличие модели и скачивает её, если нужно"""
-    if not os.path.exists("v_data"):
-        os.makedirs("v_data")
-    if not os.path.exists(MODEL_PATH):
-        print("Начинаю скачивание модели (300MB). Это займет около 1-2 минут на сервере...")
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        print("Модель успешно загружена в v_data!")
 
 # --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
-
-ensure_model_exists()
-
-try:
-    kokoro = Kokoro(MODEL_PATH, VOICES_PATH)
-    print("Kokoro-TTS успешно запущена!")
-except Exception as e:
-    print(f"Ошибка загрузки TTS: {e}")
-    kokoro = None
-
-@app.get("/api/speak")
-async def speak(text: str, voice: str = "af_sky"):
-    if not kokoro:
-        return {"error": "Модель не загружена на сервере"}
-    try:
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
-        buffer = io.BytesIO()
-        sf.write(buffer, samples, sample_rate, format='wav')
-        buffer.seek(0)
-        return StreamingResponse(buffer, media_type="audio/wav")
-    except Exception as e:
-        return {"error": str(e)}
 
 # --- МОДЕЛИ ДАННЫХ ---
 class ChatRequest(BaseModel): message: str
