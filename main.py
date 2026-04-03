@@ -735,45 +735,58 @@ async def chat_api(req: ChatRequest):
 @app.post("/api/generate")
 async def api_generate_web(r: TTSRequest):
     try:
-        is_piper = r.voice.endswith(".onnx")
-        is_kokoro = r.voice.startswith(("af_", "am_", "bf_", "bm_"))
-        ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
-        fid = f"{uuid.uuid4().hex}{ext}"
+        # 1. Авто-определение расширения (wav для новых, mp3 для Edge)
+        is_p = r.voice.endswith(".onnx")
+        is_k = r.voice.startswith(("af_", "am_", "bf_", "bm_"))
+        ext = "wav" if (is_p or is_k) else "mp3"
+        
+        fid = f"{uuid.uuid4().hex}.{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
-        if is_kokoro and kokoro:
-            samples, sample_rate = kokoro.create(r.text, voice=r.voice, speed=1.0, lang="en-us")
-            sf.write(path, samples, sample_rate, format='wav')
-        elif is_piper:
+        # 2. ГЕНЕРАЦИЯ
+        if is_k:
+            if 'kokoro' in globals() and kokoro:
+                import soundfile as sf
+                # Генерируем Kokoro
+                samples, sample_rate = kokoro.create(r.text, voice=r.voice, speed=1.0, lang="en-us")
+                sf.write(path, samples, sample_rate, format='wav')
+            else:
+                return {"success": False, "error": "Kokoro не инициализирован"}
+                
+        elif is_p:
+            # Piper через HF Space
             token = os.getenv('TOKEN_PIPER')
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
+            async with aiohttp.ClientSession() as session:
                 headers = {"Authorization": f"Bearer {token}"}
                 params = {"text": r.text, "voice": r.voice, "speed": 0.9}
-                async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
+                async with session.get(hf_url, params=params, headers=headers, timeout=60) as resp:
                     if resp.status == 200:
                         with open(path, "wb") as f:
                             f.write(await resp.read())
                     else:
-                        return JSONResponse(status_code=500, content={"detail": f"HF Error: {resp.status}"})
+                        return {"success": False, "error": f"Piper API Error: {resp.status}"}
+        
         else:
+            # Стандартный Edge TTS
             rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
             await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
 
+        # 3. ПРОВЕРКА ФАЙЛА И ОТВЕТ
         if os.path.exists(path) and os.path.getsize(path) > 0:
-            # Возвращаем СЛОВАРЬ с двумя разными ссылками
+            # Возвращаем структуру, которую ждет твой JS
             return {
-                # Прямая ссылка для плеера на главной (чтобы он запел)
+                "success": True, 
                 "audio_url": f"/static/audio/{fid}", 
-                # Ссылка для кнопки "Скачать", которая ведет на таймер 30 сек
-                "download_url": f"/wait-download?file={fid}"
+                "fid": fid
             }
         else:
-            return JSONResponse(status_code=500, content={"detail": "Файл не создан"})
-            
+            return {"success": False, "error": "Файл не был создан"}
+
     except Exception as e:
-        print(f"ERROR: {str(e)}") # Логируем ошибку для отладки
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        # Если ошибка здесь, JS покажет её в alert
+        print(f"Ошибка сервера: {str(e)}")
+        return {"success": False, "error": str(e)}
 @app.on_event("startup")
 async def startup_event():
     conn = sqlite3.connect(DB_PATH)
