@@ -761,13 +761,19 @@ async def api_generate_web(r: TTSRequest):
             await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
 
         if os.path.exists(path) and os.path.getsize(path) > 0:
-            return {"audio_url": f"/wait-download?file={fid}"}
+            # Возвращаем СЛОВАРЬ с двумя разными ссылками
+            return {
+                # Прямая ссылка для плеера на главной (чтобы он запел)
+                "audio_url": f"/static/audio/{fid}", 
+                # Ссылка для кнопки "Скачать", которая ведет на таймер 30 сек
+                "download_url": f"/wait-download?file={fid}"
+            }
         else:
             return JSONResponse(status_code=500, content={"detail": "Файл не создан"})
             
     except Exception as e:
+        print(f"ERROR: {str(e)}") # Логируем ошибку для отладки
         return JSONResponse(status_code=500, content={"detail": str(e)})
-        
 @app.on_event("startup")
 async def startup_event():
     conn = sqlite3.connect(DB_PATH)
@@ -777,3 +783,6 @@ async def startup_event():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
