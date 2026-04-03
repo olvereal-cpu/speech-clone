@@ -360,13 +360,17 @@ async def handle_text(message: types.Message, state: FSMContext):
     # (твой код генерации аудио...)
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    # 1. Базовые проверки
+    # 1. Базовые проверки (Команды, подписка, лимит)
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
         return
 
     if len(message.text) > 2000:
         await message.answer(f"⚠️ Текст слишком длинный ({len(message.text)} зн.). Лимит: 2000.")
         return
+
+    # Гарантируем наличие папки для файлов
+    if not os.path.exists("static"):
+        os.makedirs("static")
 
     try:
         # 2. Получаем голос из базы
@@ -375,19 +379,20 @@ async def handle_text(message: types.Message):
         conn.close()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
 
-        # 3. Имена файлов и пути (всегда в static)
+        # 3. Определяем движок и расширение
         is_piper = v_id.endswith(".onnx")
         is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
         ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
+        
         filename = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join("static", filename)
+        path = os.path.join("static", filename) # Пишем ТОЛЬКО в static
 
         audio_data = None
-        connector = aiohttp.TCPConnector(family=socket.AF_INET)
+        print(f"🎙 Старт генерации: {v_id} для текста: {message.text[:20]}...")
 
         # --- 4. ГЕНЕРАЦИЯ (3 НЕЙРОСЕТИ) ---
         if is_piper or is_kokoro:
-            # Выбираем URL и Токен в зависимости от сети
+            # Настройка URL и токена
             if is_piper:
                 hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
                 token = os.getenv('TOKEN_PIPER')
@@ -397,40 +402,40 @@ async def handle_text(message: types.Message):
                 token = os.getenv('HF_TOKEN')
                 params = {"text": message.text, "voice": v_id}
 
+            # Запрос к Hugging Face
+            connector = aiohttp.TCPConnector(family=socket.AF_INET)
             async with aiohttp.ClientSession(connector=connector) as session:
                 headers = {"Authorization": f"Bearer {token}"}
                 async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
                     if resp.status == 200:
                         audio_data = await resp.read()
+                        with open(path, "wb") as f:
+                            f.write(audio_data)
                     else:
-                        print(f"❌ Ошибка HF ({v_id}): {resp.status}")
+                        err_text = await resp.text()
+                        print(f"❌ Ошибка HF: {resp.status} - {err_text}")
+
         else:
             # EDGE-TTS
             import edge_tts
             communicate = edge_tts.Communicate(message.text, v_id)
             await communicate.save(path)
             if os.path.exists(path):
-                with open(path, "rb") as f:
-                    audio_data = f.read()
+                audio_data = True # Ставим метку, что файл создан
 
-        # --- 5. ОТПРАВКА КНОПКИ (ВАЖНО!) ---
-        if audio_data:
-            # Если это была нейросеть (Piper/Kokoro), записываем полученные байты в файл
-            if not os.path.exists(path):
-                with open(path, "wb") as f:
-                    f.write(audio_data)
-
+        # --- 5. ОТВЕТ ПОЛЬЗОВАТЕЛЮ ---
+        if os.path.exists(path):
             kb = InlineKeyboardBuilder()
-            # Ссылка ведет на твою страницу ожидания
+            # Важно: SITE_URL должен быть без слэша в конце (напр. https://site.render.com)
             kb.button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
             
-            await message.answer("✅ Аудио успешно создано!", reply_markup=kb.as_markup())
+            await message.answer("✅ Аудио готово! Нажми кнопку ниже для перехода к скачиванию:", reply_markup=kb.as_markup())
         else:
-            await message.answer("❌ Не удалось создать аудио. Попробуйте другой голос.")
+            await message.answer("❌ Ошибка: файл не был создан. Попробуйте сменить голос.")
 
     except Exception as e:
-        print(f"🔥 Ошибка в handle_text: {e}")
-        await message.answer(f"⚠️ Ошибка: {e}")
+        print(f"🔥 Критическая ошибка в handle_text: {e}")
+        await message.answer(f"⚠️ Произошла ошибка при генерации: {e}")
 
 # --- МОДЕЛИ ДАННЫХ (Для исправления NameError) ---
 class ChatRequest(BaseModel): message: str
