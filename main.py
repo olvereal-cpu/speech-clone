@@ -289,7 +289,7 @@ async def handle_text(message: types.Message):
         fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
-         elif is_piper:
+       elif is_piper:
             token = os.getenv('TOKEN_PIPER')
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
