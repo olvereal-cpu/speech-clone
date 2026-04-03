@@ -3,7 +3,6 @@ import uuid
 import asyncio
 import sqlite3
 import json
-import httpx 
 import edge_tts
 import google.generativeai as genai
 import re
@@ -14,9 +13,12 @@ import urllib.parse
 import urllib.request
 import logging
 import math
+import io
+import aiohttp
+import socket
 import soundfile as sf
-import mimetypes
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, Response
+from kokoro_onnx import Kokoro
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
@@ -33,18 +35,11 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from supabase import create_client, Client
 from slugify import slugify
-from urllib.parse import quote
 
-# --- КЛИЕНТЫ И API ---
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ССЫЛКА НА ТВОЙ API НА HUGGING FACE (KOKORO)
-HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
-# ТВОЯ НОВАЯ СТУДИЯ (PIPER)
-HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
-PIPER_AUTH = os.getenv("TOKEN_PIPER")
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -52,7 +47,7 @@ def slugify(text: str) -> str:
         'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
         'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
         'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-   }
+    }
     text = text.lower().strip()
     result = "".join(chars.get(c, c) for c in text)
     result = re.sub(r'[^a-z0-9]+', '-', result)
@@ -77,8 +72,7 @@ PREMIUM_KEYS = ["VIP-777", "PRO-2026", "START-99", "TEST-KEY"]
 class ModelManager:
     def __init__(self, api_key):
         self.api_key = api_key
-        # Обновлено до gemini-3.1-flash-lite-preview
-        self.target_model = 'gemini-3.1-flash-lite-preview' 
+        self.target_model = 'gemini-3.1-flash-lite-preview'
         genai.configure(api_key=self.api_key)
         self.active_model = genai.GenerativeModel(model_name=self.target_model)
 
@@ -103,7 +97,11 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_FOLDER, exist_ok=True)
 
 # --- ВСТРОЕННЫЕ ПОСТЫ ---
-BLOG_POSTS = []
+BLOG_POSTS = [
+    {
+       
+    }
+]
 
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
@@ -143,6 +141,8 @@ VOICES = {
 }
 
 
+
+
 # --- БД ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -178,59 +178,21 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # 1. Регистрация в базе
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (message.from_user.id,))
     conn.commit()
     conn.close()
 
-    # 2. Проверка подписки (если не админ)
     if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
         kb = InlineKeyboardBuilder()
         kb.button(text="📢 Подписаться на канал", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")
         kb.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
-        return await message.answer(
-            "⚠️ **Для использования бота необходимо подписаться на наш канал!**", 
-            parse_mode="Markdown", 
-            reply_markup=kb.adjust(1).as_markup()
-        )
+        return await message.answer("⚠️ Для использования бота необходимо подписаться на наш канал!", reply_markup=kb.adjust(1).as_markup())
 
-   # 3. Если подписан — выводим красивое меню выбора голосов
     kb = InlineKeyboardBuilder()
-
-    # Проходим по словарю и создаем кнопки голосов
-    for name, info in VOICES.items():
-        # ТЕКСТ: Берем красивое название из словаря (теперь это просто строка)
-        button_text = info
-        # ДАННЫЕ: В callback_data отправляем полный ключ 'name'
-        kb.button(text=button_text, callback_data=f"v:{name}")
-
-    # Сначала выравниваем кнопки голосов по 2 в ряд
-    kb.adjust(2)
-    
-    # А ТЕПЕРЬ добавляем кнопку доната отдельным рядом в самый низ
-    kb.row(types.InlineKeyboardButton(text="☕ На кофе", callback_data="buy_stars"))
-    
-    # Отправляем клавиатуру пользователю
-    # await message.answer("Выберите голос:", reply_markup=kb.as_markup())
-    
-    welcome_text = (
-        "👋 **Приветствуем в SpeechClone!**\n\n"
-        "Выберите подходящий голос для озвучки:\n"
-        "• 🎙  **Студия** — студийное звучание\n"
-        "• 🌟 **Premium** — максимально живое звучание.\n"
-        "• 🇷🇺/🇰🇿 **Стандарт** — классические голоса.\n\n"
-        "**Просто отправьте текст** после выбора голоса, и я его озвучу."
-    )
-    
-    await message.answer(welcome_text, parse_mode="Markdown", reply_markup=kb.as_markup())
-
-@dp.callback_query(F.data == "sub_check_done")
-async def sub_check_done(call: types.CallbackQuery):
-    if await check_sub(call.from_user.id):
-        await call.message.answer("✅ Спасибо за подписку! Теперь выберите голос в меню /start")
-    else:
-        await call.answer("❌ Вы еще не подписались!", show_alert=True)
+    for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
+    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
+    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
 
 # --- АДМИН-ФУНКЦИИ ---
 
@@ -282,7 +244,7 @@ async def broadcast_process(message: types.Message, state: FSMContext):
         try:
             await message.copy_to(chat_id=uid)
             ok += 1
-            await asyncio.sleep(0.05) # Защита от Flood-лимитов
+            await asyncio.sleep(0.05)
         except:
             err += 1
             
@@ -301,112 +263,111 @@ async def sub_check_done(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "buy_stars")
 async def send_invoice(call: types.CallbackQuery):
-    await bot.send_invoice(
-        call.message.chat.id, 
-        title="Поддержка", 
-        description="50 Stars", 
-        payload="stars", 
-        currency="XTR", 
-        prices=[LabeledPrice(label="Stars", amount=50)]
-    )
+    await bot.send_invoice(call.message.chat.id, title="Поддержка", description="50 Stars", payload="stars", currency="XTR", prices=[LabeledPrice(label="Stars", amount=50)])
     await call.answer()
 
 @dp.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery):
     await bot.answer_pre_checkout_query(query.id, ok=True)
 
-@dp.callback_query(F.data.startswith("v:"))
+@dp.callback_query(F.data.startswith("v_"))
 async def set_voice(call: types.CallbackQuery):
-    voice_code = call.data.replace("v:", "") 
-    
-    if voice_code not in VOICES:
-        await call.answer("Голос не найден в списке!", show_alert=True)
-        return
-
+    v_id = VOICES.get(call.data.replace("v_", ""), "ru-RU-DmitryNeural")
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        'INSERT INTO users (user_id, voice) VALUES (?, ?) '
-        'ON CONFLICT(user_id) DO UPDATE SET voice=excluded.voice', 
-        (call.from_user.id, voice_code)
-    )
+    conn.execute('INSERT OR REPLACE INTO users (user_id, voice) VALUES (?, ?)', (call.from_user.id, v_id))
     conn.commit()
     conn.close()
-
-    label = VOICES[voice_code] 
-    await call.message.answer(f"✅ Установлен голос: {label}\n\nТеперь пришлите текст для озвучки.")
+    await call.message.answer("✅ Голос установлен!")
     await call.answer()
 
-# --- ЕДИНЫЙ ОБРАБОТЧИК ТЕКСТА (ИСПРАВЛЕНО) ---
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    # 1. Базовые проверки
-    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
-        return
-
-    if len(message.text) > 2000:
-        await message.answer(f"⚠️ Текст слишком длинный ({len(message.text)} зн.). Лимит: 2000.")
-        return
-
-    if not os.path.exists("static"):
-        os.makedirs("static")
-
+    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): return
     try:
-        # 2. Получаем голос из базы
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
-        conn.close()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
-
-        # 3. Определяем движок
+        conn.close()
+        
         is_piper = v_id.endswith(".onnx")
         is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
         ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
-        
-        filename = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join("static", filename)
+        fid = f"{uuid.uuid4().hex}{ext}"
+        path = os.path.join(AUDIO_DIR, fid)
 
-        audio_data = None
-        print(f"🎙 Старт генерации: {v_id}...")
+        if is_kokoro:
+            if not kokoro:
+                await message.answer("❌ Модель Kokoro еще загружается на сервер...")
+                return
+            samples, sample_rate = kokoro.create(message.text, voice=v_id, speed=1.0, lang="en-us")
+            sf.write(path, samples, sample_rate, format='wav')
 
-        # --- 4. ГЕНЕРАЦИЯ (3 НЕЙРОСЕТИ) ---
-        if is_piper or is_kokoro:
-            if is_piper:
-                hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
-                token = os.getenv('TOKEN_PIPER')
-                params = {"text": message.text, "voice": v_id, "speed": 0.9}
-            else:
-                hf_url = "https://sercos-oleg-kokoro.hf.space/tts"
-                token = os.getenv('HF_TOKEN')
-                params = {"text": message.text, "voice": v_id}
-
-            connector = aiohttp.TCPConnector(family=socket.AF_INET)
-            async with aiohttp.ClientSession(connector=connector) as session:
+        elif is_piper:
+            token = os.getenv('TOKEN_PIPER')
+            hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
                 headers = {"Authorization": f"Bearer {token}"}
+                params = {"text": message.text, "voice": v_id, "speed": 0.9}
                 async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
                     if resp.status == 200:
-                        audio_data = await resp.read()
                         with open(path, "wb") as f:
-                            f.write(audio_data)
+                            f.write(await resp.read())
                     else:
-                        print(f"❌ Ошибка HF: {resp.status}")
-
+                        await message.answer(f"❌ Ошибка HF: {resp.status}")
+                        return
         else:
-            import edge_tts
-            communicate = edge_tts.Communicate(message.text, v_id)
-            await communicate.save(path)
+            await edge_tts.Communicate(message.text, v_id).save(path)
 
-        # --- 5. ОТВЕТ ПОЛЬЗОВАТЕЛЮ ---
         if os.path.exists(path) and os.path.getsize(path) > 0:
-            kb = InlineKeyboardBuilder()
-            kb.button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
-            await message.answer("✅ Аудио готово!", reply_markup=kb.as_markup())
+            kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={fid}")
+            await message.answer("✅ Готово!", reply_markup=kb.as_markup())
         else:
-            await message.answer("❌ Ошибка: файл не был создан.")
+            await message.answer("❌ Ошибка: файл не создан.")
 
     except Exception as e:
-        print(f"🔥 Ошибка в handle_text: {e}")
-        await message.answer(f"⚠️ Произошла ошибка: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
+
+# --- НАСТРОЙКИ TTS ---
+MODEL_PATH = "v_data/kokoro-v0_19.onnx"
+VOICES_PATH = "v_data/voices.bin"
+MODEL_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx"
+
+def ensure_model_exists():
+    """Проверяет наличие модели и скачивает её, если нужно"""
+    if not os.path.exists("v_data"):
+        os.makedirs("v_data")
+    if not os.path.exists(MODEL_PATH):
+        print("Начинаю скачивание модели (300MB). Это займет около 1-2 минут на сервере...")
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Модель успешно загружена в v_data!")
+
+# --- FASTAPI ---
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+ensure_model_exists()
+
+try:
+    kokoro = Kokoro(MODEL_PATH, VOICES_PATH)
+    print("Kokoro-TTS успешно запущена!")
+except Exception as e:
+    print(f"Ошибка загрузки TTS: {e}")
+    kokoro = None
+
+@app.get("/api/speak")
+async def speak(text: str, voice: str = "af_sky"):
+    if not kokoro:
+        return {"error": "Модель не загружена на сервере"}
+    try:
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang="en-us")
+        buffer = io.BytesIO()
+        sf.write(buffer, samples, sample_rate, format='wav')
+        buffer.seek(0)
+        return StreamingResponse(buffer, media_type="audio/wav")
+    except Exception as e:
+        return {"error": str(e)}
 
 # --- МОДЕЛИ ДАННЫХ ---
 class ChatRequest(BaseModel): message: str
@@ -417,48 +378,14 @@ class AdminGenRequest(BaseModel):
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
 
-# --- FASTAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
+# --- МАРШРУТЫ САЙТА ---
 
-@app.post("/api/generate")
-async def generate_audio_universal(request: Request):
-    data = await request.json()
-    text = data.get("text")
-    voice = data.get("voice", "ru-RU-SvetlanaNeural")
-    
-    if not text: return JSONResponse(status_code=400, content={"detail": "Нет текста"})
-
-    file_name = f"{uuid.uuid4().hex}.{'wav' if (voice.endswith('.onnx') or voice.startswith(('af_', 'am_'))) else 'mp3'}"
-    file_path = os.path.join("static", file_name)
-
-    try:
-        async with httpx.AsyncClient() as client:
-            if voice.endswith(".onnx") or voice.startswith(("af_", "am_")):
-                is_p = voice.endswith(".onnx")
-                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_p else "https://sercos-oleg-kokoro.hf.space/tts"
-                t = os.getenv('TOKEN_PIPER' if is_p else 'HF_TOKEN')
-                resp = await client.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {t}"}, timeout=120.0)
-                if resp.status_code == 200:
-                    with open(file_path, "wb") as f: f.write(resp.content)
-                else: return JSONResponse(status_code=500, content={"detail": "HF Error"})
-            else:
-                import edge_tts
-                await edge_tts.Communicate(text, voice).save(file_path)
-
-        return {"audio_url": f"/wait-download?file={file_name}"}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
         res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
         all_posts = res.data if res.data else []
         
-        # ИСПРАВЛЕНО: Явное указание аргументов
         return templates.TemplateResponse(
             request=request, 
             name="index.html", 
@@ -471,6 +398,7 @@ async def home(request: Request):
             name="index.html", 
             context={"posts": []}
         )
+
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
@@ -488,7 +416,6 @@ async def blog_list(request: Request, page: int = 1):
         total_posts = res.count if res.count else 0
         total_pages = math.ceil(total_posts / limit) if total_posts > 0 else 1
         
-        # ИСПРАВЛЕНО: Убран "request" из словаря и вынесен в аргументы
         return templates.TemplateResponse(
             request=request,
             name="blog_index.html", 
@@ -522,14 +449,13 @@ async def read_post(request: Request, slug: str):
             
         post = res.data[0]
         
-        # ИСПРАВЛЕНО: Правильный формат вызова для одиночной статьи
         return templates.TemplateResponse(
             request=request,
             name="blog_index.html", 
             context={
                 "posts": [post],
                 "is_single": True,
-                "current_page": 1, # Добавил, чтобы шаблон не ругался на отсутствие переменной
+                "current_page": 1,
                 "total_pages": 1
             }
         )
@@ -540,14 +466,11 @@ async def read_post(request: Request, slug: str):
 @app.get("/sitemap.xml")
 async def get_sitemap():
     try:
-        # 1. Получаем данные из Supabase
         response = supabase.table("posts").select("slug").execute()
         posts = response.data
         
-        # 2. ПРОПИШИ СВОЙ РЕАЛЬНЫЙ ДОМЕН ЗДЕСЬ (БЕЗ СЛЭША В КОНЦЕ)
         base_url = "https://speechclone.online" 
 
-        # 3. Сборка XML
         xml_lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -557,7 +480,6 @@ async def get_sitemap():
         for post in posts:
             slug = post.get('slug')
             if slug:
-                # Формируем полную ссылку на статью
                 xml_lines.append(f'<url><loc>{base_url}/blog/{slug}</loc><priority>0.8</priority></url>')
 
         xml_lines.append('</urlset>')
@@ -566,23 +488,19 @@ async def get_sitemap():
 
     except Exception as e:
         print(f"🚨 Ошибка: {e}")
-        # Если база не отвечает, вернем хотя бы главную страницу, чтобы не было ошибки 500
         return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
 
-# --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
     req: AdminGenRequest, 
     x_secret_key: str = Header(None)
 ):
-    # 1. АВТОРИЗАЦИЯ
     MY_SECRET = "Barakuda"
     if x_secret_key != MY_SECRET:
         print(f"🚫 Попытка несанкционированного доступа!")
         raise HTTPException(status_code=403, detail="Доступ запрещен")
         
     try:
-        # --- 0. ЛОГИКА АВТОПИЛОТА: ГЕНЕРАТОР УНИКАЛЬНЫХ СМЫСЛОВ ---
         target_topic = req.message.strip()
 
         if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
@@ -613,7 +531,6 @@ async def api_admin_gen(
 
         print(f"📝 Тема: {target_topic}")
 
-        # --- 1. ФОРМИРОВАНИЕ ГИБРИДНОГО ПРОМПТА (ПОЛНАЯ ВЕРСИЯ) ---
         prompt = f"""
         Напиши экспертную, глубокую и человечную статью на тему: {target_topic}.
 
@@ -652,7 +569,6 @@ async def api_admin_gen(
         }}
         """
 
-        # --- 2. ГЕНЕРАЦИЯ И ПАРСИНГ ---
         raw_res = await mm.generate(prompt)
         match = re.search(r'\{.*\}', raw_res, re.DOTALL)
         if match:
@@ -660,7 +576,6 @@ async def api_admin_gen(
         else:
             raise Exception("Ошибка формата JSON")
 
-        # --- 3. РАБОТА С ИЗОБРАЖЕНИЕМ (PEXELS) ---
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
         raw_keywords = data.get('photo_keywords', 'abstract future').lower()
         forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'screen', 'keyboard', 'typing']
@@ -681,10 +596,8 @@ async def api_admin_gen(
         except Exception as e:
             print(f"🚨 Ошибка Pexels: {e}")
 
-        # --- 4. СОХРАНЕНИЕ В SUPABASE (ИСПРАВЛЕННЫЙ SLUG + ПРОВЕРКА ТЕКСТА) ---
         final_title = data.get("title", target_topic)
         
-        # Интегрируем твой транслит прямо сюда
         def internal_slugify(text):
             chars = {
                 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
@@ -693,40 +606,31 @@ async def api_admin_gen(
                 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
             }
             text = text.lower().strip()
-            # Сначала транслит букв
             result = "".join(chars.get(c, c) for c in text)
-            # Потом замена всего лишнего на дефисы
             result = re.sub(r'[^a-z0-9]+', '-', result)
             return result.strip('-')
 
         slug_name = internal_slugify(final_title)
 
-        # Если вдруг слаг пустой — страховка
         if not slug_name:
             slug_name = f"post-{random.randint(1000, 9999)}"
 
-        # --- ЗАЩИТА ОТ ПУСТОГО КОНТЕНТА ---
-        # Проверяем разные ключи, которые может выдать ИИ
         final_content = data.get('content') or data.get('text') or data.get('article')
         
-        # Если в JSON пусто, берем сырой ответ raw_res (fallback)
         if not final_content:
             print("⚠️ Контент в JSON не найден, использую сырой текст")
             final_content = raw_res if 'raw_res' in locals() else "Текст не был сгенерирован"
 
-        # Если excerpt пустой, создаем его из начала контента
         final_excerpt = data.get('excerpt', '')
         if not final_excerpt and final_content:
-             # Убираем теги для анонса (если функция clean_html доступна)
              final_excerpt = final_content[:160].replace('<p>', '').replace('</p>', '') + "..."
 
-        # Вставляем данные
         res = supabase.table("posts").insert({
             "title": final_title,
             "slug": slug_name,
             "image_url": img_url,
             "excerpt": final_excerpt,
-            "content": final_content  # Теперь здесь точно не будет пусто
+            "content": final_content 
         }).execute()
 
         print(f"🚀 Статья опубликована: {final_title} | SLUG: {slug_name}")
@@ -742,15 +646,13 @@ async def api_admin_gen(
     except Exception as e:
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/posts")
 async def get_posts(page: int = 1, limit: int = 6):
     try:
-        # Считаем диапазон для Supabase
         start = (page - 1) * limit
         end = start + limit - 1
 
-        # Запрос: берем данные + общее количество (count)
-        # Сортируем: самые свежие (desc=True) сверху
         res = supabase.table("posts") \
             .select("*", count="exact") \
             .order("created_at", desc=True) \
@@ -769,8 +671,6 @@ async def get_posts(page: int = 1, limit: int = 6):
     except Exception as e:
         return {"error": str(e)}
 
-# --- ОСТАЛЬНЫЕ РОУТЫ (БЕЗ ИЗМЕНЕНИЙ) ---
-
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
     return templates.TemplateResponse(request=request, name="premium.html")
@@ -780,20 +680,16 @@ async def about_page(request: Request):
     return templates.TemplateResponse(request=request, name="about.html")
 
 @app.get("/guide", response_class=HTMLResponse)
-async def about_page(request: Request):
+async def guide_page(request: Request):
     return templates.TemplateResponse(request=request, name="guide.html")
 
 @app.get("/privacy", response_class=HTMLResponse)
-async def about_page(request: Request):
+async def privacy_page(request: Request):
     return templates.TemplateResponse(request=request, name="privacy.html")
 
 @app.get("/disclaimer", response_class=HTMLResponse)
-async def about_page(request: Request):
+async def disclaimer_page(request: Request):
     return templates.TemplateResponse(request=request, name="disclaimer.html")
-
-@app.get("/guide", response_class=HTMLResponse)
-async def about_page(request: Request):
-    return templates.TemplateResponse(request=request, name="guide.html")
 
 @app.get("/admin/generate", response_class=HTMLResponse)
 async def admin_gen_page(request: Request):
@@ -811,7 +707,9 @@ async def wait_page(request: Request, file: str):
 @app.get("/download")
 async def download_file(file: str):
     path = os.path.join(AUDIO_DIR, file)
-    return FileResponse(path=path, filename="speechclone.mp3") if os.path.exists(path) else HTMLResponse("404")
+    # Задаем расширение файла на лету, чтобы скачанные wav не сохранялись как mp3
+    ext = os.path.splitext(file)[1]
+    return FileResponse(path=path, filename=f"speechclone{ext}") if os.path.exists(path) else HTMLResponse("404")
 
 @app.post("/chat")
 async def chat_api(req: ChatRequest):
@@ -821,36 +719,38 @@ async def chat_api(req: ChatRequest):
 @app.post("/api/generate")
 async def api_generate_web(r: TTSRequest):
     try:
-        fid = f"{uuid.uuid4()}.mp3"
+        is_piper = r.voice.endswith(".onnx")
+        is_kokoro = r.voice.startswith(("af_", "am_", "bf_", "bm_"))
+        ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
+        fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
-        
-        # 1. Проверяем, если это Piper (студийные голоса с расширением .onnx)
-        if r.voice.endswith(".onnx"):
-            # Запрос к Piper (обычно через GET с параметрами)
-            resp = requests.get(HF_PIPER_URL, params={"text": r.text, "voice": r.voice}, timeout=45)
-            if resp.status_code == 200:
-                with open(path, "wb") as f: f.write(resp.content)
-            else:
-                return JSONResponse(status_code=500, content={"detail": "Ошибка Piper"})
 
-        # 2. Проверяем, если это Kokoro (премиум префиксы)
-        elif any(p in r.voice for p in ["af_", "am_", "bf_", "bm_"]):
-            resp = requests.post(HF_KOKORO_URL, json={"text": r.text, "voice": r.voice}, timeout=60)
-            if resp.status_code == 200:
-                with open(path, "wb") as f: f.write(resp.content)
-            else:
-                return JSONResponse(status_code=500, content={"detail": "Ошибка Kokoro"})
-
-        # 3. Во всех остальных случаях — Edge TTS
+        if is_kokoro and kokoro:
+            samples, sample_rate = kokoro.create(r.text, voice=r.voice, speed=1.0, lang="en-us")
+            sf.write(path, samples, sample_rate, format='wav')
+        elif is_piper:
+            token = os.getenv('TOKEN_PIPER')
+            hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
+                headers = {"Authorization": f"Bearer {token}"}
+                params = {"text": r.text, "voice": r.voice, "speed": 0.9}
+                async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
+                    if resp.status == 200:
+                        with open(path, "wb") as f:
+                            f.write(await resp.read())
+                    else:
+                        return JSONResponse(status_code=500, content={"detail": f"HF Error: {resp.status}"})
         else:
             rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
             await edge_tts.Communicate(r.text, r.voice, rate=rates.get(r.mode, "+0%")).save(path)
-            
-        return {"audio_url": f"/wait-download?file={fid}"}
 
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            return {"audio_url": f"/wait-download?file={fid}"}
+        else:
+            return JSONResponse(status_code=500, content={"detail": "Файл не создан"})
+            
     except Exception as e:
-        print(f"Ошибка: {e}")
-        return JSONResponse(status_code=500, content={"detail": "Техническая ошибка"})
+        return JSONResponse(status_code=500, content={"detail": str(e)})
         
 @app.on_event("startup")
 async def startup_event():
@@ -860,34 +760,4 @@ async def startup_event():
     conn.commit(); conn.close()
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(dp.start_polling(bot))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
