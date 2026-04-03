@@ -354,20 +354,22 @@ class AdminGenRequest(BaseModel):
 # --- МАРШРУТЫ САЙТА ---
 @app.post("/api/generate")
 async def generate_audio_universal(request: Request):
-    data = await request.json()
-    text = data.get("text")
-    voice = data.get("voice", "ru-RU-DmitryNeural")
-    
-    if not text: return JSONResponse(status_code=400, content={"detail": "Нет текста"})
-
-    # Определяем расширение и путь (используем AUDIO_DIR для надежности)
-    is_p = voice.endswith(".onnx")
-    is_k = voice.startswith(("af_", "am_", "bf_", "bm_"))
-    ext = "wav" if (is_p or is_k) else "mp3"
-    fid = f"{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join(AUDIO_DIR, fid)
-
     try:
+        data = await request.json()
+        text = data.get("text")
+        voice = data.get("voice", "ru-RU-DmitryNeural")
+        mode = data.get("mode", "natural") # Добавили mode для Edge
+        
+        if not text: 
+            return {"success": False, "error": "Нет текста"}
+
+        # Определяем расширение и путь
+        is_p = voice.endswith(".onnx")
+        is_k = voice.startswith(("af_", "am_", "bf_", "bm_"))
+        ext = "wav" if (is_p or is_k) else "mp3"
+        fid = f"{uuid.uuid4().hex}.{ext}"
+        file_path = os.path.join(AUDIO_DIR, fid)
+
         async with aiohttp.ClientSession() as session:
             if is_p or is_k:
                 # Выбираем URL и Токен
@@ -376,24 +378,29 @@ async def generate_audio_universal(request: Request):
                 
                 async with session.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {token}"}, timeout=120) as resp:
                     if resp.status == 200:
-                        with open(file_path, "wb") as f: f.write(await resp.read())
-                    else: return JSONResponse(status_code=500, content={"detail": f"HF Error: {resp.status}"})
+                        with open(file_path, "wb") as f: 
+                            f.write(await resp.read())
+                    else: 
+                        return {"success": False, "error": f"HF Error: {resp.status}"}
             else:
                 import edge_tts
-                await edge_tts.Communicate(text, voice).save(file_path)
+                # Добавили скорость (mode), раз она есть в JS
+                rates = {"natural": "+0%", "slow": "-20%", "fast": "+20%"}
+                await edge_tts.Communicate(text, voice, rate=rates.get(mode, "+0%")).save(file_path)
 
-        # ПРОВЕРКА И ОТВЕТ
+        # ПРОВЕРКА И ОТВЕТ (Теперь со всеми полями для JS)
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             return {
-                "audio_url": f"/static/audio/{fid}",   # Прямой путь для плеера
-                "download_url": f"/wait-download?file={fid}" # Для страницы скачивания
+                "success": True, 
+                "audio_url": f"/static/audio/{fid}",   # Для плеера
+                "fid": fid                             # Для кнопки скачивания
             }
         else:
-            return JSONResponse(status_code=500, content={"detail": "Файл не создан"})
+            return {"success": False, "error": "Файл не создан"}
 
     except Exception as e:
         print(f"SITE ERROR: {e}")
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", response_class=HTMLResponse)
