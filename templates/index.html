@@ -218,44 +218,65 @@ async function sendChat() {
 
 async function generateAudio() {
     const btn = document.getElementById('gen-btn');
-    const text = document.getElementById('text-input').value;
-    const voice = document.getElementById('voice-select').value;
-    const mode = document.getElementById('mode-select').value;
+    const textInput = document.getElementById('text-input');
+    const voiceSelect = document.getElementById('voice-select');
+    const modeSelect = document.getElementById('mode-select');
 
-    if (!text) { alert("Бро, введи текст!"); return; }
+    // Проверяем наличие элементов, чтобы скрипт не падал
+    if (!textInput || !voiceSelect) return;
 
+    const text = textInput.value.trim();
+    const voice = voiceSelect.value;
+    const mode = modeSelect ? modeSelect.value : "natural";
+
+    if (!text) { 
+        alert("Бро, введи текст!"); 
+        return; 
+    }
+
+    // Блокируем кнопку на время работы
     btn.innerText = "ГЕНЕРАЦИЯ...";
     btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
-        const response = await fetch('/generate', {
+        const response = await fetch('/api/generate', { // Убедись, что путь /api/generate
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({text, voice, mode})
         });
+
         const data = await response.json();
         
         if (data.success && data.audio_url) {
             const player = document.getElementById('player');
-            
-            // Плеер поет (получает прямой путь к файлу)
-            player.src = data.audio_url;
-            document.getElementById('result-audio').classList.remove('hidden');
-            player.play();
+            const resBox = document.getElementById('result-audio');
+            const downloadBtn = document.getElementById('download-redirect-btn');
 
-            // Кнопка под плеером теперь ведет на страницу ОЖИДАНИЯ
-            document.getElementById('download-redirect-btn').onclick = () => {
-                // Переходим на страницу с таймером 30 секунд
-                window.location.href = `/wait-download?file=${data.fid}`;
-            };
+            // 1. Оживляем плеер прямым файлом
+            player.src = data.audio_url + "?t=" + new Date().getTime();
+            resBox.classList.remove('hidden');
+            player.load();
+            player.play().catch(e => console.log("Автоплей заблокирован браузером"));
 
+            // 2. Кнопка под плеером ведет на страницу ожидания (30 сек)
+            if (downloadBtn) {
+                downloadBtn.onclick = () => {
+                    window.location.href = `/wait-download?file=${data.fid}`;
+                };
+            }
+
+        } else { 
+            alert("Ошибка сервера: " + (data.error || "Неизвестная ошибка")); 
         }
-
-        } else { alert("Ошибка сервера: " + (data.error || "Неизвестная ошибка")); }
-    } catch (e) { alert("Ошибка связи"); }
-    finally {
+    } catch (e) { 
+        console.error(e);
+        alert("Ошибка связи с сервером"); 
+    } finally {
+        // ОБЯЗАТЕЛЬНО возвращаем кнопку в рабочее состояние
         btn.innerText = "ОЗВУЧИТЬ ТЕКСТ";
         btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
 
