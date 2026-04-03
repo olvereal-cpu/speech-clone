@@ -301,7 +301,14 @@ async def sub_check_done(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "buy_stars")
 async def send_invoice(call: types.CallbackQuery):
-    await bot.send_invoice(call.message.chat.id, title="Поддержка", description="50 Stars", payload="stars", currency="XTR", prices=[LabeledPrice(label="Stars", amount=50)])
+    await bot.send_invoice(
+        call.message.chat.id, 
+        title="Поддержка", 
+        description="50 Stars", 
+        payload="stars", 
+        currency="XTR", 
+        prices=[LabeledPrice(label="Stars", amount=50)]
+    )
     await call.answer()
 
 @dp.pre_checkout_query()
@@ -310,17 +317,12 @@ async def pre_checkout(query: PreCheckoutQuery):
 
 @dp.callback_query(F.data.startswith("v:"))
 async def set_voice(call: types.CallbackQuery):
-    # 1. Извлекаем полное имя (например, 'ru_RU-ruslan-medium.onnx')
-    # Используем .replace("v:", ""), как у тебя и было
     voice_code = call.data.replace("v:", "") 
     
-    # 2. Проверяем, есть ли такой код в нашем новом словаре VOICES
     if voice_code not in VOICES:
         await call.answer("Голос не найден в списке!", show_alert=True)
         return
 
-    # 3. Сохраняем в базу данных (SQLite)
-    # Здесь всё отлично, сохраняем полное имя файла
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -331,36 +333,14 @@ async def set_voice(call: types.CallbackQuery):
     conn.commit()
     conn.close()
 
-    # 4. ОТВЕЧАЕМ ПОЛЬЗОВАТЕЛЮ (ИСПРАВЛЕНО)
-    # ТАК КАК МЫ УБРАЛИ ["label"], берем значение напрямую из VOICES[voice_code]
     label = VOICES[voice_code] 
-    
     await call.message.answer(f"✅ Установлен голос: {label}\n\nТеперь пришлите текст для озвучки.")
-    
-    # Убираем "часики" с кнопки
     await call.answer()
 
-@dp.message() 
-async def handle_text(message: types.Message, state: FSMContext):
-    # --- ВОТ СЮДА ВСТАВЛЯЕМ ПРОВЕРКУ (В САМОЕ НАЧАЛО) ---
-    if message.text and len(message.text) > 2000:
-        await message.answer(
-            f"⚠️ Слишком длинный текст!\n"
-            f"Ваш текст: {len(message.text)} знаков.\n"
-            f"Лимит: 2000 знаков. Пожалуйста, сократите его."
-        )
-        return
-    # --- КОНЕЦ ПРОВЕРКИ ---
-
-    # 2. Дальше у тебя идет логика получения голоса из базы
-    user_id = message.from_user.id
-    # (твой код запроса к базе SQLite...)
-
-    # 3. Дальше идет отправка запроса на Hugging Face
-    # (твой код генерации аудио...)
+# --- ЕДИНЫЙ ОБРАБОТЧИК ТЕКСТА (ИСПРАВЛЕНО) ---
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    # 1. Базовые проверки (Команды, подписка, лимит)
+    # 1. Базовые проверки
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
         return
 
@@ -368,7 +348,6 @@ async def handle_text(message: types.Message):
         await message.answer(f"⚠️ Текст слишком длинный ({len(message.text)} зн.). Лимит: 2000.")
         return
 
-    # Гарантируем наличие папки для файлов
     if not os.path.exists("static"):
         os.makedirs("static")
 
@@ -379,20 +358,19 @@ async def handle_text(message: types.Message):
         conn.close()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
 
-        # 3. Определяем движок и расширение
+        # 3. Определяем движок
         is_piper = v_id.endswith(".onnx")
         is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
         ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
         
         filename = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join("static", filename) # Пишем ТОЛЬКО в static
+        path = os.path.join("static", filename)
 
         audio_data = None
-        print(f"🎙 Старт генерации: {v_id} для текста: {message.text[:20]}...")
+        print(f"🎙 Старт генерации: {v_id}...")
 
         # --- 4. ГЕНЕРАЦИЯ (3 НЕЙРОСЕТИ) ---
         if is_piper or is_kokoro:
-            # Настройка URL и токена
             if is_piper:
                 hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
                 token = os.getenv('TOKEN_PIPER')
@@ -402,7 +380,6 @@ async def handle_text(message: types.Message):
                 token = os.getenv('HF_TOKEN')
                 params = {"text": message.text, "voice": v_id}
 
-            # Запрос к Hugging Face
             connector = aiohttp.TCPConnector(family=socket.AF_INET)
             async with aiohttp.ClientSession(connector=connector) as session:
                 headers = {"Authorization": f"Bearer {token}"}
@@ -412,32 +389,26 @@ async def handle_text(message: types.Message):
                         with open(path, "wb") as f:
                             f.write(audio_data)
                     else:
-                        err_text = await resp.text()
-                        print(f"❌ Ошибка HF: {resp.status} - {err_text}")
+                        print(f"❌ Ошибка HF: {resp.status}")
 
         else:
-            # EDGE-TTS
             import edge_tts
             communicate = edge_tts.Communicate(message.text, v_id)
             await communicate.save(path)
-            if os.path.exists(path):
-                audio_data = True # Ставим метку, что файл создан
 
         # --- 5. ОТВЕТ ПОЛЬЗОВАТЕЛЮ ---
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.getsize(path) > 0:
             kb = InlineKeyboardBuilder()
-            # Важно: SITE_URL должен быть без слэша в конце (напр. https://site.render.com)
             kb.button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
-            
-            await message.answer("✅ Аудио готово! Нажми кнопку ниже для перехода к скачиванию:", reply_markup=kb.as_markup())
+            await message.answer("✅ Аудио готово!", reply_markup=kb.as_markup())
         else:
-            await message.answer("❌ Ошибка: файл не был создан. Попробуйте сменить голос.")
+            await message.answer("❌ Ошибка: файл не был создан.")
 
     except Exception as e:
-        print(f"🔥 Критическая ошибка в handle_text: {e}")
-        await message.answer(f"⚠️ Произошла ошибка при генерации: {e}")
+        print(f"🔥 Ошибка в handle_text: {e}")
+        await message.answer(f"⚠️ Произошла ошибка: {e}")
 
-# --- МОДЕЛИ ДАННЫХ (Для исправления NameError) ---
+# --- МОДЕЛИ ДАННЫХ ---
 class ChatRequest(BaseModel): message: str
 class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
 class KeyCheck(BaseModel): key: str
@@ -446,9 +417,7 @@ class AdminGenRequest(BaseModel):
     category: Optional[str] = "Технологии"
     color: Optional[str] = "blue"
 
-
-
-# --- FASTAPI (БЕЗ ОТСТУПОВ) ---
+# --- FASTAPI ---
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
@@ -461,17 +430,16 @@ async def generate_audio_universal(request: Request):
     
     if not text: return JSONResponse(status_code=400, content={"detail": "Нет текста"})
 
-    # Имя файла без лишних префиксов для wait-download
-    file_name = f"{uuid.uuid4().hex}.{'wav' if voice.endswith('.onnx') else 'mp3'}"
+    file_name = f"{uuid.uuid4().hex}.{'wav' if (voice.endswith('.onnx') or voice.startswith(('af_', 'am_'))) else 'mp3'}"
     file_path = os.path.join("static", file_name)
 
     try:
         async with httpx.AsyncClient() as client:
             if voice.endswith(".onnx") or voice.startswith(("af_", "am_")):
-                is_piper = voice.endswith(".onnx")
-                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_piper else "https://sercos-oleg-kokoro.hf.space/tts"
-                token = os.getenv('TOKEN_PIPER' if is_piper else 'HF_TOKEN')
-                resp = await client.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {token}"}, timeout=120.0)
+                is_p = voice.endswith(".onnx")
+                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_p else "https://sercos-oleg-kokoro.hf.space/tts"
+                t = os.getenv('TOKEN_PIPER' if is_p else 'HF_TOKEN')
+                resp = await client.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {t}"}, timeout=120.0)
                 if resp.status_code == 200:
                     with open(file_path, "wb") as f: f.write(resp.content)
                 else: return JSONResponse(status_code=500, content={"detail": "HF Error"})
@@ -479,12 +447,10 @@ async def generate_audio_universal(request: Request):
                 import edge_tts
                 await edge_tts.Communicate(text, voice).save(file_path)
 
-        # ПЕРЕНАПРАВЛЕНИЕ НА СТРАНИЦУ ОЖИДАНИЯ
         return {"audio_url": f"/wait-download?file={file_name}"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
-# Монтируем статику
 app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
