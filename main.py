@@ -98,41 +98,41 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_FOLDER, exist_ok=True)
 
 
-# --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
+# --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ОПТИМИЗИРОВАНО ДЛЯ КНОПОК БОТА) ---
 VOICES = {
-    # --- СТУДИЙНЫЕ  ---
-    "kk_KZ-issai-high.onnx": "🎙 🇰🇿 ISSAI (ВЫСОКОЕ КАЧЕСТВО)",
-    "kk_KZ-raya-x_low.onnx": "🎙 🇰🇿 РАЯ (БЫСТРЫЙ)",
-    "kk_KZ-iseke-x_low.onnx": "🎙 🇰🇿 ИСЕКЕ (БЫСТРЫЙ)",
-    "ru_RU-denis-medium.onnx": "🎙 ДЕНИС (МУЖСКОЙ)",
-    "ru_RU-dmitri-medium.onnx": "🎙 ДМИТРИЙ (МУЖСКОЙ)",
-    "ru_RU-irina-medium.onnx": "🎙 ИРИНА (ЖЕНСКИЙ)",
-    "ru_RU-ruslan-medium.onnx": "🎙 РУСЛАН (МУЖСКОЙ)",
-    "ru_RU-tatyana-medium.onnx": "🎙 ТАТЬЯНА (ЖЕНСКИЙ)",
-    "ru_RU-victoria-medium.onnx": "🎙 ВИКТОРИЯ (ЖЕНСКИЙ)",
+    # --- СТУДИЙНЫЕ (PIPER) ---
+    "kk_KZ-issai-high.onnx": "🎙 KZ | ISSAI (HQ)",
+    "kk_KZ-raya-x_low.onnx": "🎙 KZ | РАЯ (Fast)",
+    "kk_KZ-iseke-x_low.onnx": "🎙 KZ | ИСЕКЕ (Fast)",
+    "ru_RU-denis-medium.onnx": "🎙 RU | ДЕНИС",
+    "ru_RU-dmitri-medium.onnx": "🎙 RU | ДМИТРИЙ",
+    "ru_RU-irina-medium.onnx": "🎙 RU | ИРИНА",
+    "ru_RU-ruslan-medium.onnx": "🎙 RU | РУСЛАН",
+    "ru_RU-tatyana-medium.onnx": "🎙 RU | ТАТЬЯНА",
+    "ru_RU-victoria-medium.onnx": "🎙 RU | ВИКТОРИЯ",
     
-    # --- PREMIUM  ---
-    "af_sky": "🌟 SKY (PREMIUM)",
-    "af_bella": "🌟 BELLA (PREMIUM)",
-    "af_nicole": "🌟 NICOLE (PREMIUM)",
-    "am_adam": "🌟 ADAM (PREMIUM)",
-    "am_michael": "🌟 MICHAEL (PREMIUM)",
+    # --- PREMIUM (KOKORO) ---
+    "af_sky": "🌟 SKY (PREM)",
+    "af_bella": "🌟 BELLA (PREM)",
+    "af_nicole": "🌟 NICOLE (PREM)",
+    "am_adam": "🌟 ADAM (PREM)",
+    "am_michael": "🌟 MICHAEL (PREM)",
     "bf_emma": "🌟 EMMA (UK)",
     "bm_george": "🌟 GEORGE (UK)",
 
-    # --- СТАНДАРТ  ---
-    "ru-RU-SvetlanaNeural": "💃 СВЕТЛАНА (RU)",
-    "ru-RU-DmitryNeural": "🤵 ДМИТРИЙ (RU)",
-    "kk-KZ-AigulNeural": "💃 АЙГУЛЬ (KZ)",
-    "kk-KZ-DauletNeural": "🤵 ДӘУЛЕТ (KZ)",
-    "uk-UA-PolinaNeural": "💃 ПОЛІНА (UA)",
-    "uk-UA-OstapNeural": "🤵 ОСТАП (UA)",
-    "en-US-JennyNeural": "🇺🇸 JENNY (US)",
-    "tr-TR-EmelNeural": "🇹🇷 EMEL (TR)",
-    "de-DE-KatjaNeural": "🇩🇪 KATJA (DE)",
-    "fr-FR-DeniseNeural": "🇫🇷 DENISE (FR)",
-    "es-ES-ElviraNeural": "🇪🇸 ELVIRA (ES)",
-    "pl-PL-ZofiaNeural": "🇵🇱 ZOFIA (PL)"
+    # --- СТАНДАРТ (EDGE) ---
+    "ru-RU-SvetlanaNeural": "🇷🇺 СВЕТЛАНА",
+    "ru-RU-DmitryNeural": "🇷🇺 ДМИТРИЙ",
+    "kk-KZ-AigulNeural": "🇰🇿 АЙГУЛЬ",
+    "kk-KZ-DauletNeural": "🇰🇿 ДӘУЛЕТ",
+    "uk-UA-PolinaNeural": "🇺🇦 ПОЛІНА",
+    "uk-UA-OstapNeural": "🇺🇦 ОСТАП",
+    "en-US-JennyNeural": "🇺🇸 JENNY",
+    "tr-TR-EmelNeural": "🇹🇷 EMEL",
+    "de-DE-KatjaNeural": "🇩🇪 KATJA",
+    "fr-FR-DeniseNeural": "🇫🇷 DENISE",
+    "es-ES-ElviraNeural": "🇪🇸 ELVIRA",
+    "pl-PL-ZofiaNeural": "🇵🇱 ZOFIA"
 }
 
 
@@ -293,13 +293,17 @@ async def handle_text(message: types.Message):
         fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
-        # --- НАЧАЛО БЛОКА ГЕНЕРАЦИИ (БЕЗ ОШИБОК ОТСТУПА) ---
+        # --- НАЧАЛО БЛОКА ГЕНЕРАЦИИ ---
         if is_kokoro:
-            # Сначала проверяем Kokoro
+            # Kokoro: используем HF_TOKEN и метод POST
             hf_kokoro_url = "https://sercos-my-tts-api.hf.space/generate"
+            hf_token = os.getenv('HF_TOKEN') # Твой секрет для Kokoro
+            headers = {"Authorization": f"Bearer {hf_token}"}
+            
             async with aiohttp.ClientSession() as session:
+                # Вчерашние логи показывали GET для /generate, но если ты настроил POST:
                 payload = {"text": message.text, "voice": v_id, "speed": 1.0}
-                async with session.post(hf_kokoro_url, json=payload, timeout=90) as resp:
+                async with session.post(hf_kokoro_url, json=payload, headers=headers, timeout=90) as resp:
                     if resp.status == 200:
                         with open(path, "wb") as f:
                             f.write(await resp.read())
@@ -308,12 +312,13 @@ async def handle_text(message: types.Message):
                         return
 
         elif is_piper:
-            # Затем Piper (теперь отступ верный)
-            token = os.getenv('TOKEN_PIPER')
+            # Piper: используем TOKEN_PIPER и метод GET (как в успешном логе)
+            token_piper = os.getenv('TOKEN_PIPER')
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
+            headers = {"Authorization": f"Bearer {token_piper}"}
+            params = {"text": message.text, "voice": v_id, "speed": 0.9}
+            
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
-                headers = {"Authorization": f"Bearer {token}"}
-                params = {"text": message.text, "voice": v_id, "speed": 0.9}
                 async with session.get(hf_url, params=params, headers=headers, timeout=120) as resp:
                     if resp.status == 200:
                         with open(path, "wb") as f:
@@ -322,7 +327,7 @@ async def handle_text(message: types.Message):
                         await message.answer(f"❌ Ошибка Piper HF: {resp.status}")
                         return
         else:
-            # И если не они — обычный Edge TTS
+            # Edge TTS
             await edge_tts.Communicate(message.text, v_id).save(path)
         # --- КОНЕЦ БЛОКА ГЕНЕРАЦИИ ---
 
