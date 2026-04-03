@@ -228,15 +228,36 @@ async function generateAudio() {
         if (data.audio_url) {
             const player = document.getElementById('player');
             const resBox = document.getElementById('result-audio');
-            player.src = data.audio_url + "?v=" + Date.now();
+            
+            // Исправленная ссылка (добавляем таймштамп корректно)
+            player.src = data.audio_url + (data.audio_url.includes('?') ? '&' : '?') + "v=" + Date.now();
             resBox.classList.remove('hidden');
             player.play();
-            document.getElementById('download-redirect-btn').onclick = () => window.location.href = `/wait-download?file=${data.audio_url.split('/').pop()}`;
+            
+            // Прямая ссылка без лишних сплитов
+            document.getElementById('download-redirect-btn').onclick = () => window.location.href = data.audio_url;
         } else {
-            alert("Ошибка генерации");
+            alert("Ошибка: " + (data.detail || "генерация не удалась"));
         }
     } catch (e) { alert("Ошибка соединения"); }
     finally { btn.innerText = "ОЗВУЧИТЬ ТЕКСТ"; btn.disabled = false; }
+}
+
+// Функции чата оставляем как есть
+function toggleChat() { document.getElementById('chat-window').classList.toggle('hidden'); }
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const box = document.getElementById('chat-box');
+    if (!input.value.trim()) return;
+    const text = input.value;
+    box.innerHTML += `<div class="text-right"><p class="bg-blue-600 text-white p-2 rounded-xl inline-block mb-2">${text}</p></div>`;
+    input.value = "";
+    try {
+        const res = await fetch('/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: text}) });
+        const data = await res.json();
+        box.innerHTML += `<div class="text-left"><p class="bg-gray-800 text-blue-300 p-2 rounded-xl inline-block mb-2">Бро: ${data.reply}</p></div>`;
+    } catch (e) { box.innerHTML += `<p class="text-red-500 text-center text-[10px]">Ошибка</p>`; }
+    box.scrollTop = box.scrollHeight;
 }
 </script>
 
