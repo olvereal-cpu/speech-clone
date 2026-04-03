@@ -237,18 +237,19 @@ async function generateAudio() {
         
         if (data.success && data.audio_url) {
             const player = document.getElementById('player');
+            
+            // Плеер поет (получает прямой путь к файлу)
             player.src = data.audio_url;
             document.getElementById('result-audio').classList.remove('hidden');
             player.play();
 
+            // Кнопка под плеером теперь ведет на страницу ОЖИДАНИЯ
             document.getElementById('download-redirect-btn').onclick = () => {
-                const link = document.createElement('a');
-                link.href = data.audio_url;
-                link.setAttribute('download', 'voice_speechclone.mp3');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // Переходим на страницу с таймером 30 секунд
+                window.location.href = `/wait-download?file=${data.fid}`;
             };
+
+        }
 
         } else { alert("Ошибка сервера: " + (data.error || "Неизвестная ошибка")); }
     } catch (e) { alert("Ошибка связи"); }
