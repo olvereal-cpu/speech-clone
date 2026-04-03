@@ -276,20 +276,40 @@ async def set_voice(call: types.CallbackQuery):
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): return
+    # 1. Проверка команд и подписки
+    if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
+        return
+
     try:
+        # 2. Получаем голос пользователя
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
         
+        # 3. Определяем формат и путь
         is_piper = v_id.endswith(".onnx")
         is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
         ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
         fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
-       elif is_piper:
+        # --- НАЧАЛО БЛОКА ГЕНЕРАЦИИ (БЕЗ ОШИБОК ОТСТУПА) ---
+        if is_kokoro:
+            # Сначала проверяем Kokoro
+            hf_kokoro_url = "https://sercos-my-tts-api.hf.space/generate"
+            async with aiohttp.ClientSession() as session:
+                payload = {"text": message.text, "voice": v_id, "speed": 1.0}
+                async with session.post(hf_kokoro_url, json=payload, timeout=90) as resp:
+                    if resp.status == 200:
+                        with open(path, "wb") as f:
+                            f.write(await resp.read())
+                    else:
+                        await message.answer(f"❌ Ошибка Kokoro: {resp.status}")
+                        return
+
+        elif is_piper:
+            # Затем Piper (теперь отступ верный)
             token = os.getenv('TOKEN_PIPER')
             hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
@@ -300,11 +320,14 @@ async def handle_text(message: types.Message):
                         with open(path, "wb") as f:
                             f.write(await resp.read())
                     else:
-                        await message.answer(f"❌ Ошибка HF: {resp.status}")
+                        await message.answer(f"❌ Ошибка Piper HF: {resp.status}")
                         return
         else:
+            # И если не они — обычный Edge TTS
             await edge_tts.Communicate(message.text, v_id).save(path)
+        # --- КОНЕЦ БЛОКА ГЕНЕРАЦИИ ---
 
+        # 4. Проверка результата и выдача ссылки
         if os.path.exists(path) and os.path.getsize(path) > 0:
             kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={fid}")
             await message.answer("✅ Готово!", reply_markup=kb.as_markup())
