@@ -345,15 +345,21 @@ async def handle_text(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Системная ошибка: {e}")
 
-        # 4. Проверка результата и выдача ссылки
+        # 4. Проверка результата и выдача ссылки в Telegram
         if os.path.exists(path) and os.path.getsize(path) > 0:
-            kb = InlineKeyboardBuilder().button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={fid}")
-            await message.answer("✅ Готово!", reply_markup=kb.as_markup())
+            # Ссылка для кнопки скачивания (через твой сайт)
+            download_link = f"{SITE_URL}/wait-download?file={fid}"
+            
+            kb = InlineKeyboardBuilder()
+            kb.button(text="📥 СКАЧАТЬ (30 сек)", url=download_link)
+            
+            await message.answer("✅ Аудио готово!", reply_markup=kb.as_markup())
         else:
-            await message.answer("❌ Ошибка: файл не создан.")
+            await message.answer("❌ Ошибка: файл не был создан сервером.")
 
     except Exception as e:
-        await message.answer(f"❌ Ошибка: {e}")
+        print(f"LOG ERROR: {e}") # Видим ошибку в консоли Render
+        await message.answer(f"❌ Системная ошибка: {str(e)}")
 
 # --- НАСТРОЙКИ TTS ---
 
@@ -374,7 +380,36 @@ class AdminGenRequest(BaseModel):
     color: Optional[str] = "blue"
 
 # --- МАРШРУТЫ САЙТА ---
+@app.post("/api/generate")
+async def generate_audio_universal(request: Request):
+    data = await request.json()
+    text = data.get("text")
+    voice = data.get("voice", "ru-RU-SvetlanaNeural")
+    
+    if not text: return JSONResponse(status_code=400, content={"detail": "Нет текста"})
 
+    file_name = f"{uuid.uuid4().hex}.{'wav' if (voice.endswith('.onnx') or voice.startswith(('af_', 'am_'))) else 'mp3'}"
+    file_path = os.path.join("static", file_name)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            if voice.endswith(".onnx") or voice.startswith(("af_", "am_")):
+                is_p = voice.endswith(".onnx")
+                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_p else "https://sercos-oleg-kokoro.hf.space/tts"
+                t = os.getenv('TOKEN_PIPER' if is_p else 'HF_TOKEN')
+                resp = await client.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {t}"}, timeout=120.0)
+                if resp.status_code == 200:
+                    with open(file_path, "wb") as f: f.write(resp.content)
+                else: return JSONResponse(status_code=500, content={"detail": "HF Error"})
+            else:
+                import edge_tts
+                await edge_tts.Communicate(text, voice).save(file_path)
+
+        return {"audio_url": f"/wait-download?file={file_name}"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
