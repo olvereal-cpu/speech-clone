@@ -275,64 +275,52 @@ async def set_voice(call: types.CallbackQuery):
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    # 1. Фильтр команд и проверка подписки (если ADMIN_ID и check_sub настроены)
+    # 1. Фильтр команд и проверка подписки
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
         return
 
     try:
-        # 2. Получаем v_id (техническое имя голоса) из базы данных
+        # 2. Получаем v_id из базы
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute('SELECT voice FROM users WHERE user_id = ?', (message.from_user.id,)).fetchone()
-        v_id = res[0] if res else "ru-RU-DmitryNeural" # Голос по умолчанию
+        v_id = res[0] if res else "ru-RU-DmitryNeural"
         conn.close()
         
-        # 3. Определяем тип нейронки и формат файла
+        # 3. Настройки файла
         is_piper = v_id.endswith(".onnx")
         is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
-        
-        # Расширение: .wav для студийных/премиум, .mp3 для стандартных Edge
         ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
         fid = f"{uuid.uuid4().hex}{ext}"
         path = os.path.join(AUDIO_DIR, fid)
 
         # 4. ПОСЛЕДОВАТЕЛЬНАЯ ГЕНЕРАЦИЯ
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(family=socket.AF_INET)) as session:
-            
-            # --- ВАРИАНТ 1: KOKORO PREMIUM ---
+            # --- KOKORO ---
             if is_kokoro:
-                hf_kokoro_url = "https://sercos-my-tts-api.hf.space/generate"
-                hf_token = os.getenv('HF_TOKEN')
-                headers = {"Authorization": f"Bearer {hf_token}"}
+                url = "https://sercos-my-tts-api.hf.space/generate"
+                token = os.getenv('HF_TOKEN')
                 params = {"text": message.text, "voice": v_id, "speed": 1.0}
-                
-                async with session.get(hf_kokoro_url, params=params, headers=headers, timeout=90) as resp:
+                async with session.get(url, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=90) as resp:
                     if resp.status == 200:
-                        with open(path, "wb") as f:
-                            f.write(await resp.read())
-                    else:
-                        return await message.answer(f"❌ Ошибка Kokoro: {resp.status}")
+                        with open(path, "wb") as f: f.write(await resp.read())
+                    else: return await message.answer(f"❌ Ошибка Kokoro: {resp.status}")
 
-            # --- ВАРИАНТ 2: PIPER STUDIO ---
+            # --- PIPER ---
             elif is_piper:
-                hf_piper_url = "https://sercos-oleg-studio-v2.hf.space/tts"
-                token_piper = os.getenv('TOKEN_PIPER')
-                headers = {"Authorization": f"Bearer {token_piper}"}
+                url = "https://sercos-oleg-studio-v2.hf.space/tts"
+                token = os.getenv('TOKEN_PIPER')
                 params = {"text": message.text, "voice": v_id, "speed": 0.9}
-                
-                async with session.get(hf_piper_url, params=params, headers=headers, timeout=120) as resp:
+                async with session.get(url, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=120) as resp:
                     if resp.status == 200:
-                        with open(path, "wb") as f:
-                            f.write(await resp.read())
-                    else:
-                        return await message.answer(f"❌ Ошибка Piper: {resp.status}")
+                        with open(path, "wb") as f: f.write(await resp.read())
+                    else: return await message.answer(f"❌ Ошибка Piper: {resp.status}")
 
-            # --- ВАРИАНТ 3: EDGE TTS (СТАНДАРТ) ---
+            # --- EDGE ---
             else:
                 import edge_tts
-                communicate = edge_tts.Communicate(message.text, v_id)
-                await communicate.save(path)
+                await edge_tts.Communicate(message.text, v_id).save(path)
 
-        # 5. ПРОВЕРКА РЕЗУЛЬТАТА И ОТПРАВКА
+        # 5. ПРОВЕРКА И ОТПРАВКА
         if os.path.exists(path) and os.path.getsize(path) > 0:
             kb = InlineKeyboardBuilder().button(
                 text="📥 СКАЧАТЬ (30 сек)", 
@@ -343,24 +331,8 @@ async def handle_text(message: types.Message):
             await message.answer("❌ Ошибка: файл не был создан.")
 
     except Exception as e:
-        await message.answer(f"❌ Системная ошибка: {e}")
-
-        # 4. Проверка результата и выдача ссылки в Telegram
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            # Ссылка для кнопки скачивания (через твой сайт)
-            download_link = f"{SITE_URL}/wait-download?file={fid}"
-            
-            kb = InlineKeyboardBuilder()
-            kb.button(text="📥 СКАЧАТЬ (30 сек)", url=download_link)
-            
-            await message.answer("✅ Аудио готово!", reply_markup=kb.as_markup())
-        else:
-            await message.answer("❌ Ошибка: файл не был создан сервером.")
-
-    except Exception as e:
-        print(f"LOG ERROR: {e}") # Видим ошибку в консоли Render
+        print(f"LOG ERROR: {e}")
         await message.answer(f"❌ Системная ошибка: {str(e)}")
-
 # --- НАСТРОЙКИ TTS ---
 
 
@@ -384,29 +356,43 @@ class AdminGenRequest(BaseModel):
 async def generate_audio_universal(request: Request):
     data = await request.json()
     text = data.get("text")
-    voice = data.get("voice", "ru-RU-SvetlanaNeural")
+    voice = data.get("voice", "ru-RU-DmitryNeural")
     
     if not text: return JSONResponse(status_code=400, content={"detail": "Нет текста"})
 
-    file_name = f"{uuid.uuid4().hex}.{'wav' if (voice.endswith('.onnx') or voice.startswith(('af_', 'am_'))) else 'mp3'}"
-    file_path = os.path.join("static", file_name)
+    # Определяем расширение и путь (используем AUDIO_DIR для надежности)
+    is_p = voice.endswith(".onnx")
+    is_k = voice.startswith(("af_", "am_", "bf_", "bm_"))
+    ext = "wav" if (is_p or is_k) else "mp3"
+    fid = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(AUDIO_DIR, fid)
 
     try:
-        async with httpx.AsyncClient() as client:
-            if voice.endswith(".onnx") or voice.startswith(("af_", "am_")):
-                is_p = voice.endswith(".onnx")
-                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_p else "https://sercos-oleg-kokoro.hf.space/tts"
-                t = os.getenv('TOKEN_PIPER' if is_p else 'HF_TOKEN')
-                resp = await client.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {t}"}, timeout=120.0)
-                if resp.status_code == 200:
-                    with open(file_path, "wb") as f: f.write(resp.content)
-                else: return JSONResponse(status_code=500, content={"detail": "HF Error"})
+        async with aiohttp.ClientSession() as session:
+            if is_p or is_k:
+                # Выбираем URL и Токен
+                url = "https://sercos-oleg-studio-v2.hf.space/tts" if is_p else "https://sercos-my-tts-api.hf.space/generate"
+                token = os.getenv('TOKEN_PIPER' if is_p else 'HF_TOKEN')
+                
+                async with session.get(url, params={"text": text, "voice": voice}, headers={"Authorization": f"Bearer {token}"}, timeout=120) as resp:
+                    if resp.status == 200:
+                        with open(file_path, "wb") as f: f.write(await resp.read())
+                    else: return JSONResponse(status_code=500, content={"detail": f"HF Error: {resp.status}"})
             else:
                 import edge_tts
                 await edge_tts.Communicate(text, voice).save(file_path)
 
-        return {"audio_url": f"/wait-download?file={file_name}"}
+        # ПРОВЕРКА И ОТВЕТ
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            return {
+                "audio_url": f"/static/audio/{fid}",   # Прямой путь для плеера
+                "download_url": f"/wait-download?file={fid}" # Для страницы скачивания
+            }
+        else:
+            return JSONResponse(status_code=500, content={"detail": "Файл не создан"})
+
     except Exception as e:
+        print(f"SITE ERROR: {e}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
