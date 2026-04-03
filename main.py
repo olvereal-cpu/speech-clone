@@ -585,6 +585,14 @@ async def get_sitemap():
         print(f"🚨 Ошибка: {e}")
         # Если база не отвечает, вернем хотя бы главную страницу, чтобы не было ошибки 500
         return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
+# --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
+class ChatRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
+class KeyCheck(BaseModel): key: str
+class AdminGenRequest(BaseModel): 
+    message: str
+    category: Optional[str] = "Технологии"
+    color: Optional[str] = "blue"
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
