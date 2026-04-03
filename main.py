@@ -39,7 +39,9 @@ from slugify import slugify
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
+HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
+# ТВОЯ НОВАЯ СТУДИЯ (PIPER)
+HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -96,7 +98,7 @@ DB_PATH = os.path.join(BASE_DIR, "users.db")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(BLOG_FOLDER, exist_ok=True)
 
-# --- ВСТРОЕННЫЕ ПОСТЫ ---
+
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНТЕГРАЦИЯ С ТИПАМИ) ---
 VOICES = {
     # --- СТУДИЙНЫЕ  ---
@@ -133,8 +135,6 @@ VOICES = {
     "es-ES-ElviraNeural": "🇪🇸 ELVIRA (ES)",
     "pl-PL-ZofiaNeural": "🇵🇱 ZOFIA (PL)"
 }
-
-
 
 
 # --- БД ---
