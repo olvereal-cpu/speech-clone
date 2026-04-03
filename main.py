@@ -18,7 +18,6 @@ import aiohttp
 import socket
 import soundfile as sf
 from fastapi.responses import StreamingResponse, Response
-from kokoro_onnx import Kokoro
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, Request, Form, Header, HTTPException
