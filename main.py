@@ -411,10 +411,10 @@ async def handle_text(message: types.Message):
             if os.path.exists(path):
                 with open(path, "rb") as f:
                     audio_data = f.read()
-# --- FASTAPI ---
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-templates = Jinja2Templates(directory=TEMPLATE_DIR)
+         # --- FASTAPI ---
+    app = FastAPI()
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
