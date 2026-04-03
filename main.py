@@ -411,10 +411,22 @@ async def handle_text(message: types.Message):
             if os.path.exists(path):
                 with open(path, "rb") as f:
                     audio_data = f.read()
-         # --- FASTAPI ---
-    app = FastAPI()
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-    templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+    # --- ЗДЕСЬ МЫ ЗАКРЫВАЕМ TRY ФУНКЦИИ handle_text ---
+    except Exception as e:
+        print(f"❌ Ошибка в handle_text: {e}")
+        await message.answer(f"Произошла ошибка: {e}")
+
+# --- А ВОТ ТЕПЕРЬ С САМОГО КРАЯ (БЕЗ ОТСТУПОВ) ПИШЕМ FASTAPI ---
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_methods=["*"], 
+    allow_headers=["*"]
+)
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 # --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
 class ChatRequest(BaseModel): message: str
