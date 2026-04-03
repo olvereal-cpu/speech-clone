@@ -360,12 +360,12 @@ async def handle_text(message: types.Message, state: FSMContext):
     # (твой код генерации аудио...)
 @dp.message(F.text)
 async def handle_text(message: types.Message):
-    # 1. Проверки (Админ, подписка, лимит)
+    # 1. Базовые проверки
     if message.text.startswith("/") or (message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id)): 
         return
 
     if len(message.text) > 2000:
-        await message.answer(f"⚠️ Слишком длинный текст ({len(message.text)} зн.). Лимит: 2000.")
+        await message.answer(f"⚠️ Текст слишком длинный ({len(message.text)} зн.). Лимит: 2000.")
         return
 
     try:
@@ -375,26 +375,24 @@ async def handle_text(message: types.Message):
         conn.close()
         v_id = res[0] if res else "ru-RU-DmitryNeural"
 
-        # 3. Подготовка путей (Важно: папка static)
-        is_docker = v_id.endswith(".onnx") or v_id.startswith(("af_", "am_"))
-        ext = ".wav" if is_docker else ".mp3"
-        fid = f"{uuid.uuid4().hex}"
-        filename = fid + ext
-        path = os.path.join("static", filename) # Сохраняем в static для wait-download
+        # 3. Имена файлов и пути (всегда в static)
+        is_piper = v_id.endswith(".onnx")
+        is_kokoro = v_id.startswith(("af_", "am_", "bf_", "bm_"))
+        ext = ".wav" if (is_piper or is_kokoro) else ".mp3"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        path = os.path.join("static", filename)
 
         audio_data = None
-        print(f"🎙 Попытка генерации: {v_id}") 
-        
-        # Фикс для Render
         connector = aiohttp.TCPConnector(family=socket.AF_INET)
 
-        # --- ГЕНЕРАЦИЯ (Piper, Kokoro, Edge) ---
-        if is_docker:
-            if v_id.endswith(".onnx"): # PIPER
+        # --- 4. ГЕНЕРАЦИЯ (3 НЕЙРОСЕТИ) ---
+        if is_piper or is_kokoro:
+            # Выбираем URL и Токен в зависимости от сети
+            if is_piper:
                 hf_url = "https://sercos-oleg-studio-v2.hf.space/tts"
                 token = os.getenv('TOKEN_PIPER')
                 params = {"text": message.text, "voice": v_id, "speed": 0.9}
-            else: # KOKORO
+            else:
                 hf_url = "https://sercos-oleg-kokoro.hf.space/tts"
                 token = os.getenv('HF_TOKEN')
                 params = {"text": message.text, "voice": v_id}
@@ -405,9 +403,9 @@ async def handle_text(message: types.Message):
                     if resp.status == 200:
                         audio_data = await resp.read()
                     else:
-                        print(f"❌ Ошибка HF ({resp.status})")
-
-        else: # EDGE-TTS
+                        print(f"❌ Ошибка HF ({v_id}): {resp.status}")
+        else:
+            # EDGE-TTS
             import edge_tts
             communicate = edge_tts.Communicate(message.text, v_id)
             await communicate.save(path)
@@ -415,21 +413,35 @@ async def handle_text(message: types.Message):
                 with open(path, "rb") as f:
                     audio_data = f.read()
 
-        # --- ОТПРАВКА РЕЗУЛЬТАТА ---
+        # --- 5. ОТПРАВКА КНОПКИ (ВАЖНО!) ---
         if audio_data:
+            # Если это была нейросеть (Piper/Kokoro), записываем полученные байты в файл
             if not os.path.exists(path):
-                with open(path, "wb") as f: f.write(audio_data)
-            
+                with open(path, "wb") as f:
+                    f.write(audio_data)
+
             kb = InlineKeyboardBuilder()
-            # Ссылка строго на wait-download, чтобы работало скачивание
+            # Ссылка ведет на твою страницу ожидания
             kb.button(text="📥 СКАЧАТЬ (30 сек)", url=f"{SITE_URL}/wait-download?file={filename}")
-            await message.answer("✅ Аудио готово!", reply_markup=kb.as_markup())
+            
+            await message.answer("✅ Аудио успешно создано!", reply_markup=kb.as_markup())
         else:
-            await message.answer("❌ Ошибка при создании аудио.")
+            await message.answer("❌ Не удалось создать аудио. Попробуйте другой голос.")
 
     except Exception as e:
-        print(f"❌ Ошибка в handle_text: {e}")
-        await message.answer(f"Произошла ошибка: {e}")
+        print(f"🔥 Ошибка в handle_text: {e}")
+        await message.answer(f"⚠️ Ошибка: {e}")
+
+# --- МОДЕЛИ ДАННЫХ (Для исправления NameError) ---
+class ChatRequest(BaseModel): message: str
+class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
+class KeyCheck(BaseModel): key: str
+class AdminGenRequest(BaseModel): 
+    message: str
+    category: Optional[str] = "Технологии"
+    color: Optional[str] = "blue"
+
+
 
 # --- FASTAPI (БЕЗ ОТСТУПОВ) ---
 app = FastAPI()
@@ -585,14 +597,7 @@ async def get_sitemap():
         print(f"🚨 Ошибка: {e}")
         # Если база не отвечает, вернем хотя бы главную страницу, чтобы не было ошибки 500
         return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
-# --- МОДЕЛИ ДАННЫХ (ИСПРАВЛЕНО: KeyCheck теперь тут) ---
-class ChatRequest(BaseModel): message: str
-class TTSRequest(BaseModel): text: str; voice: str; mode: str; key: Optional[str] = None
-class KeyCheck(BaseModel): key: str
-class AdminGenRequest(BaseModel): 
-    message: str
-    category: Optional[str] = "Технологии"
-    color: Optional[str] = "blue"
+
 # --- ГЕНЕРАЦИЯ СТАТЕЙ (SEO + IMAGE) ---      
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
