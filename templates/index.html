@@ -155,33 +155,36 @@
     </div>
 
     <div class="mb-16">
-        <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-tighter text-gray-900">Частые вопросы</h2>
-        <div class="space-y-4">
-            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Как поставить правильное ударение?</p>
-                <p class="text-gray-500 text-sm">Поставьте знак "+" перед ударной гласной. Например: Пон+ятие.</p>
+    <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-tighter text-gray-900">Частые вопросы</h2>
+    
+    <div class="space-y-4">
+        <div class="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 shadow-sm group cursor-pointer transition-all hover:bg-blue-50" onclick="window.location.href='/voices.html'">
+            <div class="flex items-center justify-between w-full text-left">
+                <div>
+                    <p class="font-black text-blue-600 uppercase text-xs tracking-widest mb-2">Навигация по голосам</p>
+                    <p class="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">Какой движок озвучки выбрать для моего текста?</p>
+                </div>
+                <span class="ml-4 flex-shrink-0 text-blue-600 group-hover:translate-x-2 transition-transform">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                </span>
             </div>
-            <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Это бесплатно?</p>
-                <p class="text-gray-500 text-sm">Базовый функционал синтеза доступен бесплатно для всех пользователей.</p>
+            <div class="mt-4 text-sm text-gray-600 leading-relaxed">
+                У нас есть 3 движка: <strong>Edge</strong> (быстрый), <strong>Kokoro</strong> (живой) и <strong>Piper</strong> (диктор). Послушайте примеры и узнайте секреты настройки в нашей 
+                <span class="text-blue-600 font-bold underline">Библиотеке Голосов →</span>
             </div>
         </div>
-    </div>
-</div>
-<div class="border-b border-gray-100 pb-6 mb-6 group cursor-pointer">
-    <button class="flex items-center justify-between w-full text-left" onclick="window.location.href='/voices.html'">
-        <span class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-            Какой движок озвучки выбрать для моего текста?
-        </span>
-        <span class="ml-4 flex-shrink-0 text-blue-600 group-hover:translate-x-1 transition-transform">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-        </span>
-    </button>
-    <div class="mt-4 text-sm text-gray-500 leading-relaxed">
-        У нас есть 3 мощных движка: <strong class="text-gray-900">Edge</strong> (стандарт), <strong class="text-gray-900">Kokoro</strong> (эмоциональный) и <strong class="text-gray-900">Piper</strong> (дикторский). Чтобы послушать примеры и узнать секреты идеальной озвучки, перейдите в нашу 
-        <a href="/voices.html" class="text-blue-600 font-bold hover:underline">Библиотеку Голосов</a>.
+
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Как поставить правильное ударение?</p>
+            <p class="text-gray-500 text-sm">Поставьте знак "+" перед ударной гласной. Например: Пон+ятие.</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <p class="font-black text-gray-900 uppercase text-xs tracking-widest mb-2">Это бесплатно?</p>
+            <p class="text-gray-500 text-sm">Базовый функционал синтеза доступен бесплатно для всех пользователей.</p>
+        </div>
     </div>
 </div>
 <div id="chat-widget" class="fixed bottom-6 right-6 z-[999]">
