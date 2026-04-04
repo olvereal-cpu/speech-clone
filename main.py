@@ -352,6 +352,11 @@ class AdminGenRequest(BaseModel):
     color: Optional[str] = "blue"
 
 # --- МАРШРУТЫ САЙТА ---
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+    return templates.TemplateResponse("error.html", {"request": request, "detail": exc.detail})
 @app.post("/api/generate")
 async def generate_audio_universal(request: Request):
     try:
@@ -697,7 +702,7 @@ async def get_posts(page: int = 1, limit: int = 6):
         return {"error": str(e)}
 
 @app.get("/404", response_class=HTMLResponse)
-async def 404_page(request: Request):
+async def error_404_page(request: Request):
     return templates.TemplateResponse(request=request, name="404.html")
 
 @app.get("/premium", response_class=HTMLResponse)
