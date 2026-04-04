@@ -421,7 +421,9 @@ async def home(request: Request):
             name="index.html", 
             context={"posts": []}
         )
-
+@app.get("/voices.html", response_class=HTMLResponse)
+async def read_voices(request: Request):
+    return templates.TemplateResponse("voices.html", {"request": request})
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
@@ -693,8 +695,7 @@ async def get_posts(page: int = 1, limit: int = 6):
         }
     except Exception as e:
         return {"error": str(e)}
-@app.get("/voices", response_class=HTMLResponse)
-async def voices_page(request: Request): return templates.TemplateResponse(request=request, name="voices.html")
+
 
 @app.get("/premium", response_class=HTMLResponse)
 async def premium_page(request: Request):
