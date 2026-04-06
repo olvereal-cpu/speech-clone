@@ -172,39 +172,45 @@ async def check_sub(uid):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    # 1. Работа с БД (внутри функции)
     conn = sqlite3.connect(DB_PATH)
     conn.execute('INSERT OR IGNORE INTO users (user_id) VALUES (?)', (message.from_user.id,))
     conn.commit()
     conn.close()
 
+    # 2. Проверка подписки
     if message.from_user.id != ADMIN_ID and not await check_sub(message.from_user.id):
-        kb = InlineKeyboardBuilder()
-        kb.button(text="📢 Подписаться на канал", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")
-        kb.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
-        return await message.answer("⚠️ Для использования бота необходимо подписаться на наш канал!", reply_markup=kb.adjust(1).as_markup())
+        kb_sub = InlineKeyboardBuilder()
+        kb_sub.button(text="📢 Подписаться на канал", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")
+        kb_sub.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
+        return await message.answer(
+            "⚠️ Для использования бота необходимо подписаться на наш канал!", 
+            reply_markup=kb_sub.adjust(1).as_markup()
+        )
 
-    # Создаем билдер
-kb = InlineKeyboardBuilder()
+    # 3. Если проверка пройдена — создаем клавиатуру голосов
+    kb = InlineKeyboardBuilder()
 
-# Добавляем кнопки голосов
-for name in VOICES.keys():
-    kb.button(text=name, callback_data=f"v_{name}")
+    # Добавляем кнопки голосов (ОТСТУП ВАЖЕН: всё должно быть внутри функции)
+    for name in VOICES.keys():
+        kb.button(text=name, callback_data=f"v_{name}")
 
-# Настраиваем сетку (по 2 в ряд) и добавляем кнопку доната отдельным рядом
-kb.adjust(2)
-kb.row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
+    # Настраиваем сетку
+    kb.adjust(2)
+    kb.row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
 
-# Текст сообщения (используем тройные кавычки для многострочного текста)
-welcome_text = (
-    "👋 Приветствуем в SpeechClone!\n"
-    "Выберите подходящий голос для озвучки:\n"
-    "• 🎙 Студия — студийное звучание\n"
-    "• 🌟 Premium — максимально живое звучание.\n"
-    "• 🇷🇺/🇰🇿 Стандарт — классические голоса.\n\n"
-    "Просто отправьте текст после выбора голоса, и я его озвучу."
-)
+    # Текст сообщения
+    welcome_text = (
+        "👋 Приветствуем в SpeechClone!\n"
+        "Выберите подходящий голос для озвучки:\n"
+        "• 🎙 Студия — студийное звучание\n"
+        "• 🌟 Premium — максимально живое звучание.\n"
+        "• 🇷🇺/🇰🇿 Стандарт — классические голоса.\n\n"
+        "Просто отправьте текст после выбора голоса, и я его озвучу."
+    )
 
-await message.answer(welcome_text, reply_markup=kb.as_markup())
+    # 4. Отправляем ответ
+    await message.answer(welcome_text, reply_markup=kb.as_markup())
 
 # --- АДМИН-ФУНКЦИИ ---
 
