@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto py-12 px-4">
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-black text-slate-800 tracking-tight">
+            🎭 <span class="text-purple-600">VOICE</span> DESIGNER
+        </h1>
+        <p class="text-slate-500 mt-2 text-lg">Создайте характер голоса с помощью AI</p>
+    </div>
+
+    <div class="bg-white rounded-[40px] shadow-2xl border border-purple-50 p-8 lg:p-12 space-y-10">
+        
+        <div class="space-y-4">
+            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Шаг 1: Выберите базовый стиль</label>
+            <select id="promptType" name="prompt_type" onchange="toggleCustom()" class="w-full bg-purple-50 border-none rounded-2xl p-5 text-xl font-bold text-purple-900 focus:ring-2 focus:ring-purple-500 transition cursor-pointer">
+                <option value="classic">🎙️ Классический (Студия)</option>
+                <option value="whisper">🤫 Тихий шепот (Whisper)</option>
+                <option value="news">📢 Диктор новостей (News)</option>
+                <option value="grumpy">😠 Ворчливый старик (Grumpy)</option>
+                <option value="echo">🏛️ Эхо в зале (Cinematic)</option>
+                <option value="custom">✍️ Свой вариант (Manual Prompt)</option>
+            </select>
+        </div>
+
+        <div id="customPromptBox" class="space-y-4 hidden animate-in slide-in-from-top-4">
+            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest text-purple-600">Ваше описание (на английском):</label>
+            <textarea id="customPrompt" rows="2" class="w-full p-5 bg-slate-50 border-2 border-purple-100 rounded-2xl focus:border-purple-500 focus:ring-0 transition" placeholder="Example: A high-pitched female voice, very excited..."></textarea>
+        </div>
+
+        <div class="space-y-4">
+            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Шаг 2: Текст для озвучки</label>
+            <textarea id="voiceText" rows="4" class="w-full p-5 bg-slate-50 border-none rounded-2xl text-xl shadow-inner focus:ring-2 focus:ring-purple-500 transition resize-none" placeholder="Что должен сказать этот голос?"></textarea>
+        </div>
+
+        <button onclick="generateVoice()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-6 rounded-3xl shadow-xl shadow-purple-200 hover:shadow-2xl transition-all transform active:scale-95 text-xl">
+            СОЗДАТЬ ГОЛОС
+        </button>
+
+        <div id="voiceResult" class="hidden mt-10 pt-10 border-t border-purple-100">
+            <div class="flex items-center justify-between mb-4">
+                <span class="bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-xs font-bold uppercase">Аудио сгенерировано</span>
+            </div>
+            <audio id="audioVoice" controls class="w-full h-14"></audio>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleCustom() {
+    const box = document.getElementById('customPromptBox');
+    box.classList.toggle('hidden', document.getElementById('promptType').value !== 'custom');
+}
+
+async function generateVoice() {
+    const formData = new FormData();
+    formData.append('prompt_type', document.getElementById('promptType').value);
+    formData.append('custom_prompt', document.getElementById('customPrompt').value);
+    formData.append('text', document.getElementById('voiceText').value);
+
+    const res = await fetch('/api/prompt-voice', { method: 'POST', body: formData });
+    const data = await res.json();
+    
+    if (data.status === 'success') {
+        const audio = document.getElementById('audioVoice');
+        audio.src = data.audio_url;
+        document.getElementById('voiceResult').classList.remove('hidden');
+        audio.play();
+    }
+}
+</script>
+{% endblock %}
