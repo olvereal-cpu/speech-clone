@@ -459,16 +459,27 @@ async def home(request: Request):
         )
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
-    return templates.TemplateResponse(request=request, name="voices.html")
+    return templates.TemplateResponse(
+        request=request, 
+        name="voices.html",
+        context={} # Добавляем пустой контекст для стабильности
+    )
+
 @app.get("/dubbing", response_class=HTMLResponse)
 async def get_dubbing_page(request: Request):
-    # Страница перевода голоса
-    return templates.TemplateResponse("dubbing.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request, 
+        name="dubbing.html", 
+        context={}
+    )
 
 @app.get("/prompt-voice", response_class=HTMLResponse)
 async def get_creation_page(request: Request):
-    # Страница "Создать свой голос"
-    return templates.TemplateResponse("prompt-voice.html", {"request": request})    
+    return templates.TemplateResponse(
+        request=request, 
+        name="prompt-voice.html", 
+        context={}
+    )   
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
