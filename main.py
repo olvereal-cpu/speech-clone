@@ -548,7 +548,7 @@ async def get_creation_page(request: Request):
         name="prompt-voice.html", 
         context={}
     ) 
- @app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     try:
         # Пробуем достать посты из базы
