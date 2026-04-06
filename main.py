@@ -547,7 +547,27 @@ async def get_creation_page(request: Request):
         request=request, 
         name="prompt-voice.html", 
         context={}
-    )   
+    ) 
+ @app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    try:
+        # Пробуем достать посты из базы
+        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
+        all_posts = res.data if res and hasattr(res, 'data') and res.data else []
+        
+        return templates.TemplateResponse(
+            request=request,  # Обязательно первым или именованным
+            name="index.html", 
+            context={"posts": all_posts}
+        )
+    except Exception as e:
+        # Если база лежит или ошибка в коде - всё равно показываем сайт, но без постов
+        print(f"Критическая ошибка на главной: {e}")
+        return templates.TemplateResponse(
+            request=request, 
+            name="index.html", 
+            context={"posts": []}
+        )   
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
