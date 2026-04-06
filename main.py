@@ -460,21 +460,37 @@ async def home(request: Request):
             context={"posts": []}
         )
 @app.post("/api/prompt-voice")
-async def api_prompt_voice(prompt: str = Form(...), text: str = Form(...)):
+async def api_prompt_voice(
+    prompt_type: str = Form(...), 
+    custom_prompt: str = Form(None), 
+    text: str = Form(...)
+):
+    # Пресеты описаний (должны совпадать с value в твоем HTML <select>)
+    VOICE_PRESETS = {
+        "classic": "A professional male voice, clear and studio record.",
+        "whisper": "A soft female voice whispering slowly.",
+        "news": "A professional news anchor voice, fast and authoritative.",
+        "grumpy": "A deep, gravelly male voice, grumpy tone."
+    }
+
+    # Логика выбора: если "custom", берем из поля ввода, иначе — из пресетов
+    if prompt_type == "custom":
+        final_description = custom_prompt if custom_prompt else "A natural speaking voice."
+    else:
+        final_description = VOICE_PRESETS.get(prompt_type, VOICE_PRESETS["classic"])
+
     try:
-        # Подключаемся к нейронке
         client = Client("parler-tts/parler-tts-expresso")
         result = client.predict(
             text=text,
-            description=prompt,
+            description=final_description,
             api_name="/predict"
         )
         
-        # Сохраняем файл в папку static/results
+        # Сохранение файла
         output_filename = f"custom_{uuid.uuid4()}.wav"
         output_path = os.path.join("static/results", output_filename)
         
-        # Переносим файл из временной папки Gradio в нашу
         import shutil
         shutil.move(result, output_path)
         
@@ -483,8 +499,8 @@ async def api_prompt_voice(prompt: str = Form(...), text: str = Form(...)):
             "audio_url": f"/static/results/{output_filename}"
         }
     except Exception as e:
-        print(f"Ошибка генерации: {e}")
-        return {"status": "error", "message": str(e)}       
+        print(f"Ошибка нейронки: {e}")
+        return {"status": "error", "message": str(e)} 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
