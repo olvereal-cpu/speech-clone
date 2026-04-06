@@ -15,6 +15,7 @@ supabase
 python-slugify
 kokoro-onnx
 soundfile
+gradio_client
 
 
 
