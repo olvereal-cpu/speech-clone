@@ -450,7 +450,6 @@ async def api_prompt_voice(
     custom_prompt: str = Form(None), 
     text: str = Form(...)
 ):
-    # Пресеты описаний (должны совпадать с value в твоем HTML <select>)
     VOICE_PRESETS = {
         "classic": "A professional male voice, clear and studio record.",
         "whisper": "A soft female voice whispering slowly.",
@@ -458,21 +457,20 @@ async def api_prompt_voice(
         "grumpy": "A deep, gravelly male voice, grumpy tone."
     }
 
-    # Логика выбора: если "custom", берем из поля ввода, иначе — из пресетов
     if prompt_type == "custom":
         final_description = custom_prompt if custom_prompt else "A natural speaking voice."
     else:
         final_description = VOICE_PRESETS.get(prompt_type, VOICE_PRESETS["classic"])
 
     try:
-        client = Client("parler-tts/parler-tts-expresso")
+        # Сменили на mini-v1 для стабильности
+        client = Client("parler-tts/parler-tts-mini-v1")
+        # УБРАЛИ api_name="/predict"
         result = client.predict(
             text=text,
-            description=final_description,
-            api_name="/predict"
+            description=final_description
         )
         
-        # Сохранение файла
         output_filename = f"custom_{uuid.uuid4()}.wav"
         output_path = os.path.join("static/results", output_filename)
         
@@ -485,7 +483,8 @@ async def api_prompt_voice(
         }
     except Exception as e:
         print(f"Ошибка нейронки: {e}")
-        return {"status": "error", "message": str(e)} 
+        return {"status": "error", "message": str(e)}
+
 @app.post("/api/dub")
 async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)):
     lang_map = {
@@ -494,27 +493,25 @@ async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)
     }
     target_full = lang_map.get(target_lang, "English")
     
-    # Создаем уникальное имя для временного файла
     temp_input = f"temp_{uuid.uuid4()}_{file.filename}"
     
     try:
         with open(temp_input, "wb") as f:
             f.write(await file.read())
 
-        # Используем SeamlessM4T v2 от Meta
-        client = Client("facebook/seamless_m4t_v2")
+        # ИСПРАВЛЕНО: Убрали лишние кавычки и api_name
+        client = Client("facebook/seamless_m4t")
         result = client.predict(
             temp_input, 
-            "S2ST",        # Speech to Speech
-            "Russian",     # Исходный язык
-            target_full,   # Целевой язык
-            api_name="/predict"
+            "S2ST",
+            "Russian",
+            target_full
         )
         
         output_filename = f"dub_{uuid.uuid4()}.wav"
         output_path = os.path.join("static/results", output_filename)
         
-        # Перемещаем результат из временной папки Gradio в нашу
+        import shutil
         shutil.move(result[0], output_path)
         
         return {
@@ -527,24 +524,6 @@ async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)
     finally:
         if os.path.exists(temp_input):
             os.remove(temp_input)
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    try:
-        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
-        all_posts = res.data if res.data else []
-        
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": all_posts}
-        )
-    except Exception as e:
-        print(f"Ошибка на главной: {e}")
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": []}
-        )
 
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
