@@ -387,10 +387,10 @@ class AdminGenRequest(BaseModel):
 # --- МАРШРУТЫ САЙТА ---
 @app.exception_handler(404)
 async def custom_http_exception_handler(request: Request, exc: Exception):
-    # Убедись, что первым идет имя файла, а вторым СЛОВАРЬ с request
+    # ПЕРВЫМ аргументом должен идти request БЕЗ имени 'name='
     return templates.TemplateResponse(
-        name="404.html", 
-        context={"request": request}, 
+        "404.html", 
+        {"request": request}, 
         status_code=404
     )
 @app.post("/api/generate")
