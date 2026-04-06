@@ -186,7 +186,12 @@ async def cmd_start(message: types.Message):
     kb = InlineKeyboardBuilder()
     for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
     kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
-    await message.answer("👋 Выбери голос и пришли текст:", reply_markup=kb.as_markup())
+    await message.answer("👋 Приветствуем в SpeechClone!
+    Выберите подходящий голос для озвучки:
+• 🎙  Студия — студийное звучание
+• 🌟 Premium — максимально живое звучание.
+• 🇷🇺/🇰🇿 Стандарт — классические голоса.
+Просто отправьте текст после выбора голоса, и я его озвучу.", reply_markup=kb.as_markup())
 
 # --- АДМИН-ФУНКЦИИ ---
 
