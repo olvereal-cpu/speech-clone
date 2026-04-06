@@ -183,15 +183,28 @@ async def cmd_start(message: types.Message):
         kb.button(text="🔄 Проверить подписку", callback_data="sub_check_done")
         return await message.answer("⚠️ Для использования бота необходимо подписаться на наш канал!", reply_markup=kb.adjust(1).as_markup())
 
-    kb = InlineKeyboardBuilder()
-    for name in VOICES.keys(): kb.button(text=name, callback_data=f"v_{name}")
-    kb.adjust(2).row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
-    await message.answer("👋 Приветствуем в SpeechClone!
-    Выберите подходящий голос для озвучки:
-• 🎙  Студия — студийное звучание
-• 🌟 Premium — максимально живое звучание.
-• 🇷🇺/🇰🇿 Стандарт — классические голоса.
-Просто отправьте текст после выбора голоса, и я его озвучу.", reply_markup=kb.as_markup())
+    # Создаем билдер
+kb = InlineKeyboardBuilder()
+
+# Добавляем кнопки голосов
+for name in VOICES.keys():
+    kb.button(text=name, callback_data=f"v_{name}")
+
+# Настраиваем сетку (по 2 в ряд) и добавляем кнопку доната отдельным рядом
+kb.adjust(2)
+kb.row(types.InlineKeyboardButton(text="🌟 На кофе", callback_data="buy_stars"))
+
+# Текст сообщения (используем тройные кавычки для многострочного текста)
+welcome_text = (
+    "👋 Приветствуем в SpeechClone!\n"
+    "Выберите подходящий голос для озвучки:\n"
+    "• 🎙 Студия — студийное звучание\n"
+    "• 🌟 Premium — максимально живое звучание.\n"
+    "• 🇷🇺/🇰🇿 Стандарт — классические голоса.\n\n"
+    "Просто отправьте текст после выбора голоса, и я его озвучу."
+)
+
+await message.answer(welcome_text, reply_markup=kb.as_markup())
 
 # --- АДМИН-ФУНКЦИИ ---
 
