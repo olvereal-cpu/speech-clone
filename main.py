@@ -16,6 +16,7 @@ import math
 import io
 import aiohttp
 import socket
+import shutil
 import soundfile as sf
 from fastapi.responses import StreamingResponse, Response
 from datetime import datetime
@@ -441,24 +442,6 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    try:
-        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
-        all_posts = res.data if res.data else []
-        
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": all_posts}
-        )
-    except Exception as e:
-        print(f"Ошибка на главной: {e}")
-        return templates.TemplateResponse(
-            request=request, 
-            name="index.html", 
-            context={"posts": []}
-        )
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(
     prompt_type: str = Form(...), 
@@ -501,6 +484,66 @@ async def api_prompt_voice(
     except Exception as e:
         print(f"Ошибка нейронки: {e}")
         return {"status": "error", "message": str(e)} 
+@app.post("/api/dub")
+async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)):
+    lang_map = {
+        "en": "English", "ru": "Russian", "kz": "Kazakh", 
+        "de": "German", "fr": "French", "es": "Spanish"
+    }
+    target_full = lang_map.get(target_lang, "English")
+    
+    # Создаем уникальное имя для временного файла
+    temp_input = f"temp_{uuid.uuid4()}_{file.filename}"
+    
+    try:
+        with open(temp_input, "wb") as f:
+            f.write(await file.read())
+
+        # Используем SeamlessM4T v2 от Meta
+        client = Client("facebook/seamless_m4t_v2")
+        result = client.predict(
+            temp_input, 
+            "S2ST",        # Speech to Speech
+            "Russian",     # Исходный язык
+            target_full,   # Целевой язык
+            api_name="/predict"
+        )
+        
+        output_filename = f"dub_{uuid.uuid4()}.wav"
+        output_path = os.path.join("static/results", output_filename)
+        
+        # Перемещаем результат из временной папки Gradio в нашу
+        shutil.move(result[0], output_path)
+        
+        return {
+            "status": "success", 
+            "audio_url": f"/static/results/{output_filename}"
+        }
+    except Exception as e:
+        print(f"Ошибка дубляжа: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        if os.path.exists(temp_input):
+            os.remove(temp_input)
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    try:
+        res = supabase.table("posts").select("*").order("created_at", desc=True).limit(6).execute()
+        all_posts = res.data if res.data else []
+        
+        return templates.TemplateResponse(
+            request=request, 
+            name="index.html", 
+            context={"posts": all_posts}
+        )
+    except Exception as e:
+        print(f"Ошибка на главной: {e}")
+        return templates.TemplateResponse(
+            request=request, 
+            name="index.html", 
+            context={"posts": []}
+        )
+
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
