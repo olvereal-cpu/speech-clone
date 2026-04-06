@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-5xl mx-auto py-12 px-4">
+    <div class="text-center mb-10">
+        <h1 class="text-5xl font-black text-slate-800 tracking-tight">
+            🌍 <span class="text-blue-600 italic">AI</span> DUBBING
+        </h1>
+        <p class="text-slate-500 mt-2 text-lg font-medium">Перевод речи с сохранением вашего уникального тембра</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl h-fit border border-blue-500/30">
+            <h3 class="text-xl font-bold mb-6 text-blue-400">Как это работает?</h3>
+            <div class="space-y-6 text-sm">
+                <div class="flex gap-4">
+                    <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">1</span>
+                    <p>Загрузите аудио (MP3/WAV). Важно: без музыки на фоне.</p>
+                </div>
+                <div class="flex gap-4">
+                    <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">2</span>
+                    <p>Выберите целевой язык из списка справа.</p>
+                </div>
+                <div class="flex gap-4">
+                    <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">3</span>
+                    <p>Нейросеть SeamlessM4T переведет текст и переозвучит его вашим голосом.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white p-8 rounded-3xl shadow-2xl border border-slate-100">
+            <form id="dubForm" class="space-y-6">
+                <div class="relative group border-4 border-dashed border-slate-100 rounded-3xl p-12 text-center hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer">
+                    <input type="file" id="audioFile" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div class="text-blue-600">
+                        <span class="text-6xl mb-4 block group-hover:scale-110 transition-transform">🎤</span>
+                        <p class="text-lg font-bold">Выберите исходный файл</p>
+                        <p class="text-sm text-slate-400">До 2 минут записи</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <label class="block text-sm font-bold text-slate-500 uppercase tracking-widest">Выберите язык перевода:</label>
+                    <select id="targetLang" name="target_lang" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-lg font-semibold focus:border-blue-500 focus:ring-0 transition">
+                        <option value="en">🇺🇸 English (Английский)</option>
+                        <option value="ru" selected>🇷🇺 Russian (Русский)</option>
+                        <option value="kz">🇰🇿 Kazakh (Казахский)</option>
+                        <option value="de">🇩🇪 German (Немецкий)</option>
+                        <option value="fr">🇫🇷 French (Французский)</option>
+                        <option value="es">🇪🇸 Spanish (Испанский)</option>
+                        <option value="zh">🇨🇳 Chinese (Китайский)</option>
+                        <option value="tr">🇹🇷 Turkish (Турецкий)</option>
+                    </select>
+                </div>
+
+                <button type="button" onclick="startDubbing()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 transition-all active:scale-95">
+                    НАЧАТЬ ДУБЛЯЖ
+                </button>
+            </form>
+
+            <div id="dubResult" class="mt-8 hidden border-t pt-8 animate-in fade-in">
+                <p class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-tighter">Результат готов:</p>
+                <audio id="audioDub" controls class="w-full h-14"></audio>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function startDubbing() {
+    const fileInput = document.getElementById('audioFile');
+    if (!fileInput.files[0]) return alert("Сначала выберите файл!");
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('target_lang', document.getElementById('targetLang').value);
+
+    // Тут твоя логика уведомления о загрузке
+    const res = await fetch('/api/dub', { method: 'POST', body: formData });
+    const data = await res.json();
+    
+    if (data.status === 'success') {
+        const audio = document.getElementById('audioDub');
+        audio.src = data.audio_url;
+        document.getElementById('dubResult').classList.remove('hidden');
+        audio.play();
+    }
+}
+</script>
+{% endblock %}
