@@ -92,8 +92,10 @@ mm = ModelManager(GEMINI_API_KEY)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-RESULT_DIR = "static/results"
-os.makedirs(RESULT_DIR, exist_ok=True)
+RESULT_DIR = os.path.join("static", "results")
+if not os.path.exists(RESULT_DIR):
+    os.makedirs(RESULT_DIR, exist_ok=True)
+    print(f"✅ Папка {RESULT_DIR} создана!")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 BLOG_FOLDER = os.path.join(BASE_DIR, "blog")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
@@ -457,6 +459,32 @@ async def home(request: Request):
             name="index.html", 
             context={"posts": []}
         )
+@app.post("/api/prompt-voice")
+async def api_prompt_voice(prompt: str = Form(...), text: str = Form(...)):
+    try:
+        # Подключаемся к нейронке
+        client = Client("parler-tts/parler-tts-expresso")
+        result = client.predict(
+            text=text,
+            description=prompt,
+            api_name="/predict"
+        )
+        
+        # Сохраняем файл в папку static/results
+        output_filename = f"custom_{uuid.uuid4()}.wav"
+        output_path = os.path.join("static/results", output_filename)
+        
+        # Переносим файл из временной папки Gradio в нашу
+        import shutil
+        shutil.move(result, output_path)
+        
+        return {
+            "status": "success", 
+            "audio_url": f"/static/results/{output_filename}"
+        }
+    except Exception as e:
+        print(f"Ошибка генерации: {e}")
+        return {"status": "error", "message": str(e)}       
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
