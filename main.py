@@ -102,15 +102,15 @@ os.makedirs(BLOG_FOLDER, exist_ok=True)
 # --- ЕДИНЫЙ КОНФИГ ГОЛОСОВ (ИНВЕРТИРОВАННЫЙ ПОД ТВОЮ ЛОГИКУ) ---
 VOICES = {
     # --- СТУДИЙНЫЕ (PIPER) ---
-    "🎙 KZ | ISSAI (HQ)": "kk_KZ-issai-high.onnx",
-    "🎙 KZ | РАЯ (Fast)": "kk_KZ-raya-x_low.onnx",
-    "🎙 KZ | ИСЕКЕ (Fast)": "kk_KZ-iseke-x_low.onnx",
-    "🎙 RU | ДЕНИС": "ru_RU-denis-medium.onnx",
-    "🎙 RU | ДМИТРИЙ": "ru_RU-dmitri-medium.onnx",
-    "🎙 RU | ИРИНА": "ru_RU-irina-medium.onnx",
-    "🎙 RU | РУСЛАН": "ru_RU-ruslan-medium.onnx",
-    "🎙 RU | ТАТЬЯНА": "ru_RU-tatyana-medium.onnx",
-    "🎙 RU | ВИКТОРИЯ": "ru_RU-victoria-medium.onnx",
+    "🎙 🇰🇿 | ISSAI (HQ)": "kk_KZ-issai-high.onnx",
+    "🎙 🇰🇿 | РАЯ (Fast)": "kk_KZ-raya-x_low.onnx",
+    "🎙 🇰🇿 | ИСЕКЕ (Fast)": "kk_KZ-iseke-x_low.onnx",
+    "🎙 🇷🇺 | ДЕНИС": "ru_RU-denis-medium.onnx",
+    "🎙 🇷🇺 | ДМИТРИЙ": "ru_RU-dmitri-medium.onnx",
+    "🎙 🇷🇺 | ИРИНА": "ru_RU-irina-medium.onnx",
+    "🎙 🇷🇺 | РУСЛАН": "ru_RU-ruslan-medium.onnx",
+    "🎙 🇷🇺 | ТАТЬЯНА": "ru_RU-tatyana-medium.onnx",
+    "🎙 🇷🇺 | ВИКТОРИЯ": "ru_RU-victoria-medium.onnx",
     
     # --- PREMIUM (KOKORO) ---
     "🌟 SKY (PREM)": "af_sky",
