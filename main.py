@@ -35,6 +35,7 @@ from aiogram.fsm.context import FSMContext
 from supabase import create_client, Client
 from slugify import slugify
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from gradio_client import Client
 
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
