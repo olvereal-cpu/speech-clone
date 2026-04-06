@@ -91,6 +91,8 @@ mm = ModelManager(GEMINI_API_KEY)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+RESULT_DIR = "static/results"
+os.makedirs(RESULT_DIR, exist_ok=True)
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 BLOG_FOLDER = os.path.join(BASE_DIR, "blog")
 DB_PATH = os.path.join(BASE_DIR, "users.db")
@@ -454,6 +456,15 @@ async def home(request: Request):
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(request=request, name="voices.html")
+@app.get("/dubbing", response_class=HTMLResponse)
+async def get_dubbing_page(request: Request):
+    # Страница перевода голоса
+    return templates.TemplateResponse("dubbing.html", {"request": request})
+
+@app.get("/prompt-voice", response_class=HTMLResponse)
+async def get_creation_page(request: Request):
+    # Страница "Создать свой голос"
+    return templates.TemplateResponse("prompt-voice.html", {"request": request})    
 @app.get("/blog", response_class=HTMLResponse)
 async def blog_list(request: Request, page: int = 1):
     try:
@@ -544,6 +555,7 @@ async def get_sitemap():
     except Exception as e:
         print(f"🚨 Ошибка: {e}")
         return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
+
 
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
