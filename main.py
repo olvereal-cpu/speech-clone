@@ -464,7 +464,7 @@ async def api_prompt_voice(
 
     try:
         # Сменили на mini-v1 для стабильности
-        client = Client("parler-tts/parler-tts-mini-v1")
+        client = Client("parler-tts/parler-tts-expresso-v2")
         # УБРАЛИ api_name="/predict"
         result = client.predict(
             text=text,
@@ -500,7 +500,7 @@ async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)
             f.write(await file.read())
 
         # ИСПРАВЛЕНО: Убрали лишние кавычки и api_name
-        client = Client("facebook/seamless_m4t")
+        client = Client("tonyassi/voice-changer")
         result = client.predict(
             temp_input, 
             "S2ST",
