@@ -484,6 +484,11 @@ async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
     try:
         # Шлем запрос БЕЗ файла (Хуган сам подставит нужный голос по voice_type)
         res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
+        print(f"DEBUG: Отправка на {HF_URL}") # Это появится в логах Рендера
+        res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
+        
+        print(f"DEBUG: Хуган ответил: {res.status_code}") # СМОТРИ СЮДА В ЛОГАХ
+        if res.status_code == 200:
         
         if res.status_code == 200:
             filename = f"voice_{uuid.uuid4().hex}.wav"
