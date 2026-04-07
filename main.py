@@ -47,6 +47,15 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
 # ТВОЯ НОВАЯ СТУДИЯ (PIPER)
 HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
+raw_token = os.getenv("HF_TOKEN1")
+if raw_token:
+    HF_TOKEN1 = raw_token.strip()
+else:
+    HF_TOKEN1 = ""
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
+
+# Отладка в консоль Render (увидишь при запуске)
+print(f"DEBUG: Token status: {'LOADED' if HF_TOKEN1 else 'EMPTY'}")
 HF_TOKEN1 = os.getenv("HF_TOKEN1") 
 HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 def slugify(text: str) -> str:
