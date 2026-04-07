@@ -472,40 +472,32 @@ HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
-    # ... пресеты ...
     selected_speaker = VOICE_PRESETS.get(prompt_type, "Damien Montez")
-
+    
     try:
-        # Используем AsyncClient с жестким следованием редиректам
         async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
-            headers = {
-                "Authorization": f"Bearer {HF_TOKEN1}",
-                "Accept": "application/json",
-            }
-            
-            # Данные формы
-            payload = {
-                "text": text, 
-                "speaker": selected_speaker, 
+            headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
+            data = {
+                "text": text,
+                "speaker": selected_speaker,
                 "use_clone": "false"
             }
-
-            print(f"DEBUG: Отправка POST на {HF_URL}") # Это увидишь в логах RENDER
             
-            res = await client.post(HF_URL, data=payload, headers=headers)
-            
-            print(f"DEBUG: Статус от Хугана: {res.status_code}") # Если тут 405 — значит стал GET
+            print(f"DEBUG: Отправка на {HF_URL} (Voice)")
+            res = await client.post(HF_URL, data=data, headers=headers)
             
             if res.status_code == 200:
-                # ... логика сохранения файла ...
+                output_filename = f"voice_{uuid.uuid4().hex}.wav"
+                output_path = os.path.join("static/results", output_filename)
+                os.makedirs("static/results", exist_ok=True)
+                
+                with open(output_path, "wb") as f:
+                    f.write(res.content)
                 return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
             else:
-                # Если ошибка, выводим текст ответа в логи Рендера
-                print(f"DEBUG: Ошибка от HF: {res.text}")
-                return {"status": "error", "message": f"HF Error: {res.status_code}"}
-
+                print(f"DEBUG: Ошибка HF {res.status_code}: {res.text[:100]}")
+                return {"status": "error", "message": f"Server Error: {res.status_code}"}
     except Exception as e:
-        print(f"DEBUG: Исключение: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/dub")
@@ -517,37 +509,26 @@ async def api_dubbing(
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
     
     try:
+        # Сохраняем входящий файл во временную папку
         content = await file.read()
         with open(temp_input, "wb") as f:
             f.write(content)
 
-        # Используем контекстный менеджер для клиента
         async with httpx.AsyncClient(timeout=180.0, follow_redirects=True) as client:
-            # Убедись, что HF_URL заканчивается на /generate/
-            # Например: "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
-            
             headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
             
             with open(temp_input, "rb") as f:
-                # Важно: файлы и данные формы шлем в одном запросе
+                # ВАЖНО: файлы и данные отправляем вместе
                 files = {'voice_sample': (file.filename, f, file.content_type)}
                 data = {
                     'text': text, 
                     'use_clone': 'true',
-                    'language': target_lang  # Передаем язык, который выбрал юзер
+                    'language': target_lang
                 }
                 
-                print(f"DEBUG: Отправка файла {file.filename} на {HF_URL}")
-
-                res = await client.post(
-                    HF_URL, 
-                    data=data, 
-                    files=files, 
-                    headers=headers
-                )
+                print(f"DEBUG: Отправка на {HF_URL} (Dubbing)")
+                res = await client.post(HF_URL, data=data, files=files, headers=headers)
                 
-                print(f"DEBUG: Статус ответа: {res.status_code}")
-
                 if res.status_code == 200:
                     output_filename = f"dub_{uuid.uuid4().hex}.wav"
                     output_path = os.path.join("static/results", output_filename)
@@ -555,23 +536,17 @@ async def api_dubbing(
                     
                     with open(output_path, "wb") as out_f:
                         out_f.write(res.content)
-                        
                     return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
                 else:
-                    # Если ошибка, выведем текст ошибки в консоль Рендера для отладки
-                    error_detail = res.text[:200]
-                    print(f"DEBUG: Ошибка от HF ({res.status_code}): {error_detail}")
-                    return {"status": "error", "message": f"HF Dub Error: {res.status_code}"}
+                    print(f"DEBUG: Ошибка HF {res.status_code}: {res.text[:100]}")
+                    return {"status": "error", "message": f"Server Error: {res.status_code}"}
 
     except Exception as e:
-        print(f"DEBUG: Исключение в api_dubbing: {str(e)}")
+        print(f"DEBUG: Исключение: {str(e)}")
         return {"status": "error", "message": str(e)}
     finally:
         if os.path.exists(temp_input):
-            try:
-                os.remove(temp_input)
-            except:
-                pass
+            os.remove(temp_input)
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
