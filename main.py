@@ -58,7 +58,7 @@ if raw_token:
     HF_TOKEN1 = raw_token.strip()
 else:
     HF_TOKEN1 = ""
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate"
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/--api--/generate/"
 
 # Отладка в консоль Render (увидишь при запуске)
 print(f"DEBUG: Token status: {'LOADED' if HF_TOKEN1 else 'EMPTY'}")
@@ -467,7 +467,7 @@ os.makedirs("static/ref", exist_ok=True)
 
 
 # Используем прямой адрес слэшем для стабильности
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate"
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/--api--/generate/"
 HF_TOKEN = "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"
 HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
