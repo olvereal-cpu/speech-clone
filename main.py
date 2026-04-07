@@ -474,29 +474,31 @@ HF_TOKEN1 = raw_token.strip() if raw_token else ""
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
     headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
-    # Вместо файлов на диске, просто передаем тип голоса на Хуган
     data = {
         'gen_text': text, 
-        'voice_type': prompt_type, # 'classic' или 'whisper'
+        'voice_type': prompt_type, 
         'remove_silence': 'true'
     }
     
     try:
-        # Шлем запрос БЕЗ файла (Хуган сам подставит нужный голос по voice_type)
-        res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
-        print(f"DEBUG: Отправка на {HF_URL}") # Это появится в логах Рендера
+        print(f"DEBUG: Отправка на {HF_URL}")
+        # Оставляем только ОДИН запрос вместо двух
         res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
         
-        print(f"DEBUG: Хуган ответил: {res.status_code}") # СМОТРИ СЮДА В ЛОГАХ
-        if res.status_code == 200:
+        print(f"DEBUG: Хуган ответил: {res.status_code}")
         
         if res.status_code == 200:
             filename = f"voice_{uuid.uuid4().hex}.wav"
             path = os.path.join("static/results", filename)
-            with open(path, "wb") as out: out.write(res.content)
+            with open(path, "wb") as out: 
+                out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
+        
         return {"status": "error", "message": f"HF Error: {res.status_code}"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+        
+    except Exception as e: 
+        print(f"DEBUG Exception: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/dub")
 async def api_dubbing(
@@ -509,7 +511,8 @@ async def api_dubbing(
     
     try:
         content = await file.read()
-        with open(temp_input, "wb") as f: f.write(content)
+        with open(temp_input, "wb") as f: 
+            f.write(content)
 
         with open(temp_input, "rb") as f:
             files = {'ref_audio': (file.filename, f, file.content_type)}
@@ -519,12 +522,18 @@ async def api_dubbing(
         if res.status_code == 200:
             filename = f"output_{uuid.uuid4().hex}.wav"
             path = os.path.join("static/results", filename)
-            with open(path, "wb") as out: out.write(res.content)
+            with open(path, "wb") as out: 
+                out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
+            
         return {"status": "error", "message": f"HF Error: {res.status_code}"}
-    except Exception as e: return {"status": "error", "message": str(e)}
+        
+    except Exception as e: 
+        print(f"DEBUG Exception in Dub: {str(e)}")
+        return {"status": "error", "message": str(e)}
     finally:
-        if os.path.exists(temp_input): os.remove(temp_input)
+        if os.path.exists(temp_input): 
+            os.remove(temp_input)
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
