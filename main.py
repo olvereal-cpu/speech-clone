@@ -39,8 +39,14 @@ from supabase import create_client, Client
 from slugify import slugify
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from gradio_client import Client
-
-
+VOICE_PRESETS = {
+    "classic": "Damien Montez",
+    "whisper": "Whisper",
+    "news": "News",
+    "grumpy": "Grumpy",
+    "echo": "Echo",
+    "custom": "Damien Montez"
+}
 SUPABASE_URL = "https://zbcpntzpnkhpzlwextbn.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiY3BudHpwbmtocHpsd2V4dGJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjM2NjIsImV4cCI6MjA5MDM5OTY2Mn0.MP7pnt_pTx0Am1Str1yTwR4UYagjyQM5Bk3jC8javdM"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -460,7 +466,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Используем прямой адрес слэшем для стабильности
-HF_URL = "https://sercos-oleg-xtts-kz.hf.space/--api--/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 HF_TOKEN = "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"
 HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
