@@ -32,7 +32,7 @@
             <textarea id="voiceText" rows="4" class="w-full p-5 bg-slate-50 border-none rounded-2xl text-xl shadow-inner focus:ring-2 focus:ring-purple-500 transition resize-none" placeholder="Что должен сказать этот голос?"></textarea>
         </div>
 
-        <button onclick="generateVoice()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-6 rounded-3xl shadow-xl shadow-purple-200 hover:shadow-2xl transition-all transform active:scale-95 text-xl">
+        <button id="generateBtn" onclick="generateVoice()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-6 rounded-3xl shadow-xl shadow-purple-200 hover:shadow-2xl transition-all transform active:scale-95 text-xl">
             СОЗДАТЬ ГОЛОС
         </button>
 
@@ -48,23 +48,76 @@
 <script>
 function toggleCustom() {
     const box = document.getElementById('customPromptBox');
-    box.classList.toggle('hidden', document.getElementById('promptType').value !== 'custom');
+    const type = document.getElementById('promptType').value;
+    box.classList.toggle('hidden', type !== 'custom');
 }
 
 async function generateVoice() {
-    const formData = new FormData();
-    formData.append('prompt_type', document.getElementById('promptType').value);
-    formData.append('custom_prompt', document.getElementById('customPrompt').value);
-    formData.append('text', document.getElementById('voiceText').value);
+    // Получаем элементы
+    const btn = document.getElementById('generateBtn');
+    const voiceText = document.getElementById('voiceText').value;
+    const promptType = document.getElementById('promptType').value;
+    const audio = document.getElementById('audioVoice');
+    const resultBox = document.getElementById('voiceResult');
 
-    const res = await fetch('/api/prompt-voice', { method: 'POST', body: formData });
-    const data = await res.json();
-    
-    if (data.status === 'success') {
-        const audio = document.getElementById('audioVoice');
-        audio.src = data.audio_url;
-        document.getElementById('voiceResult').classList.remove('hidden');
-        audio.play();
+    // Проверка ввода
+    if (!voiceText.trim()) {
+        alert("Пожалуйста, введите текст для озвучки.");
+        return;
+    }
+
+    // 1. Визуальный отклик (индикация загрузки)
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "⏳ ГЕНЕРАЦИЯ (ЖДИТЕ)...";
+    // Добавляем стили Tailwind для заблокированной кнопки
+    btn.classList.add('opacity-75', 'cursor-not-allowed', 'scale-95');
+
+    // Скрываем прошлый результат
+    resultBox.classList.add('hidden');
+    audio.src = '';
+
+    const formData = new FormData();
+    formData.append('prompt_type', promptType);
+    formData.append('text', voiceText);
+
+    try {
+        // 2. Запрос на твой сервер (Render)
+        const res = await fetch('/api/prompt-voice', { 
+            method: 'POST', 
+            body: formData 
+        });
+
+        // Проверяем, ответил ли сервер вообще
+        if (!res.ok) {
+            throw new Error(`Ошибка сервера: ${res.status}. Проверьте логи Render.`);
+        }
+
+        const data = await res.json();
+        
+        // 3. Обработка успешного ответа
+        if (data.status === 'success') {
+            audio.src = data.audio_url;
+            resultBox.classList.remove('hidden');
+            
+            // Пытаемся запустить воспроизведение
+            audio.play().catch(e => {
+                console.log("Автоплей заблокирован браузером, нажмите Play.");
+                alert("Аудио готово! Нажмите 'Play' в плеере.");
+            });
+        } else {
+            // Если сервер вернул JSON, но со статусом error
+            throw new Error(data.message || "Неизвестная ошибка на сервере.");
+        }
+    } catch (err) {
+        // 4. Обработка ошибок (связь, тайм-аут, падение сервера)
+        console.error(err);
+        alert("Не удалось создать голос: " + err.message);
+    } finally {
+        // 5. Возвращаем кнопку в исходное состояние
+        btn.disabled = false;
+        btn.innerText = originalText;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed', 'scale-95');
     }
 }
 </script>
