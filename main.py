@@ -6,6 +6,7 @@ import json
 import edge_tts
 import google.generativeai as genai
 import re
+import httpx
 import markdown
 import random
 import requests
