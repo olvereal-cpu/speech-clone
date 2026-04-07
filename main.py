@@ -462,7 +462,8 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
+os.makedirs("static/results", exist_ok=True)
+os.makedirs("static/ref", exist_ok=True)
 
 
 # Используем прямой адрес слэшем для стабильности
@@ -472,81 +473,53 @@ HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
-    selected_speaker = VOICE_PRESETS.get(prompt_type, "Damien Montez")
+    headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
+    # Вместо файлов на диске, просто передаем тип голоса на Хуган
+    data = {
+        'gen_text': text, 
+        'voice_type': prompt_type, # 'classic' или 'whisper'
+        'remove_silence': 'true'
+    }
     
     try:
-        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
-            headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
-            data = {
-                "text": text,
-                "speaker": selected_speaker,
-                "use_clone": "false"
-            }
-            
-            print(f"DEBUG: Отправка на {HF_URL} (Voice)")
-            res = await client.post(HF_URL, data=data, headers=headers)
-            
-            if res.status_code == 200:
-                output_filename = f"voice_{uuid.uuid4().hex}.wav"
-                output_path = os.path.join("static/results", output_filename)
-                os.makedirs("static/results", exist_ok=True)
-                
-                with open(output_path, "wb") as f:
-                    f.write(res.content)
-                return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
-            else:
-                print(f"DEBUG: Ошибка HF {res.status_code}: {res.text[:100]}")
-                return {"status": "error", "message": f"Server Error: {res.status_code}"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        # Шлем запрос БЕЗ файла (Хуган сам подставит нужный голос по voice_type)
+        res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
+        
+        if res.status_code == 200:
+            filename = f"voice_{uuid.uuid4().hex}.wav"
+            path = os.path.join("static/results", filename)
+            with open(path, "wb") as out: out.write(res.content)
+            return {"status": "success", "audio_url": f"/static/results/{filename}"}
+        return {"status": "error", "message": f"HF Error: {res.status_code}"}
+    except Exception as e: return {"status": "error", "message": str(e)}
 
 @app.post("/api/dub")
 async def api_dubbing(
     file: UploadFile = File(...), 
-    text: str = Form("Сәлем!"), 
-    target_lang: str = Form("kk")
+    text: str = Form(""), 
+    target_lang: str = Form("ru")
 ):
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
+    headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
     
     try:
-        # Сохраняем входящий файл во временную папку
         content = await file.read()
-        with open(temp_input, "wb") as f:
-            f.write(content)
+        with open(temp_input, "wb") as f: f.write(content)
 
-        async with httpx.AsyncClient(timeout=180.0, follow_redirects=True) as client:
-            headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
-            
-            with open(temp_input, "rb") as f:
-                # ВАЖНО: файлы и данные отправляем вместе
-                files = {'voice_sample': (file.filename, f, file.content_type)}
-                data = {
-                    'text': text, 
-                    'use_clone': 'true',
-                    'language': target_lang
-                }
-                
-                print(f"DEBUG: Отправка на {HF_URL} (Dubbing)")
-                res = await client.post(HF_URL, data=data, files=files, headers=headers)
-                
-                if res.status_code == 200:
-                    output_filename = f"dub_{uuid.uuid4().hex}.wav"
-                    output_path = os.path.join("static/results", output_filename)
-                    os.makedirs("static/results", exist_ok=True)
-                    
-                    with open(output_path, "wb") as out_f:
-                        out_f.write(res.content)
-                    return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
-                else:
-                    print(f"DEBUG: Ошибка HF {res.status_code}: {res.text[:100]}")
-                    return {"status": "error", "message": f"Server Error: {res.status_code}"}
+        with open(temp_input, "rb") as f:
+            files = {'ref_audio': (file.filename, f, file.content_type)}
+            data = {'gen_text': text, 'remove_silence': 'true'}
+            res = requests.post(HF_URL, data=data, files=files, headers=headers, timeout=180)
 
-    except Exception as e:
-        print(f"DEBUG: Исключение: {str(e)}")
-        return {"status": "error", "message": str(e)}
+        if res.status_code == 200:
+            filename = f"output_{uuid.uuid4().hex}.wav"
+            path = os.path.join("static/results", filename)
+            with open(path, "wb") as out: out.write(res.content)
+            return {"status": "success", "audio_url": f"/static/results/{filename}"}
+        return {"status": "error", "message": f"HF Error: {res.status_code}"}
+    except Exception as e: return {"status": "error", "message": str(e)}
     finally:
-        if os.path.exists(temp_input):
-            os.remove(temp_input)
+        if os.path.exists(temp_input): os.remove(temp_input)
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
