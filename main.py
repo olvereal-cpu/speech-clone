@@ -58,12 +58,12 @@ if raw_token:
     HF_TOKEN1 = raw_token.strip()
 else:
     HF_TOKEN1 = ""
-HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
 
 # Отладка в консоль Render (увидишь при запуске)
 print(f"DEBUG: Token status: {'LOADED' if HF_TOKEN1 else 'EMPTY'}")
 HF_TOKEN1 = os.getenv("HF_TOKEN1") 
-HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -466,7 +466,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Используем прямой адрес слэшем для стабильности
-HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
 HF_TOKEN = "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"
 HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
@@ -524,7 +524,7 @@ async def api_dubbing(
         # Используем контекстный менеджер для клиента
         async with httpx.AsyncClient(timeout=180.0, follow_redirects=True) as client:
             # Убедись, что HF_URL заканчивается на /generate/
-            # Например: "https://sercos-oleg-xtts-kz.hf.space/generate/"
+            # Например: "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
             
             headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
             
