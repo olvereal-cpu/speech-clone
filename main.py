@@ -673,91 +673,113 @@ async def api_admin_gen(
     try:
         target_topic = req.message.strip()
 
+        # --- 1. КОНСТРУКТОР ЖИВЫХ ТЕМ (АВТОПИЛОТ) ---
         if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
-            print("🤖 Автопилот: создаю уникальный социальный инсайд...")
-            niches = [
-                "Цифровое бессмертие и трансформация личности",
-                "Психология одиночества в эпоху алгоритмов",
-                "Кибербезопасность семьи и кража личности через ИИ",
-                "Воспитание детей и новые навыки для 2030 года",
-                "Любовь, Tinder и цифровые суррогаты близости",
-                "Биохакинг, чипы и слияние человека с кодом",
-                "Экономика выживания: профессии, которые ИИ заберет завтра",
-                "Ментальное здоровье и борьба с информационным шумом"
-            ]
-            selected_niche = random.choice(niches)
+            print("🤖 Автопилот: Создаю уникальный социальный инсайд...")
             
+            subjects = [
+                "Цифровое бессмертие", "Психология алгоритмов", "Кибербезопасность семьи",
+                "Воспитание в 2030 году", "Любовь в Tinder", "Биохакинг и чипы",
+                "Экономика выживания", "Ментальный шум", "Рынок фриланса", "ИИ-одиночество"
+            ]
+            problems = [
+                "кризис доверия", "потеря человечности", "новые способы заработка",
+                "скрытые угрозы личности", "деградация навыков", "замена чувств кодом",
+                "страх перед будущим", "цифровое рабство"
+            ]
+            roles = [
+                "скептичный инженер из Павлодара", "дерзкий футуролог", "уставший философ",
+                "главный редактор Esquire", "инсайдер из Кремниевой долины", "социолог-радикал"
+            ]
+            focuses = ["страх", "деньги", "секс", "власть", "одиночество", "инсайд"]
+
+            # Собираем уникальную нишу
+            sel_subject = random.choice(subjects)
+            sel_problem = random.choice(problems)
+            sel_role = random.choice(roles)
+            sel_focus = random.choice(focuses)
+
             topic_prompt = f"""
-            Ты — главный редактор Esquire. Придумай провокационный заголовок для статьи.
-            НИША: {selected_niche}
+            Ты — {sel_role}. Придумай провокационный заголовок для статьи.
+            НИША: {sel_subject} через призму {sel_problem}.
+            ФОКУС: {sel_focus}.
+            
             ПРАВИЛА:
             - СТРОГО: от 3 до 6 слов. Без кавычек.
-            - Тема должна быть про ЖИЗНЬ и ОБЩЕСТВО, а не про софт.
-            - Это должен быть "крючок": страх, любопытство или инсайд.
+            - Тема должна быть про ЖИЗНЬ и ОБЩЕСТВО, а не про 'софт'.
+            - Это должен быть "крючок": задень за живое, вызови любопытство.
             - Пример: 'Почему твой голос больше не твой', 'ИИ-няня: кто растит наших детей'.
             """
             generated_topic = await mm.generate(topic_prompt)
             target_topic = generated_topic.strip().replace('"', '').replace('.', '')
 
-        print(f"📝 Тема: {target_topic}")
+        print(f"📝 Тема: {target_topic} | Роль: {sel_role if 'sel_role' in locals() else 'Expert'}")
+
+        # --- 2. ГЕНЕРАЦИЯ «ЧЕЛОВЕЧЕСКОЙ» СТАТЬИ ---
+        # Список стоп-слов для обхода AI-детекторов
+        stop_words = [
+            "в современном мире", "неотъемлемая часть", "стоит отметить", 
+            "важно понимать", "ключевым фактором", "подводя итог", "в заключение"
+        ]
 
         prompt = f"""
-        Напиши экспертную, глубокую и человечную статью на тему: {target_topic}.
+        Напиши экспертную, глубокую и ЧЕЛОВЕЧНУЮ статью на тему: {target_topic}.
+        ТВОЯ РОЛЬ: {sel_role if 'sel_role' in locals() else 'Главный редактор Esquire'}.
 
-        ТРЕБОВАНИЯ К СТИЛЮ:
-        - Никакой "воды" и шаблонных фраз вроде "в современном мире".
-        - Используй сторителлинг: начни с реальной проблемы или интригующего факта.
-        - Обращайся к читателю на "вы", задавай риторические вопросы.
-        - Чередуй короткие и длинные предложения (создавай ритм текста).
-        - Добавь немного юмора или уместной иронии.
+        КАТЕГОРИЧЕСКИЕ ТРЕБОВАНИЯ К СТИЛЮ (ДЛЯ ОБХОДА ДЕТЕКТОРОВ):
+        - НИКАКОЙ ВОДЫ: Забудь фразы: {", ".join(stop_words)}.
+        - РИТМ ТЕКСТА: Чередуй очень короткие предложения (как удар) с длинными рассуждениями.
+        - СТОРИТЕЛЛИНГ: Начни с резкого факта, личного наблюдения или провокационного вопроса.
+        - ПЕРСОНАЛИЗАЦИЯ: Пиши так, будто рассказываешь это знакомому. Используй иронию и живые метафоры.
+        - СТРУКТУРА: Избегай одинаковых по размеру абзацев. 
         
-        SEO-ПАРАМЕТРЫ:
-        - Используй подзаголовки <h2> с ключевыми словами и эмодзи.
-        - В конце статьи обязательно добавь блок "Часто задаваемые вопросы" (FAQ) в формате <h3>.
+        SEO & ОФОРМЛЕНИЕ:
+        - Используй <h2> с ключевыми словами и тематическими эмодзи.
+        - В конце добавь блок FAQ (Часто задаваемые вопросы) в формате <h3>.
 
-        ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ (поле photo_keywords):
-        - СТРОГО ЗАПРЕЩЕНО использовать: 'computer', 'laptop', 'monitor', 'typing', 'office'.
-        - ИСПОЛЬЗУЙ МЕТАФОРЫ: 'cinematic lighting', 'surreal digital art', 'neon bokeh', 'atmospheric night city'.
+        ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ (photo_keywords):
+        - СТРОГО ЗАПРЕЩЕНО: 'computer', 'laptop', 'monitor', 'office', 'typing'.
+        - ИСПОЛЬЗУЙ МЕТАФОРЫ: 'cinematic lighting', 'surreal digital art', 'neon bokeh', 'atmospheric night city', 'dramatic shadows'.
 
-        !!! ВАЖНО: ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
-        В самом конце текста (в поле content) добавь блок "Мнение эксперта", оформив его СТРОГО в этом HTML:
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0; font-family: sans-serif;">
+        !!! ОФОРМЛЕНИЕ МНЕНИЯ ЭКСПЕРТА !!!
+        В самом конце текста (в поле content) добавь блок "Мнение эксперта" СТРОГО в этом HTML:
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); color: #e2e8f0;">
           <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
             <span style="margin-right: 8px;">⚡</span> Мнение эксперта
           </h4>
           <p style="font-style: italic; line-height: 1.6; margin-bottom: 0; color: #cbd5e1;">
-            [Твой краткий, дерзкий и экспертный вывод по теме "{target_topic}"]
+            [Твой краткий, дерзкий и экспертный вывод от лица {sel_role if 'sel_role' in locals() else 'автора'} по теме "{target_topic}"]
           </p>
         </div>
 
         Верни ответ СТРОГО в формате JSON:
         {{
           "title": "{target_topic}",
-          "excerpt": "Мета-описание (150-160 символов) для поисковиков.",
-          "content": "HTML-текст статьи (включая подзаголовки, списки и блок эксперта в конце)",
+          "excerpt": "Мета-описание (150-160 символов) без кавычек.",
+          "content": "HTML-текст статьи (подзаголовки, списки, блок эксперта)",
           "photo_keywords": "3-5 атмосферных английских слов"
         }}
         """
 
         raw_res = await mm.generate(prompt)
         match = re.search(r'\{.*\}', raw_res, re.DOTALL)
-        if match:
-            data = json.loads(match.group(0))
-        else:
-            raise Exception("Ошибка формата JSON")
+        if not match: raise Exception("Ошибка формата JSON")
+        data = json.loads(match.group(0))
 
+        # --- 3. УМНЫЙ ПОДБОР КАРТИНКИ (PEXELS) ---
         PEXELS_KEY = "rzdmYACqPHYAjdHRDipCFPM40aUMJOPP5Lo8mKvX1VUQCRvdQUC38yYn"
         raw_keywords = data.get('photo_keywords', 'abstract future').lower()
         forbidden = ['computer', 'laptop', 'monitor', 'pc', 'office', 'screen', 'keyboard', 'typing']
         
+        # Очистка и смешивание ключевых слов
         clean_ai_list = [w for w in raw_keywords.replace(",", " ").split() if w not in forbidden]
-        art_styles = ["cinematic photography", "surreal digital art", "bokeh city lights", "atmospheric lighting", "abstract pattern"]
+        art_styles = ["cinematic photography", "surreal digital art", "bokeh lights", "atmospheric lighting", "urban moody"]
         
         query = f"{' '.join(clean_ai_list[:2])} {random.choice(art_styles)}".strip()
         img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?q=80&w=1200"
 
         try:
-            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=15&orientation=landscape"
+            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=12&orientation=landscape"
             px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
             if px_res.status_code == 200:
                 photos = px_res.json().get('photos', [])
@@ -766,36 +788,26 @@ async def api_admin_gen(
         except Exception as e:
             print(f"🚨 Ошибка Pexels: {e}")
 
-        final_title = data.get("title", target_topic)
-        
+        # --- 4. СЛАГ И ПУБЛИКАЦИЯ ---
         def internal_slugify(text):
             chars = {
                 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
                 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
                 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
-                'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+                'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ы': 'y', 'э': 'e', 'ю': 'yu', 'я': 'ya'
             }
             text = text.lower().strip()
             result = "".join(chars.get(c, c) for c in text)
-            result = re.sub(r'[^a-z0-9]+', '-', result)
-            return result.strip('-')
+            return re.sub(r'[^a-z0-9]+', '-', result).strip('-')
 
-        slug_name = internal_slugify(final_title)
+        final_title = data.get("title", target_topic)
+        slug_name = internal_slugify(final_title) or f"post-{random.randint(1000, 9999)}"
 
-        if not slug_name:
-            slug_name = f"post-{random.randint(1000, 9999)}"
+        final_content = data.get('content')
+        final_excerpt = data.get('excerpt', final_content[:160] if final_content else "")
 
-        final_content = data.get('content') or data.get('text') or data.get('article')
-        
-        if not final_content:
-            print("⚠️ Контент в JSON не найден, использую сырой текст")
-            final_content = raw_res if 'raw_res' in locals() else "Текст не был сгенерирован"
-
-        final_excerpt = data.get('excerpt', '')
-        if not final_excerpt and final_content:
-             final_excerpt = final_content[:160].replace('<p>', '').replace('</p>', '') + "..."
-
-        res = supabase.table("posts").insert({
+        # Запись в базу
+        supabase.table("posts").insert({
             "title": final_title,
             "slug": slug_name,
             "image_url": img_url,
@@ -803,14 +815,13 @@ async def api_admin_gen(
             "content": final_content 
         }).execute()
 
-        print(f"🚀 Статья опубликована: {final_title} | SLUG: {slug_name}")
+        print(f"🚀 Статья опубликована: {final_title}")
 
         return {
             "status": "success", 
             "title": final_title, 
             "slug": slug_name,
-            "image": img_url,
-            "content_status": "filled" if final_content else "empty"
+            "image": img_url
         }
 
     except Exception as e:
