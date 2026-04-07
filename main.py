@@ -444,6 +444,17 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+import os
+import uuid
+import httpx
+from fastapi import FastAPI, Form, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Твой новый токен и URL
+HF_TOKEN = "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"
+# Используем прямой адрес слэшем для стабильности
 HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 
 @app.post("/api/prompt-voice")
@@ -451,7 +462,6 @@ async def api_prompt_voice(
     prompt_type: str = Form(...), 
     text: str = Form(...)
 ):
-    # Пресеты теперь привязаны к голосам твоего XTTS
     VOICE_PRESETS = {
         "classic": "Damien Montez",
         "whisper": "Ana Sofia",
@@ -462,10 +472,13 @@ async def api_prompt_voice(
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # Шлем прямой POST запрос на Хуган
+            headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
+            
+            # Шлем POST с токеном
             res = await client.post(
                 HF_URL,
                 data={"text": text, "speaker": selected_speaker, "use_clone": "false"},
+                headers=headers,
                 follow_redirects=True
             )
             
@@ -490,7 +503,6 @@ async def api_dubbing(
     text: str = Form("Сәлем!"), 
     target_lang: str = Form("kk")
 ):
-    # Временный файл на стороне Рендера
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
     
     try:
@@ -499,12 +511,20 @@ async def api_dubbing(
             f.write(content)
 
         async with httpx.AsyncClient(timeout=180.0) as client:
-            # ОТПРАВЛЯЕМ ФАЙЛ НА КЛОНИРОВАНИЕ (DUBBING)
+            headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
+            
             with open(temp_input, "rb") as f:
                 files = {'voice_sample': (file.filename, f, 'audio/wav')}
                 data = {'text': text, 'use_clone': 'true'}
                 
-                res = await client.post(HF_URL, data=data, files=files, follow_redirects=True)
+                # Шлем POST с файлом и токеном
+                res = await client.post(
+                    HF_URL, 
+                    data=data, 
+                    files=files, 
+                    headers=headers,
+                    follow_redirects=True
+                )
                 
                 if res.status_code == 200:
                     output_filename = f"dub_{uuid.uuid4().hex}.wav"
