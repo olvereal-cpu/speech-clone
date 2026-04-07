@@ -47,6 +47,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 HF_KOKORO_URL = "https://sercos-my-tts-api.hf.space/generate"
 # ТВОЯ НОВАЯ СТУДИЯ (PIPER)
 HF_PIPER_URL = "https://sercos-oleg-studio-v2.hf.space/tts"
+HF_TOKEN1 = os.getenv("HF_TOKEN1") 
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
