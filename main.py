@@ -444,16 +444,9 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-import os
-import uuid
-import httpx
-from fastapi import FastAPI, Form, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
 
-# Твой новый токен и URL
-HF_TOKEN = "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"
+
 # Используем прямой адрес слэшем для стабильности
 HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 
