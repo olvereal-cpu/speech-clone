@@ -453,6 +453,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Используем прямой адрес слэшем для стабильности
 HF_URL = "https://sercos-oleg-xtts-kz.hf.space/--api--/generate/"
 HF_TOKEN = "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"
+HF_TOKEN1 = raw_token.strip() if raw_token else ""
 
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
