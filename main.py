@@ -444,29 +444,28 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate"
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate/"
 
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(
     prompt_type: str = Form(...), 
     text: str = Form(...)
 ):
-    # Пресеты теперь привязаны к качественным голосам XTTS
+    # Пресеты теперь привязаны к голосам твоего XTTS
     VOICE_PRESETS = {
         "classic": "Damien Montez",
         "whisper": "Ana Sofia",
         "news": "Andrew Taya",
         "grumpy": "Baldur Sanjin"
     }
-    
     selected_speaker = VOICE_PRESETS.get(prompt_type, "Damien Montez")
-    
+
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # Отправляем POST запрос именно так, как ждет твой Docker
+            # Шлем прямой POST запрос на Хуган
             res = await client.post(
                 HF_URL,
-                data={"text": text, "speaker": selected_speaker},
+                data={"text": text, "speaker": selected_speaker, "use_clone": "false"},
                 follow_redirects=True
             )
             
@@ -480,40 +479,37 @@ async def api_prompt_voice(
                 
                 return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
             else:
-                return {"status": "error", "message": f"HF вернул ошибку {res.status_code}"}
+                return {"status": "error", "message": f"HF Error: {res.status_code}"}
                 
     except Exception as e:
-        print(f"Ошибка связи с XTTS: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/dub")
 async def api_dubbing(
     file: UploadFile = File(...), 
-    text: str = Form("Салем!"), # Текст, который должен сказать клон
-    target_lang: str = Form("kk") # По умолчанию казахский
+    text: str = Form("Сәлем!"), 
+    target_lang: str = Form("kk")
 ):
+    # Временный файл на стороне Рендера
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
     
     try:
-        # Сохраняем файл на Render временно
         content = await file.read()
         with open(temp_input, "wb") as f:
             f.write(content)
 
         async with httpx.AsyncClient(timeout=180.0) as client:
-            # Открываем файл и шлем его в твой Docker на Hugging Face
+            # ОТПРАВЛЯЕМ ФАЙЛ НА КЛОНИРОВАНИЕ (DUBBING)
             with open(temp_input, "rb") as f:
                 files = {'voice_sample': (file.filename, f, 'audio/wav')}
-                data = {
-                    'text': text,
-                    'use_clone': 'true'
-                }
+                data = {'text': text, 'use_clone': 'true'}
                 
                 res = await client.post(HF_URL, data=data, files=files, follow_redirects=True)
                 
                 if res.status_code == 200:
                     output_filename = f"dub_{uuid.uuid4().hex}.wav"
                     output_path = os.path.join("static/results", output_filename)
+                    os.makedirs("static/results", exist_ok=True)
                     
                     with open(output_path, "wb") as out_f:
                         out_f.write(res.content)
@@ -523,7 +519,6 @@ async def api_dubbing(
                     return {"status": "error", "message": f"HF Dub Error: {res.status_code}"}
 
     except Exception as e:
-        print(f"Ошибка дубляжа: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         if os.path.exists(temp_input):
