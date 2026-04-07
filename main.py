@@ -444,87 +444,90 @@ async def generate_audio_universal(request: Request):
         return {"success": False, "error": str(e)}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+HF_URL = "https://sercos-oleg-xtts-kz.hf.space/generate"
+
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(
     prompt_type: str = Form(...), 
-    custom_prompt: str = Form(None), 
     text: str = Form(...)
 ):
+    # Пресеты теперь привязаны к качественным голосам XTTS
     VOICE_PRESETS = {
-        "classic": "A professional male voice, clear and studio record.",
-        "whisper": "A soft female voice whispering slowly.",
-        "news": "A professional news anchor voice, fast and authoritative.",
-        "grumpy": "A deep, gravelly male voice, grumpy tone."
+        "classic": "Damien Montez",
+        "whisper": "Ana Sofia",
+        "news": "Andrew Taya",
+        "grumpy": "Baldur Sanjin"
     }
-
-    if prompt_type == "custom":
-        final_description = custom_prompt if custom_prompt else "A natural speaking voice."
-    else:
-        final_description = VOICE_PRESETS.get(prompt_type, VOICE_PRESETS["classic"])
-
+    
+    selected_speaker = VOICE_PRESETS.get(prompt_type, "Damien Montez")
+    
     try:
-        # Сменили на mini-v1 для стабильности
-        client = Client("parler-tts/parler-tts-mini-expresso")
-        # УБРАЛИ api_name="/predict"
-        result = client.predict(
-            text=text,
-            description=final_description
-        )
-        
-        output_filename = f"custom_{uuid.uuid4()}.wav"
-        output_path = os.path.join("static/results", output_filename)
-        
-        import shutil
-        shutil.move(result, output_path)
-        
-        return {
-            "status": "success", 
-            "audio_url": f"/static/results/{output_filename}"
-        }
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Отправляем POST запрос именно так, как ждет твой Docker
+            res = await client.post(
+                HF_URL,
+                data={"text": text, "speaker": selected_speaker},
+                follow_redirects=True
+            )
+            
+            if res.status_code == 200:
+                output_filename = f"custom_{uuid.uuid4().hex}.wav"
+                output_path = os.path.join("static/results", output_filename)
+                os.makedirs("static/results", exist_ok=True)
+                
+                with open(output_path, "wb") as f:
+                    f.write(res.content)
+                
+                return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
+            else:
+                return {"status": "error", "message": f"HF вернул ошибку {res.status_code}"}
+                
     except Exception as e:
-        print(f"Ошибка нейронки: {e}")
+        print(f"Ошибка связи с XTTS: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/dub")
-async def api_dubbing(file: UploadFile = File(...), target_lang: str = Form(...)):
-    lang_map = {
-        "en": "English", "ru": "Russian", "kz": "Kazakh", 
-        "de": "German", "fr": "French", "es": "Spanish"
-    }
-    target_full = lang_map.get(target_lang, "English")
-    
-    temp_input = f"temp_{uuid.uuid4()}_{file.filename}"
+async def api_dubbing(
+    file: UploadFile = File(...), 
+    text: str = Form("Салем!"), # Текст, который должен сказать клон
+    target_lang: str = Form("kk") # По умолчанию казахский
+):
+    temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
     
     try:
+        # Сохраняем файл на Render временно
+        content = await file.read()
         with open(temp_input, "wb") as f:
-            f.write(await file.read())
+            f.write(content)
 
-        # ИСПРАВЛЕНО: Убрали лишние кавычки и api_name
-        client = Client("facebook/seamless-m4t-v2-large")
-        result = client.predict(
-            temp_input, 
-            "S2ST",
-            "Russian",
-            target_full
-        )
-        
-        output_filename = f"dub_{uuid.uuid4()}.wav"
-        output_path = os.path.join("static/results", output_filename)
-        
-        import shutil
-        shutil.move(result[0], output_path)
-        
-        return {
-            "status": "success", 
-            "audio_url": f"/static/results/{output_filename}"
-        }
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            # Открываем файл и шлем его в твой Docker на Hugging Face
+            with open(temp_input, "rb") as f:
+                files = {'voice_sample': (file.filename, f, 'audio/wav')}
+                data = {
+                    'text': text,
+                    'use_clone': 'true'
+                }
+                
+                res = await client.post(HF_URL, data=data, files=files, follow_redirects=True)
+                
+                if res.status_code == 200:
+                    output_filename = f"dub_{uuid.uuid4().hex}.wav"
+                    output_path = os.path.join("static/results", output_filename)
+                    
+                    with open(output_path, "wb") as out_f:
+                        out_f.write(res.content)
+                        
+                    return {"status": "success", "audio_url": f"/static/results/{output_filename}"}
+                else:
+                    return {"status": "error", "message": f"HF Dub Error: {res.status_code}"}
+
     except Exception as e:
         print(f"Ошибка дубляжа: {e}")
         return {"status": "error", "message": str(e)}
     finally:
         if os.path.exists(temp_input):
             os.remove(temp_input)
-
 @app.get("/voices", response_class=HTMLResponse)
 async def voices_page(request: Request):
     return templates.TemplateResponse(
