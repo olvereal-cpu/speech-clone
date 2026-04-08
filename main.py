@@ -58,12 +58,12 @@ if raw_token:
     HF_TOKEN1 = raw_token.strip()
 else:
     HF_TOKEN1 = ""
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate"
 
 # Отладка в консоль Render (увидишь при запуске)
 print(f"DEBUG: Token status: {'LOADED' if HF_TOKEN1 else 'EMPTY'}")
 HF_TOKEN1 = os.getenv("HF_TOKEN1") 
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate"
 def slugify(text: str) -> str:
     """Конвертирует русский текст в транслит для ЧПУ-ссылок"""
     chars = {
@@ -466,48 +466,56 @@ os.makedirs("static/results", exist_ok=True)
 os.makedirs("static/ref", exist_ok=True)
 
 
-# 1. Скорректированный адрес твоего нового Спейса (без /generate/ в конце для Gradio)
-# Если Спейс приватный, используем API адрес
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/" 
+import os
+import uuid
+import requests
+from fastapi import Form, File, UploadFile, FastAPI
+from typing import Optional
+
+app = FastAPI()
+
+# --- КОНФИГУРАЦИЯ ---
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
+# Твой основной токен (если HF_TOKEN1 не определен выше в коде, используем этот)
 HF_TOKEN = "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"
 
-# Используем основной токен, если raw_token пустой
-current_token = raw_token.strip() if (locals().get('raw_token') and raw_token) else HF_TOKEN
+# ПРОВЕРКА ТОКЕНА (Возвращаем твою логику)
+# Если переменная raw_token или HF_TOKEN1 уже определена в твоем окружении, используем её
+try:
+    auth_token = HF_TOKEN1 if 'HF_TOKEN1' in locals() else HF_TOKEN
+except NameError:
+    auth_token = HF_TOKEN
 
+# --- 1. VOICE DESIGNER (Генерация по промпту) ---
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
-    headers = {"Authorization": f"Bearer {current_token}"}
-    
-    # В Gradio API данные обычно передаются в поле "data" как список
-    # Но если ты переписал Спейс на FastAPI, оставляем этот формат:
-    payload = {
-        "gen_text": text, 
-        "voice_type": prompt_type, 
-        "remove_silence": "true"
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    data = {
+        'gen_text': text, 
+        'voice_type': prompt_type, 
+        'remove_silence': 'true'
     }
     
     try:
-        print(f"DEBUG: Отправка промпта на HF: {prompt_type}")
-        # Если это Gradio, адрес может быть HF_URL + "api/predict"
-        api_endpoint = f"{HF_URL}generate/" # Проверь этот путь в логах Спейса
-        
-        res = requests.post(api_endpoint, data=payload, headers=headers, timeout=120)
+        print(f"DEBUG Prompt: Отправка на {HF_URL} (Тип: {prompt_type})")
+        res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
         
         if res.status_code == 200:
             filename = f"voice_{uuid.uuid4().hex}.wav"
             path = os.path.join("static/results", filename)
-            os.makedirs("static/results", exist_ok=True) # На всякий случай создаем папку
+            os.makedirs("static/results", exist_ok=True)
             with open(path, "wb") as out: 
                 out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
         
-        print(f"DEBUG Error: {res.text}")
+        print(f"DEBUG Error: Код {res.status_code}, Ответ: {res.text}")
         return {"status": "error", "message": f"HF Error: {res.status_code}"}
         
     except Exception as e: 
         print(f"DEBUG Exception: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+# --- 2. DUBBING & CLONING (Дубляж и Николай) ---
 @app.post("/api/dub")
 async def api_dubbing(
     file: UploadFile = File(...), 
@@ -515,24 +523,24 @@ async def api_dubbing(
     target_lang: str = Form("ru")
 ):
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
-    headers = {"Authorization": f"Bearer {current_token}"}
+    headers = {"Authorization": f"Bearer {auth_token}"}
     
     try:
+        # Читаем файл (Николай или видео)
         content = await file.read()
         with open(temp_input, "wb") as f: 
             f.write(content)
 
         with open(temp_input, "rb") as f:
+            # Отправляем файл на Хуган для клонирования голоса
             files = {'ref_audio': (file.filename, f, file.content_type)}
-            # Важно: добавляем target_lang, чтобы нейронка знала язык
             data = {
                 'gen_text': text, 
                 'target_lang': target_lang,
                 'remove_silence': 'true'
             }
-            
-            api_endpoint = f"{HF_URL}generate/"
-            res = requests.post(api_endpoint, data=data, files=files, headers=headers, timeout=180)
+            print(f"DEBUG Dub: Отправка файла {file.filename} на {HF_URL}")
+            res = requests.post(HF_URL, data=data, files=files, headers=headers, timeout=180)
 
         if res.status_code == 200:
             filename = f"output_{uuid.uuid4().hex}.wav"
@@ -542,6 +550,7 @@ async def api_dubbing(
                 out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
             
+        print(f"DEBUG Error Dub: Код {res.status_code}, Ответ: {res.text}")
         return {"status": "error", "message": f"HF Error: {res.status_code}"}
         
     except Exception as e: 
