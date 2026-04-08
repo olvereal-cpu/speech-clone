@@ -5,119 +5,64 @@
         <h1 class="text-5xl font-black text-slate-800 tracking-tight">
             🎭 <span class="text-purple-600">VOICE</span> DESIGNER
         </h1>
-        <p class="text-slate-500 mt-2 text-lg">Создайте характер голоса с помощью AI</p>
+        <p class="text-slate-500 mt-2 text-lg">Создайте характер голоса с помощью промпта</p>
     </div>
 
     <div class="bg-white rounded-[40px] shadow-2xl border border-purple-50 p-8 lg:p-12 space-y-10">
-        
         <div class="space-y-4">
-            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Шаг 1: Выберите базовый стиль</label>
-            <select id="promptType" name="prompt_type" onchange="toggleCustom()" class="w-full bg-purple-50 border-none rounded-2xl p-5 text-xl font-bold text-purple-900 focus:ring-2 focus:ring-purple-500 transition cursor-pointer">
-                <option value="classic">🎙️ Классический (Студия)</option>
-                <option value="whisper">🤫 Тихий шепот (Whisper)</option>
-                <option value="news">📢 Диктор новостей (News)</option>
-                <option value="grumpy">😠 Ворчливый старик (Grumpy)</option>
-                <option value="echo">🏛️ Эхо в зале (Cinematic)</option>
-                <option value="custom">✍️ Свой вариант (Manual Prompt)</option>
+            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Стиль голоса:</label>
+            <select id="promptType" class="w-full bg-purple-50 border-none rounded-2xl p-5 text-xl font-bold text-purple-900 focus:ring-2 focus:ring-purple-500 transition cursor-pointer">
+                <option value="classic">🎙️ Классический</option>
+                <option value="whisper">🤫 Шепот (Whisper)</option>
+                <option value="news">📢 Диктор (News)</option>
+                <option value="grumpy">😠 Ворчливый (Grumpy)</option>
+                <option value="custom">✍️ Свой промпт</option>
             </select>
         </div>
 
-        <div id="customPromptBox" class="space-y-4 hidden animate-in slide-in-from-top-4">
-            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest text-purple-600">Ваше описание (на английском):</label>
-            <textarea id="customPrompt" rows="2" class="w-full p-5 bg-slate-50 border-2 border-purple-100 rounded-2xl focus:border-purple-500 focus:ring-0 transition" placeholder="Example: A high-pitched female voice, very excited..."></textarea>
-        </div>
-
         <div class="space-y-4">
-            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Шаг 2: Текст для озвучки</label>
-            <textarea id="voiceText" rows="4" class="w-full p-5 bg-slate-50 border-none rounded-2xl text-xl shadow-inner focus:ring-2 focus:ring-purple-500 transition resize-none" placeholder="Что должен сказать этот голос?"></textarea>
+            <label class="block text-sm font-black text-slate-400 uppercase tracking-widest">Текст для озвучки:</label>
+            <textarea id="voiceText" rows="4" class="w-full p-5 bg-slate-50 border-none rounded-2xl text-xl shadow-inner focus:ring-2 focus:ring-purple-500 transition" placeholder="Введите текст..."></textarea>
         </div>
 
-        <button id="generateBtn" onclick="generateVoice()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-6 rounded-3xl shadow-xl shadow-purple-200 hover:shadow-2xl transition-all transform active:scale-95 text-xl">
+        <button id="generateBtn" onclick="generateVoice()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-6 rounded-3xl shadow-xl transition-all transform active:scale-95 text-xl">
             СОЗДАТЬ ГОЛОС
         </button>
 
         <div id="voiceResult" class="hidden mt-10 pt-10 border-t border-purple-100">
-            <div class="flex items-center justify-between mb-4">
-                <span class="bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-xs font-bold uppercase">Аудио сгенерировано</span>
-            </div>
             <audio id="audioVoice" controls class="w-full h-14"></audio>
         </div>
     </div>
 </div>
 
 <script>
-function toggleCustom() {
-    const box = document.getElementById('customPromptBox');
-    const type = document.getElementById('promptType').value;
-    box.classList.toggle('hidden', type !== 'custom');
-}
-
 async function generateVoice() {
-    // Получаем элементы
     const btn = document.getElementById('generateBtn');
-    const voiceText = document.getElementById('voiceText').value;
-    const promptType = document.getElementById('promptType').value;
-    const audio = document.getElementById('audioVoice');
-    const resultBox = document.getElementById('voiceResult');
+    const text = document.getElementById('voiceText').value;
+    const type = document.getElementById('promptType').value;
 
-    // Проверка ввода
-    if (!voiceText.trim()) {
-        alert("Пожалуйста, введите текст для озвучки.");
-        return;
-    }
+    if (!text.trim()) return alert("Введите текст!");
 
-    // 1. Визуальный отклик (индикация загрузки)
-    const originalText = btn.innerText;
     btn.disabled = true;
-    btn.innerText = "⏳ ГЕНЕРАЦИЯ (ЖДИТЕ)...";
-    // Добавляем стили Tailwind для заблокированной кнопки
-    btn.classList.add('opacity-75', 'cursor-not-allowed', 'scale-95');
-
-    // Скрываем прошлый результат
-    resultBox.classList.add('hidden');
-    audio.src = '';
-
+    btn.innerText = "⏳ ГЕНЕРАЦИЯ...";
+    
     const formData = new FormData();
-    formData.append('prompt_type', promptType);
-    formData.append('text', voiceText);
+    formData.append('prompt_type', type);
+    formData.append('text', text);
 
     try {
-        // 2. Запрос на твой сервер (Render)
-        const res = await fetch('/api/prompt-voice', { 
-            method: 'POST', 
-            body: formData 
-        });
-
-        // Проверяем, ответил ли сервер вообще
-        if (!res.ok) {
-            throw new Error(`Ошибка сервера: ${res.status}. Проверьте логи Render.`);
-        }
-
+        const res = await fetch('/api/prompt-voice', { method: 'POST', body: formData });
         const data = await res.json();
-        
-        // 3. Обработка успешного ответа
         if (data.status === 'success') {
-            audio.src = data.audio_url;
-            resultBox.classList.remove('hidden');
-            
-            // Пытаемся запустить воспроизведение
-            audio.play().catch(e => {
-                console.log("Автоплей заблокирован браузером, нажмите Play.");
-                alert("Аудио готово! Нажмите 'Play' в плеере.");
-            });
-        } else {
-            // Если сервер вернул JSON, но со статусом error
-            throw new Error(data.message || "Неизвестная ошибка на сервере.");
+            document.getElementById('audioVoice').src = data.audio_url;
+            document.getElementById('voiceResult').classList.remove('hidden');
+            document.getElementById('audioVoice').play();
         }
     } catch (err) {
-        // 4. Обработка ошибок (связь, тайм-аут, падение сервера)
-        console.error(err);
-        alert("Не удалось создать голос: " + err.message);
+        alert("Ошибка: " + err.message);
     } finally {
-        // 5. Возвращаем кнопку в исходное состояние
         btn.disabled = false;
-        btn.innerText = originalText;
-        btn.classList.remove('opacity-75', 'cursor-not-allowed', 'scale-95');
+        btn.innerText = "СОЗДАТЬ ГОЛОС";
     }
 }
 </script>
