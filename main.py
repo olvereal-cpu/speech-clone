@@ -468,7 +468,7 @@ os.makedirs("static/ref", exist_ok=True)
 
 
 
-app = FastAPI()
+
 
 # --- КОНФИГУРАЦИЯ ---
 HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
