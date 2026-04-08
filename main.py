@@ -472,15 +472,22 @@ os.makedirs("static/ref", exist_ok=True)
 
 # --- КОНФИГУРАЦИЯ ---
 HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
-# Твой основной токен (если HF_TOKEN1 не определен выше в коде, используем этот)
-HF_TOKEN = "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"
+# Твой основной токен (добавляем .strip() на всякий случай)
+HF_TOKEN = "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".strip()
 
-# ПРОВЕРКА ТОКЕНА (Возвращаем твою логику)
-# Если переменная raw_token или HF_TOKEN1 уже определена в твоем окружении, используем её
+# ПРОВЕРКА ТОКЕНА
 try:
-    auth_token = HF_TOKEN1 if 'HF_TOKEN1' in locals() else HF_TOKEN
+    # Здесь тоже добавляем .strip(), чтобы убрать лишние пробелы и переносы (\n)
+    if 'HF_TOKEN1' in locals() and HF_TOKEN1:
+        auth_token = HF_TOKEN1.strip()
+    elif 'raw_token' in locals() and raw_token:
+        auth_token = raw_token.strip()
+    else:
+        auth_token = HF_TOKEN
 except NameError:
     auth_token = HF_TOKEN
+
+print(f"DEBUG: Token loaded (length: {len(auth_token)})") # Проверка длины в логах
 
 # --- 1. VOICE DESIGNER (Генерация по промпту) ---
 @app.post("/api/prompt-voice")
