@@ -5,24 +5,24 @@
         <h1 class="text-5xl font-black text-slate-800 tracking-tight">
             🎥 <span class="text-blue-600 italic">VIDEO & AUDIO</span> DUBBING
         </h1>
-        <p class="text-slate-500 mt-2 text-lg font-medium">Мгновенный перевод контента на казахский и другие языки</p>
+        <p class="text-slate-500 mt-2 text-lg font-medium">Мгновенный перевод и клонирование голоса персонажей</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl h-fit border border-blue-500/30">
-            <h3 class="text-xl font-bold mb-6 text-blue-400">Процесс перевода:</h3>
+            <h3 class="text-xl font-bold mb-6 text-blue-400">Технология AI:</h3>
             <div class="space-y-6 text-sm">
                 <div class="flex gap-4">
                     <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">1</span>
-                    <p>Загрузите исходное аудио или видео (MP4/MP3/WAV).</p>
+                    <p>Загрузите исходник. Система сама определит язык оригинала.</p>
                 </div>
                 <div class="flex gap-4">
                     <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">2</span>
-                    <p>Система распознает речь и подготовит перевод.</p>
+                    <p>Выберите персонажа. Мы используем RVC v2 для идеального клонирования.</p>
                 </div>
                 <div class="flex gap-4">
                     <span class="bg-blue-600/20 text-blue-400 w-8 h-8 rounded-lg flex items-center justify-center font-bold border border-blue-600/30">3</span>
-                    <p>Вы получите готовый файл с новой озвучкой.</p>
+                    <p>Получите файл с сохранением интонаций и тембра выбранного героя.</p>
                 </div>
             </div>
         </div>
@@ -34,29 +34,51 @@
                     <div class="text-blue-600">
                         <span class="text-6xl mb-4 block group-hover:scale-110 transition-transform">🎬</span>
                         <p id="fileNameDisplay" class="text-lg font-bold">Загрузить видео или аудио</p>
-                        <p class="text-sm text-slate-400">Поддерживаются форматы: MP4, MP3, WAV</p>
+                        <p class="text-sm text-slate-400">MP4, MP3, WAV (до 50MB)</p>
                     </div>
                 </div>
 
-                <div class="space-y-4">
-                    <label class="block text-sm font-bold text-slate-500 uppercase tracking-widest">Целевой язык (на какой переводим):</label>
-                    <select id="targetLang" name="target_lang" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-lg font-semibold focus:border-blue-500 focus:ring-0 transition">
-                        <option value="kz" selected>🇰🇿 Kazakh (Казахский)</option>
-                        <option value="ru">🇷🇺 Russian (Русский)</option>
-                        <option value="en">🇺🇸 English (Английский)</option>
-                        <option value="tr">🇹🇷 Turkish (Турецкий)</option>
-                    </select>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-500 uppercase tracking-widest">Целевой язык:</label>
+                        <select id="targetLang" name="target_lang" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-semibold focus:border-blue-500 transition">
+                            <option value="kz" selected>🇰🇿 Казахский</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="en">🇺🇸 Английский</option>
+                            <option value="tr">🇹🇷 Турецкий</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-500 uppercase tracking-widest">Голос персонажа:</label>
+                        <select id="voiceId" name="voice_id" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-semibold focus:border-blue-500 transition">
+                            <optgroup label="Мужские (Сила)">
+                                <option value="morgan">🤠 Артур Морган</option>
+                                <option value="freeman">🎙️ Морган Фримен</option>
+                                <option value="geralt">⚔️ Геральт</option>
+                                <option value="kratos">🛡️ Кратос</option>
+                            </optgroup>
+                            <optgroup label="Женские (Элегантность)">
+                                <option value="scarlett">💄 Скарлетт Йоханссон</option>
+                                <option value="ellie">🎒 Элли (TLOU)</option>
+                                <option value="ciri">🦄 Цири</option>
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
 
                 <button type="button" id="dubBtn" onclick="startDubbing()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 transition-all active:scale-95 text-xl uppercase">
-                    Запустить перевод
+                    Запустить AI Дубляж
                 </button>
             </form>
 
-            <div id="dubResult" class="mt-8 hidden border-t pt-8 animate-in fade-in">
-                <p class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-tighter">Результат перевода готов:</p>
-                <div id="mediaContainer">
-                    <audio id="audioDub" controls class="w-full h-14"></audio>
+            <div id="dubResult" class="mt-8 hidden border-t pt-8 animate-in fade-in slide-in-from-bottom-4">
+                <div class="flex items-center justify-between mb-4">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Результат готов:</p>
+                    <a id="downloadLink" href="#" download class="text-blue-600 font-bold text-sm hover:underline">Скачать файл</a>
+                </div>
+                <div id="mediaContainer" class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <audio id="audioDub" controls class="w-full h-12"></audio>
                 </div>
             </div>
         </div>
@@ -64,12 +86,13 @@
 </div>
 
 <script>
-// Функция для отображения имени выбранного файла
+// Отображение имени файла
 function updateFileName() {
     const fileInput = document.getElementById('mediaFile');
     const display = document.getElementById('fileNameDisplay');
     if (fileInput.files.length > 0) {
-        display.innerText = "✅ Файл выбран: " + fileInput.files[0].name;
+        display.innerText = "✅ Готов к работе: " + fileInput.files[0].name;
+        display.classList.add('text-green-600');
     }
 }
 
@@ -78,26 +101,28 @@ async function startDubbing() {
     const btn = document.getElementById('dubBtn');
     const resultBox = document.getElementById('dubResult');
     const audio = document.getElementById('audioDub');
+    const downloadLink = document.getElementById('downloadLink');
 
-    // Проверка на наличие файла
     if (!fileInput.files[0]) {
-        alert("Пожалуйста, выберите видео или аудио файл!");
+        alert("Олег, выбери файл для обработки!");
         return;
     }
-    
-    // Визуальная индикация загрузки
+
+    // Состояние загрузки
     const originalText = btn.innerText;
     btn.disabled = true;
-    btn.innerText = "⏳ ПЕРЕВОДИМ (ЭТО ЗАЙМЕТ ВРЕМЯ)...";
-    btn.classList.add('opacity-70', 'cursor-not-allowed');
+    btn.innerText = "⌛ НЕЙРОСЕТЬ РАБОТАЕТ...";
+    btn.classList.add('opacity-70', 'cursor-not-allowed', 'animate-pulse');
     resultBox.classList.add('hidden');
 
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     formData.append('target_lang', document.getElementById('targetLang').value);
+    formData.append('voice_id', document.getElementById('voiceId').value);
+    formData.append('f0up_key', 0); // Тональность по умолчанию
 
     try {
-        // Отправка на твой API на Render
+        // Отправка на твой основной бэкенд
         const res = await fetch('/api/dub', { 
             method: 'POST', 
             body: formData 
@@ -109,19 +134,19 @@ async function startDubbing() {
         
         if (data.status === 'success') {
             audio.src = data.audio_url;
+            downloadLink.href = data.audio_url;
             resultBox.classList.remove('hidden');
-            audio.play().catch(() => console.log("Нажмите Play для прослушивания"));
+            audio.play();
         } else {
-            alert("Ошибка: " + (data.message || "Не удалось перевести файл"));
+            alert("Упс: " + (data.message || "Ошибка обработки"));
         }
     } catch (err) {
         console.error(err);
         alert("Проблема со связью: " + err.message);
     } finally {
-        // Возвращаем кнопку в рабочее состояние
         btn.disabled = false;
         btn.innerText = originalText;
-        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.classList.remove('opacity-70', 'cursor-not-allowed', 'animate-pulse');
     }
 }
 </script>
