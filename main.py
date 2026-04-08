@@ -38,7 +38,7 @@ from aiogram.fsm.context import FSMContext
 from supabase import create_client, Client
 from slugify import slugify
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from gradio_client import Client
+from gradio_client import Client, handle_file
 VOICE_PRESETS = {
     "classic": "Damien Montez",
     "whisper": "Whisper",
