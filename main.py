@@ -58,7 +58,7 @@ if raw_token:
     HF_TOKEN1 = raw_token.strip()
 else:
     HF_TOKEN1 = ""
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate"
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
 
 # Отладка в консоль Render (увидишь при запуске)
 print(f"DEBUG: Token status: {'LOADED' if HF_TOKEN1 else 'EMPTY'}")
@@ -466,11 +466,7 @@ os.makedirs("static/results", exist_ok=True)
 os.makedirs("static/ref", exist_ok=True)
 
 
-import os
-import uuid
-import requests
-from fastapi import Form, File, UploadFile, FastAPI
-from typing import Optional
+
 
 app = FastAPI()
 
