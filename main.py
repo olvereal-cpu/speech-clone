@@ -466,34 +466,42 @@ os.makedirs("static/results", exist_ok=True)
 os.makedirs("static/ref", exist_ok=True)
 
 
-# Используем прямой адрес слэшем для стабильности
-HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/generate/"
+# 1. Скорректированный адрес твоего нового Спейса (без /generate/ в конце для Gradio)
+# Если Спейс приватный, используем API адрес
+HF_URL = "https://sercos-oleg-xtts-kz-hf-space.hf.space/" 
 HF_TOKEN = "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"
-HF_TOKEN1 = raw_token.strip() if raw_token else ""
+
+# Используем основной токен, если raw_token пустой
+current_token = raw_token.strip() if (locals().get('raw_token') and raw_token) else HF_TOKEN
 
 @app.post("/api/prompt-voice")
 async def api_prompt_voice(prompt_type: str = Form(...), text: str = Form(...)):
-    headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
-    data = {
-        'gen_text': text, 
-        'voice_type': prompt_type, 
-        'remove_silence': 'true'
+    headers = {"Authorization": f"Bearer {current_token}"}
+    
+    # В Gradio API данные обычно передаются в поле "data" как список
+    # Но если ты переписал Спейс на FastAPI, оставляем этот формат:
+    payload = {
+        "gen_text": text, 
+        "voice_type": prompt_type, 
+        "remove_silence": "true"
     }
     
     try:
-        print(f"DEBUG: Отправка на {HF_URL}")
-        # Оставляем только ОДИН запрос вместо двух
-        res = requests.post(HF_URL, data=data, headers=headers, timeout=120)
+        print(f"DEBUG: Отправка промпта на HF: {prompt_type}")
+        # Если это Gradio, адрес может быть HF_URL + "api/predict"
+        api_endpoint = f"{HF_URL}generate/" # Проверь этот путь в логах Спейса
         
-        print(f"DEBUG: Хуган ответил: {res.status_code}")
+        res = requests.post(api_endpoint, data=payload, headers=headers, timeout=120)
         
         if res.status_code == 200:
             filename = f"voice_{uuid.uuid4().hex}.wav"
             path = os.path.join("static/results", filename)
+            os.makedirs("static/results", exist_ok=True) # На всякий случай создаем папку
             with open(path, "wb") as out: 
                 out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
         
+        print(f"DEBUG Error: {res.text}")
         return {"status": "error", "message": f"HF Error: {res.status_code}"}
         
     except Exception as e: 
@@ -507,7 +515,7 @@ async def api_dubbing(
     target_lang: str = Form("ru")
 ):
     temp_input = f"temp_{uuid.uuid4().hex}_{file.filename}"
-    headers = {"Authorization": f"Bearer {HF_TOKEN1}"}
+    headers = {"Authorization": f"Bearer {current_token}"}
     
     try:
         content = await file.read()
@@ -516,12 +524,20 @@ async def api_dubbing(
 
         with open(temp_input, "rb") as f:
             files = {'ref_audio': (file.filename, f, file.content_type)}
-            data = {'gen_text': text, 'remove_silence': 'true'}
-            res = requests.post(HF_URL, data=data, files=files, headers=headers, timeout=180)
+            # Важно: добавляем target_lang, чтобы нейронка знала язык
+            data = {
+                'gen_text': text, 
+                'target_lang': target_lang,
+                'remove_silence': 'true'
+            }
+            
+            api_endpoint = f"{HF_URL}generate/"
+            res = requests.post(api_endpoint, data=data, files=files, headers=headers, timeout=180)
 
         if res.status_code == 200:
             filename = f"output_{uuid.uuid4().hex}.wav"
             path = os.path.join("static/results", filename)
+            os.makedirs("static/results", exist_ok=True)
             with open(path, "wb") as out: 
                 out.write(res.content)
             return {"status": "success", "audio_url": f"/static/results/{filename}"}
