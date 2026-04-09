@@ -794,14 +794,19 @@ async def api_admin_gen(
 
         final_title = data.get("title", target_topic)
         final_content = data.get('content')
-        
-        supabase.table("posts").insert({
-            "title": final_title,
-            "slug": slugify(final_title),
-            "image_url": img_url,
-            "excerpt": data.get('excerpt', ''),
-            "content": final_content
-        }).execute()
+res = supabase.table("posts").insert({
+    "title": final_title,
+    "slug": slugify(final_title),
+    "image_url": img_url,
+    "excerpt": data.get('excerpt', ''),
+    "content": final_content
+}).execute()
+
+# Добавь проверку:
+if hasattr(res, 'error') and res.error:
+    print(f"❌ Ошибка Supabase: {res.error}")
+else:
+    print(f"✅ Успешно вставлено в базу! ID поста: {res.data[0].get('id') if res.data else 'Unknown'}")
 
         return {"status": "success", "title": final_title, "image": img_url}
 
