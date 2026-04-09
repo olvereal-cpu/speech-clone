@@ -795,27 +795,20 @@ async def api_admin_gen(
         final_content = data.get('content')
         
         # Вставка в базу данных
-        insert_data = {
+        insert_res = supabase.table("posts").insert({
             "title": final_title,
-            "slug": slugify(final_title),
+            "slug": internal_slugify(final_title),
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
-            "content": final_content
-        }
-        
-        # ВАЖНО: Весь этот блок должен быть С ОДНИМ ОТСТУПОМ внутри try
-        res = supabase.table("posts").insert(insert_data).execute()
+            "content": data.get('content')
+        }).execute()
 
         print(f"🚀 Статья опубликована: {final_title}")
 
-        return {
-            "status": "success", 
-            "title": final_title, 
-            "image": img_url
-        }
+        return {"status": "success", "title": final_title, "slug": internal_slugify(final_title)}
 
     except Exception as e:
-        # Эта часть ОБЯЗАТЕЛЬНО должна быть в конце блока try
+        # Этот блок должен стоять на одном уровне с try выше
         print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 @app.get("/api/posts")
