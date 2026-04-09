@@ -787,33 +787,37 @@ async def api_admin_gen(
 
         # --- 4. СЛАГ И ПУБЛИКАЦИЯ ---
         def slugify(text):
-            # Простая замена кириллицы для слага
             tr = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sch","ы":"y","э":"e","ю":"yu","я":"ya"}
-            res = "".join(tr.get(c, c) for c in text.lower())
-            return re.sub(r'[^a-z0-9]+', '-', res).strip('-')
+            res_slug = "".join(tr.get(c, c) for c in text.lower())
+            return re.sub(r'[^a-z0-9]+', '-', res_slug).strip('-')
 
         final_title = data.get("title", target_topic)
         final_content = data.get('content')
-res = supabase.table("posts").insert({
-    "title": final_title,
-    "slug": slugify(final_title),
-    "image_url": img_url,
-    "excerpt": data.get('excerpt', ''),
-    "content": final_content
-}).execute()
+        
+        # Вставка в базу данных
+        insert_data = {
+            "title": final_title,
+            "slug": slugify(final_title),
+            "image_url": img_url,
+            "excerpt": data.get('excerpt', ''),
+            "content": final_content
+        }
+        
+        # ВАЖНО: Весь этот блок должен быть С ОДНИМ ОТСТУПОМ внутри try
+        res = supabase.table("posts").insert(insert_data).execute()
 
-# Добавь проверку:
-if hasattr(res, 'error') and res.error:
-    print(f"❌ Ошибка Supabase: {res.error}")
-else:
-    print(f"✅ Успешно вставлено в базу! ID поста: {res.data[0].get('id') if res.data else 'Unknown'}")
+        print(f"🚀 Статья опубликована: {final_title}")
 
-        return {"status": "success", "title": final_title, "image": img_url}
+        return {
+            "status": "success", 
+            "title": final_title, 
+            "image": img_url
+        }
 
     except Exception as e:
-        print(f"🚨 Ошибка: {e}")
+        # Эта часть ОБЯЗАТЕЛЬНО должна быть в конце блока try
+        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/api/posts")
 async def get_posts(page: int = 1, limit: int = 6):
     try:
