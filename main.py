@@ -2,6 +2,7 @@ import os
 import uuid
 import asyncio
 import sqlite3
+import secrets
 import json
 import edge_tts
 import google.generativeai as genai
