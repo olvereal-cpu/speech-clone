@@ -788,16 +788,17 @@ async def api_admin_gen(
         # --- 4. СЛАГ И ПУБЛИКАЦИЯ ---
         def slugify(text):
             tr = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sch","ы":"y","э":"e","ю":"yu","я":"ya"}
+            # Убираем лишние символы и конвертируем кириллицу
             res_slug = "".join(tr.get(c, c) for c in text.lower())
             return re.sub(r'[^a-z0-9]+', '-', res_slug).strip('-')
 
         final_title = data.get("title", target_topic)
-        final_content = data.get('content')
-        
+        final_slug = slugify(final_title)  # Вызываем правильную функцию
+
         # Вставка в базу данных
         insert_res = supabase.table("posts").insert({
             "title": final_title,
-            "slug": internal_slugify(final_title),
+            "slug": final_slug,         # ИСПРАВЛЕНО здесь
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content')
@@ -805,12 +806,7 @@ async def api_admin_gen(
 
         print(f"🚀 Статья опубликована: {final_title}")
 
-        return {"status": "success", "title": final_title, "slug": internal_slugify(final_title)}
-
-    except Exception as e:
-        # Этот блок должен стоять на одном уровне с try выше
-        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "success", "title": final_title, "slug": final_slug} # ИСПРАВЛЕНО здесь
 @app.get("/api/posts")
 async def get_posts(page: int = 1, limit: int = 6):
     try:
