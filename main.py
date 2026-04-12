@@ -697,18 +697,6 @@ async def get_sitemap():
         print(f"🚨 Ошибка: {e}")
         return Response(content=f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://speechclone.online/</loc></url></urlset>', media_type="application/xml")
 
-
-
-
-
-
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") 
-PEXELS_KEY = os.environ.get("PEXELS_KEY") 
-MY_SECRET = "Barakuda"
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 class AdminGenRequest(BaseModel):
     message: str = "начни"
 
