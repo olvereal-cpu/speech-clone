@@ -734,7 +734,6 @@ async def api_admin_gen(
         print(f"📝 Тема: {target_topic} | Роль: {sel_role}")
 
         # --- 2. ГЕНЕРАЦИЯ «ЧЕЛОВЕЧЕСКОЙ» СТАТЬИ ---
-        # Обновленный промпт с учетом наших договоренностей
         prompt = f"""
         Ты — {sel_role}. Напиши глубокую, ироничную и живую статью на тему: "{target_topic}".
         ОБЪЕМ: строго от 1200 до 1500 слов. Это КРИТИЧЕСКИ важно для SEO.
@@ -768,17 +767,17 @@ async def api_admin_gen(
 
         raw_res = await mm.generate(prompt)
         
-        # Очистка JSON от возможных префиксов Markdown (типа ```json)
+        # Очистка JSON от возможных префиксов Markdown
         json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
         data = json.loads(json_str)
 
         # --- 3. ФОТО (PEXELS) ---
-        PEXELS_KEY = "твой_ключ"
+        PEXELS_KEY = "твой_ключ" # ЗАМЕНИ НА СВОЙ КЛЮЧ
         query = data.get('photo_keywords', 'dark technology atmospheric')
-        img_url = "[https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?w=1200](https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?w=1200)"
+        img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?w=1200"
 
         try:
-            px_url = f"[https://api.pexels.com/v1/search?query=](https://api.pexels.com/v1/search?query=){urllib.parse.quote(query)}&per_page=1&orientation=landscape"
+            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&orientation=landscape"
             px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
             if px_res.status_code == 200:
                 photos = px_res.json().get('photos', [])
@@ -793,12 +792,12 @@ async def api_admin_gen(
             return re.sub(r'[^a-z0-9]+', '-', res_slug).strip('-')
 
         final_title = data.get("title", target_topic)
-        final_slug = slugify(final_title)  # Вызываем правильную функцию
+        final_slug = slugify(final_title) 
 
-        # Вставка в базу данных
-        insert_res = supabase.table("posts").insert({
+        # Вставка в базу данных Supabase
+        supabase.table("posts").insert({
             "title": final_title,
-            "slug": final_slug,         # ИСПРАВЛЕНО здесь
+            "slug": final_slug,
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content')
@@ -806,7 +805,14 @@ async def api_admin_gen(
 
         print(f"🚀 Статья опубликована: {final_title}")
 
-        return {"status": "success", "title": final_title, "slug": final_slug} # ИСПРАВЛЕНО здесь
+        return {"status": "success", "title": final_title, "slug": final_slug}
+
+    except Exception as e:
+        # Этот блок ОБЯЗАТЕЛЕН для закрытия try
+        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- ПОЛУЧЕНИЕ СПИСКА ПОСТОВ ---
 @app.get("/api/posts")
 async def get_posts(page: int = 1, limit: int = 6):
     try:
@@ -829,8 +835,8 @@ async def get_posts(page: int = 1, limit: int = 6):
             "total_posts": total_count
         }
     except Exception as e:
+        print(f"🚨 Ошибка API: {e}")
         return {"error": str(e)}
-
 @app.get("/404", response_class=HTMLResponse)
 async def error_404_page(request: Request):
     return templates.TemplateResponse(request=request, name="404.html")
