@@ -700,143 +700,123 @@ async def get_sitemap():
 
 
 
+
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") 
+PEXELS_KEY = os.environ.get("PEXELS_KEY") 
+MY_SECRET = "Barakuda"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+class AdminGenRequest(BaseModel):
+    message: str = "начни"
+
 @app.post("/api/admin/generate-post")
 async def api_admin_gen(
     req: AdminGenRequest, 
     x_secret_key: str = Header(None)
 ):
-    # Безопасное сравнение ключа
-    MY_SECRET = "Barakuda"
     if not x_secret_key or not secrets.compare_digest(x_secret_key, MY_SECRET):
-        print(f"🚫 Попытка несанкционированного доступа!")
         raise HTTPException(status_code=403, detail="Доступ запрещен")
         
     try:
-        target_topic = req.message.strip()
-
-        # --- 1. КОНСТРУКТОР ЖИВЫХ ТЕМ ---
-        subjects = [
-            "Цифровое бессмертие", "Психология алгоритмов", "Кибербезопасность семьи",
-            "Воспитание в 2030 году", "Любовь в Tinder", "Биохакинг и чипы",
-            "Экономика выживания", "Ментальный шум", "Рынок фриланса", "ИИ-одиночество"
-        ]
-        roles = [
-            "независимый техно-блогер со скептичным взглядом", "дерзкий футуролог", 
-            "уставший философ", "инсайдер из Кремниевой долины", "социолог-радикал"
-        ]
+        from main import mm 
+        user_input = req.message.strip()
         
-        sel_role = random.choice(roles)
-        
-        if not target_topic or target_topic.lower() in ["авто", "auto", ".", "начни"]:
-            topic_prompt = f"Ты — {sel_role}. Придумай провокационный заголовок для статьи из 3-6 слов. Тема про жизнь и общество. Без кавычек."
-            generated_topic = await mm.generate(topic_prompt)
+        # --- СТАДИЯ 1: ГЕНЕРАЦИЯ ЖИВОЙ ТЕМЫ ---
+        # Вместо списка — промпт-креатор
+        if not user_input or user_input.lower() in ["авто", "auto", ".", "начни"]:
+            topic_creator_prompt = """
+            Ты — остроумный главный редактор техно-журнала. 
+            Придумай одну актуальную, дерзкую тему для статьи на 2026 год.
+            Тема должна касаться денег, ИИ, выживания в цифровую эпоху или факапов корпораций.
+            Заголовок должен цеплять (3-7 слов). Не используй кавычки.
+            Пример уровня: "Почему твой софт — это тюрьма, а не инструмент".
+            """
+            generated_topic = await mm.generate(topic_creator_prompt)
             target_topic = generated_topic.strip().replace('"', '').replace('.', '')
+        else:
+            target_topic = user_input
 
-        print(f"📝 Тема: {target_topic} | Роль: {sel_role}")
+        print(f"🔥 Новая сгенерированная тема: {target_topic}")
 
-        # --- 2. ГЕНЕРАЦИЯ «ЧЕЛОВЕЧЕСКОЙ» СТАТЬИ ---
+        # --- СТАДИЯ 2: ГЕНЕРАЦИЯ КОНТЕНТА (800 СЛОВ) ---
         prompt = f"""
-        Ты — {sel_role}. Напиши глубокую, ироничную и живую статью на тему: "{target_topic}".
-        ОБЪЕМ: строго от 1200 до 1500 слов. Это КРИТИЧЕСКИ важно для SEO.
-
-        СТИЛЬ (ДЛЯ ОБХОДА ДЕТЕКТОРОВ):
-        - Пиши от первого лица ("Я", "мне кажется"). 
-        - Используй живые метафоры, иронию, скепсис к корпорациям.
-        - НИКАКОЙ ВОДЫ: забудь про "в современном мире", "важно отметить", "в заключение".
-        - РИТМ: чередуй короткие хлесткие фразы с длинными размышлениями.
+        Ты — независимый техно-блогер с 10-летним стажем. Пишешь иронично, глубоко, для людей.
+        Напиши статью на тему: "{target_topic}".
         
-        СТРУКТУРА HTML:
-        - Заголовки <h2> и <h3> должны быть дерзкими тезисами.
-        - Обязательно добавь <table> (сравнение мифов и реальности).
-        - Вместо блока FAQ сделай раздел <h2>"Что нужно знать прямо сейчас"</h2> с 5-6 пунктами.
-        - В самом конце добавь блок <p><i>P.S. [твой личный дерзкий вывод]</i></p>.
+        СТРОГИЕ ПРАВИЛА:
+        1. ОБЪЕМ: Около 800 слов.
+        2. СТИЛЬ: Никакой "воды", официоза и клише. Больше скепсиса и личного мнения.
+        3. HTML-ВЕРСТКА:
+           - Заголовки <h2> и <h3> как дерзкие тезисы (используй «елочки»).
+           - ОБЯЗАТЕЛЬНО: <table> (Мифы vs Суровая реальность).
+           - ОБЯЗАТЕЛЬНО: <div style="background: #1e293b; padding: 25px; border-left: 5px solid #3b82f6; border-radius: 8px; color: #f8fafc;">
+             <h4>💡 Сухой остаток</h4>
+             <p>[Твой ироничный вердикт]</p>
+             </div>
+           - Раздел <h2>«Инструкция по выживанию»</h2> (список <ul>).
+           - Финал: P.S. в теге <i>.
 
-        МНЕНИЕ ЭКСПЕРТА (вставь в поле content перед P.S.):
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-left: 4px solid #8b5cf6; padding: 25px; margin: 40px 0; border-radius: 12px; color: #e2e8f0;">
-          <h4 style="margin-top: 0; color: #a78bfa; text-transform: uppercase; font-size: 14px; margin-bottom: 12px;">⚡ Мнение эксперта</h4>
-          <p style="font-style: italic; line-height: 1.6; margin-bottom: 0;">[Вывод от лица {sel_role}]</p>
-        </div>
-
-        Верни ответ СТРОГО в формате JSON:
+        Верни JSON:
         {{
           "title": "{target_topic}",
-          "excerpt": "Мета-описание (150-160 символов)",
-          "content": "HTML-текст статьи (минимум 1200 слов)",
-          "photo_keywords": "3-5 английских слов для атмосферного фото"
+          "excerpt": "Дерзкое превью (160 симв).",
+          "content": "HTML-текст статьи.",
+          "photo_query": "3 technical english keywords for Pexels"
         }}
         """
 
         raw_res = await mm.generate(prompt)
-        
-        # Очистка JSON от возможных префиксов Markdown
-        json_str = re.search(r'\{.*\}', raw_res, re.DOTALL).group(0)
-        data = json.loads(json_str)
+        json_match = re.search(r'\{.*\}', raw_res, re.DOTALL)
+        if not json_match:
+            return {"status": "error", "message": "JSON Parse Error"}
+            
+        data = json.loads(json_match.group(0))
 
-        # --- 3. ФОТО (PEXELS) ---
-        PEXELS_KEY = "твой_ключ" # ЗАМЕНИ НА СВОЙ КЛЮЧ
-        query = data.get('photo_keywords', 'dark technology atmospheric')
-        img_url = "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?w=1200"
-
+        # --- СТАДИЯ 3: PEXELS ---
+        img_url = "https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg"
+        query = data.get('photo_query', 'technology dark')
         try:
-            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1&orientation=landscape"
+            px_url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(query)}&per_page=1"
             px_res = requests.get(px_url, headers={"Authorization": PEXELS_KEY}, timeout=10)
             if px_res.status_code == 200:
-                photos = px_res.json().get('photos', [])
-                if photos: img_url = photos[0]['src']['large']
+                px_data = px_res.json()
+                if px_data.get('photos'):
+                    img_url = px_data['photos'][0]['src']['large']
         except: pass
 
-        # --- 4. СЛАГ И ПУБЛИКАЦИЯ ---
+        # --- СТАДИЯ 4: ПУБЛИКАЦИЯ ---
         def slugify(text):
             tr = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sch","ы":"y","э":"e","ю":"yu","я":"ya"}
-            # Убираем лишние символы и конвертируем кириллицу
-            res_slug = "".join(tr.get(c, c) for c in text.lower())
-            return re.sub(r'[^a-z0-9]+', '-', res_slug).strip('-')
+            clean = "".join(tr.get(c, c) for c in text.lower())
+            return re.sub(r'[^a-z0-9]+', '-', clean).strip('-') + f"-{random.randint(100, 999)}"
 
         final_title = data.get("title", target_topic)
-        final_slug = slugify(final_title) 
-
-        # Вставка в базу данных Supabase
+        
         supabase.table("posts").insert({
             "title": final_title,
-            "slug": final_slug,
+            "slug": slugify(final_title),
             "image_url": img_url,
             "excerpt": data.get('excerpt', ''),
             "content": data.get('content')
         }).execute()
 
-        print(f"🚀 Статья опубликована: {final_title}")
-
-        return {"status": "success", "title": final_title, "slug": final_slug}
+        return {"status": "success", "title": final_title}
 
     except Exception as e:
-        # Этот блок ОБЯЗАТЕЛЕН для закрытия try
-        print(f"🚨 КРИТИЧЕСКАЯ ОШИБКА: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"🚨 Ошибка: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
-# --- ПОЛУЧЕНИЕ СПИСКА ПОСТОВ ---
 @app.get("/api/posts")
 async def get_posts(page: int = 1, limit: int = 6):
     try:
         start = (page - 1) * limit
         end = start + limit - 1
-
-        res = supabase.table("posts") \
-            .select("*", count="exact") \
-            .order("created_at", desc=True) \
-            .range(start, end) \
-            .execute()
-
-        total_count = res.count or 0
-        total_pages = (total_count + limit - 1) // limit
-
-        return {
-            "posts": res.data,
-            "total_pages": total_pages,
-            "current_page": page,
-            "total_posts": total_count
-        }
+        res = supabase.table("posts").select("*", count="exact").order("created_at", desc=True).range(start, end).execute()
+        return {"posts": res.data, "total_posts": res.count or 0}
     except Exception as e:
-        print(f"🚨 Ошибка API: {e}")
         return {"error": str(e)}
 @app.get("/404", response_class=HTMLResponse)
 async def error_404_page(request: Request):
